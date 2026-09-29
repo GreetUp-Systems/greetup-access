@@ -115,9 +115,9 @@ Contratos inteligentes em Rust deployados na Stellar Mainnet. Controlam emissão
 |---|---|
 | Nome | Lucas Ferreira |
 | Perfil | Gerente de Contas, 32 anos, São Paulo |
-| Contexto | Recebeu convite da empresa para um jantar corporativo de relacionamento |
+| Contexto | Viu o show de uma banda que acompanha no Instagram e quer comprar o ingresso pelo link |
 | Dores | Formulários longos, precisar instalar apps, processos de cadastro desnecessários |
-| Objetivos | Confirmar presença, ter o ingresso no celular, entrar no evento sem complicação |
+| Objetivos | Comprar em poucos toques, ter o ingresso no celular, entrar no evento sem complicação |
 | Familiaridade digital | Alta — usa apps de banco, delivery e e-commerce diariamente |
 | Dispositivo principal | iPhone, browser Safari |
 
@@ -128,8 +128,8 @@ Contratos inteligentes em Rust deployados na Stellar Mainnet. Controlam emissão
 | Campo | Descrição |
 |---|---|
 | Nome | Renata Campos |
-| Perfil | Sócia de produtora de eventos corporativos, 41 anos, Belo Horizonte |
-| Contexto | Organiza 3 a 5 eventos corporativos por mês para clientes B2B |
+| Perfil | Sócia de uma produtora de eventos, 41 anos, Belo Horizonte |
+| Contexto | Organiza 3 a 5 eventos por mês — shows, workshops e encontros de 50 a 500 pessoas |
 | Dores | Plataformas genéricas sem controle financeiro, credenciamento que falha no dia, falta de transparência nos repasses |
 | Objetivos | Criar eventos rápido, vender com Pix, saber exatamente o que vai receber e quando, credenciar sem stress |
 | Familiaridade digital | Média-alta — usa plataformas de gestão, mas não tem perfil técnico |
@@ -143,7 +143,7 @@ Contratos inteligentes em Rust deployados na Stellar Mainnet. Controlam emissão
 |---|---|
 | Nome | Pedro Alves |
 | Perfil | Assistente operacional, 24 anos, terceirizado para eventos |
-| Contexto | Trabalha na entrada de eventos corporativos, responsável por credenciar participantes |
+| Contexto | Trabalha na entrada de eventos, responsável por credenciar participantes |
 | Dores | Apps que travam, internet instável no local, interface complicada sob pressão |
 | Objetivos | Validar ingressos rápido, ter resposta visual clara, não precisar perguntar para ninguém o que fazer |
 | Familiaridade digital | Média — usa smartphone bem mas não tem experiência com sistemas complexos |

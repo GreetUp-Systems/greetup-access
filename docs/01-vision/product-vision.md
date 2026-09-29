@@ -41,8 +41,8 @@ Para quem organiza, o ingresso é receita e compromisso com o público. Para que
 
 ## 3. A Solução
 
-**Frase de produto:** Venda, controle e credencie acessos com confiança programável.  
-**Frase técnica:** Pix in, ticket on-chain, check-in verifiable, payout controlled.
+**Frase de produto:** Vender ingresso, liberar a entrada e receber. Simples assim.  
+**Frase técnica:** pagamento por Pix, ingresso na Stellar, check-in verificável, saque por Pix.
 
 **O Access combina:**
 - Venda de ingressos com pagamento via Pix
