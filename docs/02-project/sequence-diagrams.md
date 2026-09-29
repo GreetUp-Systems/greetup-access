@@ -1,4 +1,4 @@
-# Diagramas de Sequência — GreetUp Access
+# Diagramas de Sequência — Access
 
 > ⚠️ **Documento anterior à revisão de arquitetura de 20/08/2026.** Parte do conteúdo está
 > superada (escrow, Treasury própria, KMS, CQRS, WebSocket). Em qualquer conflito, vale o

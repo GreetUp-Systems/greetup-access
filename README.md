@@ -1,6 +1,6 @@
-# GreetUp Access
+# Access
 
-> Plataforma de venda de ingressos, credenciamento e repasse financeiro para eventos corporativos B2B.
+> Solução para vender ingressos, controlar a entrada e receber pelas vendas, para eventos de qualquer tipo e tamanho.
 
 **Stack:** Stellar · Soroban · Privy · BlindPay · NestJS · Next.js 15 · PostgreSQL · BullMQ · Turborepo
 

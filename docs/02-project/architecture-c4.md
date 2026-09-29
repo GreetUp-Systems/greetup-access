@@ -1,4 +1,4 @@
-# Arquitetura C4 — GreetUp Access
+# Arquitetura C4 — Access
 
 > ⚠️ **Documento anterior à revisão de arquitetura de 20/08/2026.** Parte do conteúdo está
 > superada (escrow, Treasury própria, KMS, CQRS, WebSocket). Em qualquer conflito, vale o
@@ -14,7 +14,7 @@ Mostra o sistema como uma caixa preta e seus relacionamentos com usuários e sis
 
 ![C4 N1 - Diagrama de Contexto](./diagrams/c4-n1-context.svg)
 
-**Leitura:** os três usuários humanos (Comprador, Produtor, Staff) interagem exclusivamente com o sistema GreetUp Access. O sistema, por sua vez, orquestra três parceiros externos (BlindPay, Privy, Stellar/Soroban) e um serviço de suporte (Email). Nenhum usuário interage diretamente com os sistemas externos — toda a complexidade de blockchain e pagamento fica encapsulada atrás do GreetUp Access.
+**Leitura:** os três usuários humanos (Comprador, Produtor, Staff) interagem exclusivamente com o sistema Access. O sistema, por sua vez, orquestra três parceiros externos (BlindPay, Privy, Stellar/Soroban) e um serviço de suporte (Email). Nenhum usuário interage diretamente com os sistemas externos — toda a complexidade de blockchain e pagamento fica encapsulada atrás do Access.
 
 ---
 
@@ -24,7 +24,7 @@ Mostra os containers (aplicações, serviços, bancos de dados) que compõem o s
 
 ![C4 N2 - Diagrama de Containers](./diagrams/c4-n2-containers.svg)
 
-**Leitura:** dentro da fronteira do GreetUp Access existem três containers de aplicação (Web, API, Workers) e três de infraestrutura (PostgreSQL, Redis, Outbox Table). O Cloudflare fica na borda, proxyando tanto o Web quanto a API. A comunicação entre API e Workers acontece exclusivamente via Redis (BullMQ) — nunca diretamente. O webhook do BlindPay chega assíncrono (linha tracejada) e é tratado como qualquer outra entrada externa.
+**Leitura:** dentro da fronteira do Access existem três containers de aplicação (Web, API, Workers) e três de infraestrutura (PostgreSQL, Redis, Outbox Table). O Cloudflare fica na borda, proxyando tanto o Web quanto a API. A comunicação entre API e Workers acontece exclusivamente via Redis (BullMQ) — nunca diretamente. O webhook do BlindPay chega assíncrono (linha tracejada) e é tratado como qualquer outra entrada externa.
 
 **Decisões-chave representadas:**
 - API e Workers nunca se comunicam diretamente — sempre via fila

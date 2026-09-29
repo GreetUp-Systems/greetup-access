@@ -1,6 +1,6 @@
-# GreetUp Access — Documentação Técnica
+# Access — Documentação Técnica
 
-> Plataforma de venda de ingressos, credenciamento e repasse financeiro para eventos corporativos B2B.
+> Solução para vender ingressos, controlar a entrada e receber pelas vendas, para eventos de qualquer tipo e tamanho.
 > Stack: Stellar · Soroban · Privy · BlindPay · NestJS · Next.js · PostgreSQL · BullMQ
 
 > ⚠️ **Arquitetura vigente:** [`06-sdd/MVP-REVISADO.md`](./06-sdd/MVP-REVISADO.md) (revisão de 20/08/2026).
@@ -49,7 +49,7 @@ Problema, escopo, funcionalidades, regras de negócio, fluxos principais, stack 
 | [RB-005](./04-runbooks/RB-005-blindpay-failure.md) | Falha do BlindPay |
 
 ### [05 · Glossário Técnico](./05-glossary/glossary.md)
-Todos os termos do projeto com definição precisa no contexto do GreetUp Access.
+Todos os termos do projeto com definição precisa no contexto do Access.
 
 ### 06 · Spec-Driven Development
 
@@ -77,7 +77,7 @@ Documentação superada pela revisão de arquitetura, mantida só como registro 
 
 | Documento | Versão | Status |
 |---|---|---|
-| Visão do Produto | 0.3 | Em revisão |
+| Visão do Produto | 0.4 | Em revisão |
 | MVP Revisado | — | Arquitetura fechada |
 | Documento de Projeto | 0.1 | Desatualizado — anterior à revisão |
 | ADRs | 0.1 | Em revisão |

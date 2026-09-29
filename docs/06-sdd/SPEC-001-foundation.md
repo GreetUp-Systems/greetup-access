@@ -146,7 +146,7 @@ enum DomainEventStatus {
 
 enum LedgerEntryType {
   PAYMENT_RECEIVED
-  GREETUP_FEE
+  PLATFORM_FEE
   BLINDPAY_FEE
   BALANCE_RELEASED
   BALANCE_BLOCKED
@@ -531,8 +531,8 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON organizations
 ## 7. Variáveis de ambiente necessárias
 
 ```bash
-DATABASE_URL=postgresql://greetup:greetup@localhost:5432/greetup_dev
-DATABASE_URL_DIRECT=postgresql://greetup:greetup@localhost:5432/greetup_dev
+DATABASE_URL=postgresql://access:access@localhost:5432/access_dev
+DATABASE_URL_DIRECT=postgresql://access:access@localhost:5432/access_dev
 REDIS_URL=redis://localhost:6379
 ```
 

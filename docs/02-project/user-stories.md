@@ -1,4 +1,4 @@
-# Histórias de Usuário — GreetUp Access
+# Histórias de Usuário — Access
 
 > ⚠️ **Documento anterior à revisão de arquitetura de 20/08/2026.** Parte do conteúdo está
 > superada (escrow, Treasury própria, KMS, CQRS, WebSocket). Em qualquer conflito, vale o
@@ -141,7 +141,7 @@ Prioridade: **Crítico** (bloqueante para MVP) · **Importante** (agrega valor) 
 
 **Critérios de aceite:**
 - [ ] Valores exibidos em BRL, sem menção a stablecoin ou USDC
-- [ ] Métricas visíveis: faturamento bruto, taxa BlindPay, taxa GreetUp, líquido estimado
+- [ ] Métricas visíveis: faturamento bruto, taxa BlindPay, taxa do Access, líquido estimado
 - [ ] Saldo segmentado: pendente / disponível / sacado / reembolsado
 - [ ] Histórico de transações com data, descrição e valor
 - [ ] Data estimada de liberação do saldo pendente exibida

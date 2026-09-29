@@ -4,7 +4,7 @@
 
 ## Contexto
 
-O GreetUp Access precisa de blockchain para ingressos tokenizados e escrow. Avaliadas: Polygon PoS (EVM) e Stellar (Soroban).
+O Access precisa de blockchain para ingressos tokenizados e escrow. Avaliadas: Polygon PoS (EVM) e Stellar (Soroban).
 
 ## Opções Avaliadas
 

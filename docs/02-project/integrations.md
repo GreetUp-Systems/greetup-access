@@ -1,4 +1,4 @@
-# Contratos de Integração — GreetUp Access
+# Contratos de Integração — Access
 
 > ⚠️ **Documento anterior à revisão de arquitetura de 20/08/2026.** Parte do conteúdo está
 > superada (escrow, Treasury própria, KMS, CQRS, WebSocket). Em qualquer conflito, vale o
@@ -126,7 +126,7 @@ Response 201:
 ### 1.6 Webhook — payin.completed
 
 ```
-POST /webhooks/blindpay (recebido pelo GreetUp)
+POST /webhooks/blindpay (recebido pelo Access)
 Headers:
   blindpay-signature: hmac_sha256(raw_body, BLINDPAY_WEBHOOK_SECRET)
 

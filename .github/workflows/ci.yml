@@ -105,18 +105,18 @@ jobs:
 
       - name: Wait for services
         run: |
-          until docker exec greetup_postgres_test pg_isready -U test; do sleep 1; done
-          until docker exec greetup_redis_test redis-cli ping; do echo "waiting redis..."; sleep 1; done
+          until docker exec access_postgres_test pg_isready -U test; do sleep 1; done
+          until docker exec access_redis_test redis-cli ping; do echo "waiting redis..."; sleep 1; done
 
       - name: Run database migrations (test)
         run: pnpm turbo db:migrate
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5433/greetup_test
+          DATABASE_URL: postgresql://test:test@localhost:5433/access_test
 
       - name: Integration tests
         run: pnpm turbo test:integration
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5433/greetup_test
+          DATABASE_URL: postgresql://test:test@localhost:5433/access_test
           REDIS_URL: redis://localhost:6380
           NODE_ENV: test
 

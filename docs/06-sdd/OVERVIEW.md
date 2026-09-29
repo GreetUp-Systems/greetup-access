@@ -1,4 +1,4 @@
-# SDD — Spec-Driven Development · GreetUp Access
+# SDD — Spec-Driven Development · Access
 
 > ⚠️ **Leia [`MVP-REVISADO.md`](./MVP-REVISADO.md) antes de qualquer coisa.**
 >

@@ -7,9 +7,11 @@
 
 ## 1. O que é este projeto
 
-GreetUp Access é uma plataforma de venda de ingressos, credenciamento e repasse financeiro para eventos corporativos B2B, construída sobre Stellar/Soroban, com integração a Privy (wallets), BlindPay (Pix ↔ USDC) e OpenZeppelin (contrato NFT auditado e Relayer para gas).
+Access é uma solução para vender ingressos, controlar a entrada e receber pelas vendas, para eventos de qualquer tipo e tamanho. É construída sobre Stellar/Soroban, com integração a Privy (wallets), BlindPay (Pix ↔ USDC) e OpenZeppelin (contrato NFT auditado e Relayer para gas).
 
 **Arquitetura em uma frase:** Privy cria as carteiras, BlindPay move o dinheiro, e a Stellar guarda o ingresso. A fonte de verdade da arquitetura é docs/06-sdd/MVP-REVISADO.md.
+
+Toda a camada web3 fica abstraída. Para quem usa, o Access funciona como qualquer app comum.
 
 Este é um sistema que vai processar dinheiro real de terceiros. Não é um protótipo, não é um MVP descartável. Cada linha de código aqui pode significar um comprador que não recebe o ingresso que pagou, ou um produtor que não recebe o dinheiro que vendeu.
 
@@ -93,7 +95,7 @@ Estas regras valem independentemente do que uma spec disser. Se uma spec parecer
 4. **Nunca armazenar dado pessoal on-chain.** Nome, email, CPF, telefone, dados bancários — sempre off-chain (PostgreSQL). On-chain só IDs, endereços de wallet, estados e hashes.
 5. **Nunca expor chave privada em código, log, variável de ambiente commitada ou resposta de API.** Fora do ambiente local, secrets vêm do gestor de secrets. Gas é pago pelo OpenZeppelin Relayer. A custódia da chave de assinatura da plataforma é questão em aberto (Q-01) — não implemente signing no servidor antes dessa decisão.
 6. **Todo endpoint que recebe webhook valida assinatura HMAC antes de processar qualquer coisa.** Sem exceção, mesmo em ambiente de desenvolvimento.
-7. **A GreetUp nunca recebe nem movimenta recurso de terceiro (RN-009, D-09).** Todo dinheiro passa pela BlindPay: payin entrega direto na wallet do produtor, saque é payout da BlindPay, taxa da GreetUp é partner fee. Nunca criar conta, wallet ou fluxo que receba em nome do produtor — é a regra anti-nesting da BlindPay.
+7. **O Access nunca recebe nem movimenta recurso de terceiro (RN-009, D-09).** Todo dinheiro passa pela BlindPay: payin entrega direto na wallet do produtor, saque é payout da BlindPay, taxa do Access é partner fee. Nunca criar conta, wallet ou fluxo que receba em nome do produtor — é a regra anti-nesting da BlindPay.
 8. **Nenhum `console.log` de debug commitado.** Use o logger estruturado (Pino) com nível apropriado.
 9. **Nenhuma variável de ambiente sem entrada correspondente em `.env.example`.**
 

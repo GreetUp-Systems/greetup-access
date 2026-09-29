@@ -1,4 +1,4 @@
-# Contribuindo para o GreetUp Access
+# Contribuindo para o Access
 
 ## Convenções de Código
 

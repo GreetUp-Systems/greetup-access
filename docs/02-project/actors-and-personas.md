@@ -1,4 +1,4 @@
-# Atores e Personas — GreetUp Access
+# Atores e Personas — Access
 
 > ⚠️ **Documento anterior à revisão de arquitetura de 20/08/2026.** Parte do conteúdo está
 > superada (escrow, Treasury própria, KMS, CQRS, WebSocket). Em qualquer conflito, vale o
@@ -10,7 +10,7 @@
 
 ### Comprador de Ingresso
 
-**Quem é:** pessoa física que compra ou recebe um ingresso para um evento corporativo.
+**Quem é:** pessoa física que compra ou recebe um ingresso para um evento.
 
 **Motivação:** acessar um evento relevante de forma simples, sem fricção.
 
@@ -92,7 +92,7 @@
 ### BlindPay
 API de on/off-ramp. Processa pagamentos Pix, converte BRL→USDC, executa payouts USDC→Pix, realiza KYB do produtor. Comunica com o sistema via webhooks e API REST.
 
-**Eventos que emite para o GreetUp Access:**
+**Eventos que emite para o Access:**
 - `payin.completed` — Pix confirmado, USDC enviado para wallet destino
 - `payin.failed` — Pagamento falhou ou expirou
 - `payout.completed` — Off-ramp concluído, Pix enviado ao produtor

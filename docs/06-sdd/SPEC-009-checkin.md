@@ -192,7 +192,7 @@ export class CheckinDatabase extends Dexie {
   snapshots!: Table<{ eventId: string; data: string; generatedAt: number }>;
 
   constructor() {
-    super("greetup-checkin");
+    super("access-checkin");
     this.version(1).stores({
       tickets: "ticketId, eventId, status",
       syncQueue: "++id, ticketId, eventId",

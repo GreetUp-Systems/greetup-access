@@ -1,7 +1,7 @@
 # PagFinance — Documentação Consolidada (fonte externa)
 
 > **Origem:** conteúdo obtido diretamente de `docs.pag.finance` (via `llms.txt` + páginas `.md` individuais) em 2026-08-18.
-> **Natureza:** isto é uma cópia de referência da documentação pública da PagFinance, não uma decisão de arquitetura do GreetUp Access. Nenhuma escolha de usar PagFinance foi tomada — este documento existe para permitir comparação informada com o ramp atual (BlindPay, ver `integrations.md` e `ADR-004-blindpay-ramp.md`).
+> **Natureza:** isto é uma cópia de referência da documentação pública da PagFinance, não uma decisão de arquitetura do Access. Nenhuma escolha de usar PagFinance foi tomada — este documento existe para permitir comparação informada com o ramp atual (BlindPay, ver `integrations.md` e `ADR-004-blindpay-ramp.md`).
 > **Cobertura:** SDK (`@pagfinance/sdk`), API REST de parceiro (partner API), FAQ público. 62 páginas da documentação oficial, consolidadas aqui.
 
 ## Sumário

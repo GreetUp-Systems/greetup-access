@@ -1,9 +1,9 @@
-# Visão do Produto — GreetUp Access
+# Visão do Produto — Access
 
-**Versão:** 0.3  
-**Data:** 20/08/2026  
+**Versão:** 0.4  
+**Data:** 28/09/2026  
 **Responsável:** Matheus Aguiar  
-**Empresa:** GreetUp  
+**Empresa:** Access  
 **Status:** Em revisão
 
 > Arquitetura vigente: [`docs/06-sdd/MVP-REVISADO.md`](../06-sdd/MVP-REVISADO.md)
@@ -12,31 +12,30 @@
 
 ## 1. Resumo Executivo
 
-O **GreetUp Access** é uma plataforma de infraestrutura premium para venda de ingressos, gestão de acessos, credenciamento e repasse financeiro para eventos corporativos B2B.
+O **Access** é uma solução para vender ingressos, controlar a entrada e receber pelas vendas, para eventos de qualquer tipo e tamanho.
 
-A solução resolve a ausência de uma infraestrutura programável e confiável para eventos corporativos, permitindo que organizadores vendam ingressos, controlem acessos, acompanhem faturamento e repassem valores com regras programáveis — de forma segura, transparente e elegante.
+A proposta é ser tão simples que não precise de explicação. Comprar um ingresso, criar um evento ou validar uma entrada tem que ser tão natural quanto usar qualquer bom app do celular. A qualidade está no cuidado com cada detalhe, não em parecer sofisticado.
 
-**Para o comprador:** paga com Pix e recebe um ingresso digital. Nenhuma interação com blockchain, stablecoin ou wallet.  
+**Para o comprador:** paga com Pix e recebe o ingresso. O ingresso fica registrado na Stellar e é dele de verdade, mas ele nunca precisa saber disso: nada de carteira para configurar, termos técnicos ou cripto.  
 **Para o produtor:** cria eventos, acompanha saldo e solicita retirada de valores.  
 **Para o staff:** escaneia QR Code e valida ingressos no dia do evento, com modo offline a partir da fase 2.
 
-A complexidade de blockchain e stablecoins acontece nos bastidores. A experiência final é Web2.
+Toda a camada web3 fica abstraída. Para quem usa, o Access funciona como qualquer app comum.
 
 ---
 
 ## 2. O Problema
 
-Organizadores de eventos corporativos enfrentam problemas recorrentes com as plataformas atuais:
+Vender ingresso e controlar a entrada de um evento ainda é mais difícil do que deveria:
 
-- Taxas altas sem transparência sobre o split financeiro
-- Sistemas genéricos não pensados para hospitalidade corporativa
-- Pouca flexibilidade para regras de ingresso, reembolso, transferência e acesso
-- Falhas no credenciamento no dia do evento, especialmente com internet instável
-- Baixa rastreabilidade sobre emissão, uso, cancelamento e transferência de ingressos
+- Taxas altas e pouca clareza sobre quanto fica com quem
+- Ferramentas complexas, pensadas para grandes vendedores, não para quem organiza o próprio evento
+- Pouca flexibilidade para regras de ingresso, reembolso e transferência
+- Fila e falha na entrada, especialmente com internet instável
+- Pouca rastreabilidade sobre emissão, uso e transferência de ingressos
 - Falta de regras claras para cancelamento, reembolso e retirada de valores
-- Dependência de plataformas não projetadas para o relacionamento B2B
 
-Em eventos corporativos, o ingresso não é apenas uma entrada. Ele representa relacionamento, convite, compromisso financeiro, direito do consumidor e receita para o organizador.
+Para quem organiza, o ingresso é receita e compromisso com o público. Para quem compra, é a garantia de que vai entrar. As duas coisas precisam funcionar sem esforço.
 
 ---
 
@@ -45,7 +44,7 @@ Em eventos corporativos, o ingresso não é apenas uma entrada. Ele representa r
 **Frase de produto:** Venda, controle e credencie acessos com confiança programável.  
 **Frase técnica:** Pix in, ticket on-chain, check-in verifiable, payout controlled.
 
-**O GreetUp Access combina:**
+**O Access combina:**
 - Venda de ingressos com pagamento via Pix
 - Emissão de ingressos tokenizados na Stellar
 - Credenciamento via QR Code, com funcionamento offline a partir da fase 2
@@ -57,7 +56,7 @@ Em eventos corporativos, o ingresso não é apenas uma entrada. Ele representa r
 ## 4. Perfis de Usuário
 
 ### 4.1 Comprador de Ingresso
-Pessoa física que compra ou recebe um ingresso para um evento corporativo.
+Pessoa física que compra ou recebe um ingresso para um evento.
 
 **Jornada:** acessa página do evento → escolhe ingresso → paga com Pix → recebe QR Code → apresenta no evento → check-in realizado.
 
@@ -170,7 +169,7 @@ Cada request carrega `organizationId` no JWT. Interceptor seta `app.current_orga
 O contrato estende o módulo Non-Fungible Token da OpenZeppelin Stellar Contracts. Código próprio fica restrito a check-in, vínculo com evento e idempotência por `purchase_id`.
 
 ### 8.5 Gas patrocinado
-Transações on-chain são patrocinadas via OpenZeppelin Relayer, usando fee bump nativo da Stellar. Reserva mínima de conta e trustline vem de uma conta patrocinadora da GreetUp. Nem produtor nem comprador precisam de XLM.
+Transações on-chain são patrocinadas via OpenZeppelin Relayer, usando fee bump nativo da Stellar. Reserva mínima de conta e trustline vem de uma conta patrocinadora do Access. Nem produtor nem comprador precisam de XLM.
 
 ### 8.6 Realtime pontual
 Server-Sent Events em uma única tela — o comprador aguardando a emissão do ingresso após pagar. O restante da interface usa polling.
@@ -205,13 +204,13 @@ Comprador acessa página do evento
 ```
 Pagamento confirmado
   └── BlindPay entrega USDC direto na wallet Stellar do produtor
-        └── Taxa da GreetUp coletada como partner fee na própria transação
+        └── Taxa do Access coletada como partner fee na própria transação
               └── Produtor vê o saldo no painel
                     └── Produtor solicita retirada
                           └── BlindPay payout: USDC → Pix na conta bancária dele
                                 └── Webhook confirma a conclusão
 
-Taxas da GreetUp acumulam no mês e são liberadas no dia 1º do mês seguinte,
+Taxas do Access acumulam no mês e são liberadas no dia 1º do mês seguinte,
 já líquidas da fatura da BlindPay.
 ```
 
@@ -229,11 +228,11 @@ já líquidas da fatura da BlindPay.
 | RN-006 | Ingresso pode ser transferido uma única vez, e apenas para uma conta válida na plataforma |
 | RN-007 | Ingresso transferido não é reembolsável |
 | RN-008 | Reembolso segue a política configurada pelo produtor no evento e depende de ele devolver o valor, que já é dele |
-| RN-009 | A GreetUp nunca recebe recurso de terceiro. Cada produtor é customer próprio na BlindPay, com KYC e wallet próprios |
+| RN-009 | O Access nunca recebe recurso de terceiro. Cada produtor é customer próprio na BlindPay, com KYC e wallet próprios |
 | RN-010 | Dados pessoais nunca armazenados on-chain — apenas hashes e identificadores |
 | RN-011 | O comprador não é identificado pelo provedor de pagamento. Ele apenas paga o código Pix. KYC existe só para o produtor |
-| RN-012 | Gas patrocinado pela GreetUp via OpenZeppelin Relayer; a reserva mínima de conta e trustline vem de uma conta patrocinadora própria |
-| RN-013 | Taxa da GreetUp cobrada via partner fee nativa da BlindPay, aplicada automaticamente por transação |
+| RN-012 | Gas patrocinado pelo Access via OpenZeppelin Relayer; a reserva mínima de conta e trustline vem de uma conta patrocinadora própria |
+| RN-013 | Taxa do Access cobrada via partner fee nativa da BlindPay, aplicada automaticamente por transação |
 | RN-014 | Cancelamento de evento é tratado por contrato e relacionamento, não por mecanismo financeiro |
 
 ---
@@ -315,7 +314,7 @@ mês seguinte, já líquidas da fatura da BlindPay.
 | Questão | Responsável | Prazo |
 |---|---|---|
 | Fee exato do BlindPay por transação Pix | BlindPay / Matheus | Antes da Fase 2 |
-| Taxa GreetUp por ingresso (define modelo de negócio) | Matheus | Antes da Fase 2 |
+| Taxa do Access por ingresso (define modelo de negócio) | Matheus | Antes da Fase 2 |
 | Quem absorve a taxa — `cover_fees` na quote | Matheus | Antes da Fase 2 |
 | Regras e prazos de reembolso, com apoio jurídico | Jurídico / Matheus | Antes da Fase 4 |
 | Auditoria externa da extensão do contrato | Matheus | Antes da Fase 5 |
