@@ -7,7 +7,9 @@
 
 ## 1. O que é este projeto
 
-GreetUp Access é uma plataforma de venda de ingressos, credenciamento e repasse financeiro para eventos corporativos B2B, construída sobre Stellar/Soroban, com integração a Privy (wallets) e BlindPay (Pix ↔ USDC).
+GreetUp Access é uma plataforma de venda de ingressos, credenciamento e repasse financeiro para eventos corporativos B2B, construída sobre Stellar/Soroban, com integração a Privy (wallets), BlindPay (Pix ↔ USDC) e OpenZeppelin (contrato NFT auditado e Relayer para gas).
+
+**Arquitetura em uma frase:** Privy cria as carteiras, BlindPay move o dinheiro, e a Stellar guarda o ingresso. A fonte de verdade da arquitetura é docs/06-sdd/MVP-REVISADO.md.
 
 Este é um sistema que vai processar dinheiro real de terceiros. Não é um protótipo, não é um MVP descartável. Cada linha de código aqui pode significar um comprador que não recebe o ingresso que pagou, ou um produtor que não recebe o dinheiro que vendeu.
 
@@ -31,13 +33,18 @@ Preferir perguntar a assumir. Um assumir errado em fluxo financeiro é caro. Uma
 
 Antes de implementar qualquer SPEC, leia nesta ordem:
 
-1. `docs/06-sdd/OVERVIEW.md` — mapa de dependências e ordem de implementação
-2. A SPEC específica que você vai implementar, em `docs/06-sdd/SPEC-XXX-*.md`
-3. `docs/02-project/data-model.md` — se a spec envolve entidades do banco
-4. `docs/02-project/integrations.md` — se a spec envolve BlindPay, Privy ou Soroban
-5. Os ADRs referenciados na spec, em `docs/03-adrs/` — para entender o porquê das decisões, não só o quê
+1. `docs/06-sdd/MVP-REVISADO.md` — **fonte de verdade da arquitetura**: decisões D-01 a D-19, dívidas conscientes, notas de implementação e questões em aberto (§9)
+2. `docs/06-sdd/OVERVIEW.md` — blocos de implementação, dependências e status de cada SPEC
+3. A SPEC específica que você vai implementar, em `docs/06-sdd/SPEC-XXX-*.md`
+4. Os ADRs referenciados na spec, em `docs/03-adrs/` — para entender o porquê das decisões, não só o quê
+
+`docs/02-project/` (modelo de dados, integrações, C4, casos de uso) é **anterior à revisão** e está
+parcialmente desatualizado. Use como referência, nunca como autoridade: em conflito, vale o
+`MVP-REVISADO.md`. O conteúdo de `docs/_archive/` está superado — não implemente a partir dele.
 
 Nunca implemente uma spec sem antes confirmar que suas dependências (listadas no `OVERVIEW.md`) já estão implementadas e passando nos testes.
+
+Várias SPECs ainda serão reescritas. Se o bloco que você vai implementar não tem SPEC válida, pare: a SPEC é escrita antes do código, não durante.
 
 ---
 
@@ -55,12 +62,14 @@ Nunca implemente uma spec sem antes confirmar que suas dependências (listadas n
 
 Não pule etapas. Não implemente "adiantado" uma spec futura porque parece conveniente — a ordem de dependências existe por razão de arquitetura, não é sugestão.
 
-Se uma spec for grande (SPEC-006, SPEC-009, SPEC-013), é aceitável dividir em sub-entregas dentro da mesma spec, mas comunique isso explicitamente antes de começar: "Vou dividir a SPEC-006 em: (1) TicketContract, (2) EscrowContract, (3) testes de integração cruzada" — e trate cada uma como um checkpoint reportável.
+Se uma spec for grande, é aceitável dividir em sub-entregas dentro da mesma spec, mas comunique isso explicitamente antes de começar: "Vou dividir a SPEC de compra em: (1) payin quote e payin, (2) webhook e Outbox, (3) MintTicketWorker" — e trate cada uma como um checkpoint reportável.
 
 ---
 
 ## 5. Condições de parada — pare e pergunte se
 
+- A spec contradiz uma decisão do MVP-REVISADO.md
+- A implementação depende de uma questão em aberto listada no §9 do MVP-REVISADO.md
 - A spec referencia um arquivo, tipo ou função que não existe e não está em nenhuma spec anterior
 - Duas specs descrevem a mesma entidade ou endpoint de forma incompatível
 - Uma variável de ambiente necessária não está em `.env.example`
@@ -82,9 +91,9 @@ Estas regras valem independentemente do que uma spec disser. Se uma spec parecer
 2. **Toda escrita que gera evento de domínio usa `prisma.$transaction` + `OutboxService.publish()` dentro da mesma transação.** Nunca publicar evento fora da transação que gerou o estado.
 3. **Todo consumer de fila (worker) é idempotente.** Verificar estado atual antes de processar. Um job pode ser executado mais de uma vez — o resultado final deve ser o mesmo.
 4. **Nunca armazenar dado pessoal on-chain.** Nome, email, CPF, telefone, dados bancários — sempre off-chain (PostgreSQL). On-chain só IDs, endereços de wallet, estados e hashes.
-5. **Nunca expor chave privada em código, log, variável de ambiente commitada ou resposta de API.** Signing de Treasury sempre via `KmsService`, nunca `Keypair.fromSecret()` com secret em texto.
+5. **Nunca expor chave privada em código, log, variável de ambiente commitada ou resposta de API.** Fora do ambiente local, secrets vêm do gestor de secrets. Gas é pago pelo OpenZeppelin Relayer. A custódia da chave de assinatura da plataforma é questão em aberto (Q-01) — não implemente signing no servidor antes dessa decisão.
 6. **Todo endpoint que recebe webhook valida assinatura HMAC antes de processar qualquer coisa.** Sem exceção, mesmo em ambiente de desenvolvimento.
-7. **Operações financeiras críticas (release, block, refund do escrow) sempre passam por multi-sig conforme definido no contrato.** Nunca criar um "atalho" de admin único, nem em teste, que possa vazar para produção.
+7. **A GreetUp nunca recebe nem movimenta recurso de terceiro (RN-009, D-09).** Todo dinheiro passa pela BlindPay: payin entrega direto na wallet do produtor, saque é payout da BlindPay, taxa da GreetUp é partner fee. Nunca criar conta, wallet ou fluxo que receba em nome do produtor — é a regra anti-nesting da BlindPay.
 8. **Nenhum `console.log` de debug commitado.** Use o logger estruturado (Pino) com nível apropriado.
 9. **Nenhuma variável de ambiente sem entrada correspondente em `.env.example`.**
 
@@ -214,17 +223,19 @@ docs/
 ├── 03-adrs/                            ← por que cada decisão técnica foi tomada
 ├── 04-runbooks/                        ← procedimentos operacionais (incidentes, deploy)
 ├── 05-glossary/glossary.md             ← todo termo técnico do projeto definido
-└── 06-sdd/                             ← especificações de implementação, comece aqui
-    ├── OVERVIEW.md
-    └── SPEC-001 a SPEC-013
+├── 06-sdd/                             ← especificações de implementação, comece aqui
+│   ├── MVP-REVISADO.md                 ← fonte de verdade da arquitetura
+│   ├── OVERVIEW.md
+│   └── SPEC-*.md
+└── _archive/                           ← documentação superada, só histórico
 
 apps/
-├── api/         NestJS — API REST + WebSocket
+├── api/         NestJS — API REST + SSE (uma tela, D-17)
 ├── web/         Next.js 15 — frontend + PWA de credenciamento
-└── workers/     BullMQ workers isolados
+└── workers/     BullMQ — OutboxRelay, MintTicketWorker, NotifyWorker (D-15)
 
 packages/
-├── contracts/   Rust + Soroban — TicketContract + EscrowContract
+├── contracts/   Rust + Soroban — TicketContract (extensão do NFT OpenZeppelin, D-03)
 ├── database/    Prisma schema + migrations
 ├── shared/      Tipos TypeScript compartilhados
 └── config/      ESLint, TSConfig base
