@@ -1,0 +1,34 @@
+{
+  "recommendations": [
+    // TypeScript + Node
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+
+    // NestJS
+    "ms-vscode.vscode-typescript-next",
+
+    // Prisma
+    "Prisma.prisma",
+
+    // Rust + Soroban
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+
+    // Docker
+    "ms-azuretools.vscode-docker",
+
+    // Git
+    "eamodio.gitlens",
+    "GitHub.vscode-pull-request-github",
+
+    // Markdown + Mermaid
+    "bierner.markdown-mermaid",
+    "yzhang.markdown-all-in-one",
+
+    // Utilitários
+    "ms-vscode-remote.remote-containers",
+    "humao.rest-client",
+    "rangav.vscode-thunder-client"
+  ]
+}

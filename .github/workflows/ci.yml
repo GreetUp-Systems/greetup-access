@@ -1,0 +1,245 @@
+name: CI
+
+on:
+  push:
+    branches: [main, staging, develop]
+  pull_request:
+    branches: [main, staging, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '9'
+
+jobs:
+  # ─── Stage 1: Secret Scan ──────────────────────────────────────────────────
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # histórico completo para varredura
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── Stage 2: Validate ─────────────────────────────────────────────────────
+  validate:
+    name: Validate (typecheck + lint + format)
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/turbo.json') }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-${{ hashFiles('**/turbo.json') }}-
+
+      - name: Typecheck
+        run: pnpm turbo typecheck
+
+      - name: Lint
+        run: pnpm turbo lint
+
+      - name: Format check
+        run: pnpm turbo format -- --check
+
+  # ─── Stage 3: Test ─────────────────────────────────────────────────────────
+  test:
+    name: Tests (unit + integration)
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/turbo.json') }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      - name: Unit tests
+        run: pnpm turbo test
+        env:
+          NODE_ENV: test
+
+      - name: Start test services (Postgres + Redis)
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          # Aguarda health checks
+          docker compose -f docker-compose.test.yml ps
+
+      - name: Wait for services
+        run: |
+          until docker exec greetup_postgres_test pg_isready -U test; do sleep 1; done
+          until docker exec greetup_redis_test redis-cli ping; do echo "waiting redis..."; sleep 1; done
+
+      - name: Run database migrations (test)
+        run: pnpm turbo db:migrate
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5433/greetup_test
+
+      - name: Integration tests
+        run: pnpm turbo test:integration
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5433/greetup_test
+          REDIS_URL: redis://localhost:6380
+          NODE_ENV: test
+
+      - name: Stop test services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: '**/coverage/**'
+          retention-days: 7
+
+  # ─── Stage 4: Security (SAST + dependency scan) ────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Snyk (dependency vulnerabilities)
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+  # ─── Stage 5: Build (Docker images) ───────────────────────────────────────
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write  # para push no GHCR
+
+    strategy:
+      matrix:
+        app: [api, workers, web]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/greetup-corp/access-platform-${{ matrix.app }}
+          tags: |
+            type=sha,prefix={{branch}}-
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./apps/${{ matrix.app }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            APP=${{ matrix.app }}
+            BUILD_SHA=${{ github.sha }}
+
+  # ─── Stage 6: Contracts (Soroban) ─────────────────────────────────────────
+  contracts:
+    name: Soroban Contracts (build + test)
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/contracts
+
+      - name: Install stellar-cli
+        run: cargo install stellar-cli --features opt
+
+      - name: Run contract tests
+        run: cargo test --manifest-path packages/contracts/Cargo.toml --all-features
+
+      - name: Build WASM (release)
+        run: stellar contract build --manifest-path packages/contracts/Cargo.toml
+
+      - name: Check WASM size (max 64KB per contract)
+        run: |
+          for wasm in packages/contracts/target/wasm32-unknown-unknown/release/*.wasm; do
+            size=$(wc -c < "$wasm")
+            name=$(basename "$wasm")
+            echo "$name: ${size} bytes"
+            if [ "$size" -gt 65536 ]; then
+              echo "ERROR: $name exceeds 64KB limit ($size bytes)"
+              exit 1
+            fi
+          done
+
+      - name: Compute WASM checksums
+        run: sha256sum packages/contracts/target/wasm32-unknown-unknown/release/*.wasm
+
+      - name: Upload WASM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: contracts-wasm-${{ github.sha }}
+          path: packages/contracts/target/wasm32-unknown-unknown/release/*.wasm
+          retention-days: 30

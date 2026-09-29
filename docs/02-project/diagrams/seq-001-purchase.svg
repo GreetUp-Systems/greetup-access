@@ -1,0 +1,142 @@
+<svg width="680" height="760" viewBox="0 0 680 760" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">
+  <rect width="680" height="760" fill="#FFFFFF"/>
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#55534D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="a1r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#B4B2A9" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="a1w" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#D85A30" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="a1c" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#0F6E56" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="340" y="18" text-anchor="middle" font-size="12" fill="#8A8880">SEQ-001 · Compra de ingresso via Pix</text>
+
+  <!-- Cabecalhos -->
+  <rect x="18" y="30" width="74" height="38" rx="5" fill="#E1F5EE" stroke="#5DCAA5"/>
+  <text x="55" y="53" text-anchor="middle" font-size="11" font-weight="600" fill="#085041">Comprador</text>
+
+  <rect x="108" y="30" width="74" height="38" rx="5" fill="#EEEDFE" stroke="#7F77DD"/>
+  <text x="145" y="53" text-anchor="middle" font-size="11" font-weight="600" fill="#3C3489">Web</text>
+
+  <rect x="198" y="30" width="74" height="38" rx="5" fill="#EEEDFE" stroke="#7F77DD"/>
+  <text x="235" y="53" text-anchor="middle" font-size="11" font-weight="600" fill="#3C3489">API</text>
+
+  <rect x="288" y="30" width="74" height="38" rx="5" fill="#FAEEDA" stroke="#EF9F27"/>
+  <text x="325" y="53" text-anchor="middle" font-size="11" font-weight="600" fill="#633806">BlindPay</text>
+
+  <rect x="378" y="30" width="74" height="38" rx="5" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="415" y="53" text-anchor="middle" font-size="11" font-weight="600" fill="#2C2C2A">BullMQ</text>
+
+  <rect x="468" y="30" width="74" height="38" rx="5" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="505" y="53" text-anchor="middle" font-size="11" font-weight="600" fill="#2C2C2A">Worker</text>
+
+  <rect x="558" y="30" width="52" height="38" rx="5" fill="#FAEEDA" stroke="#EF9F27"/>
+  <text x="584" y="53" text-anchor="middle" font-size="10.5" font-weight="600" fill="#633806">Privy</text>
+
+  <rect x="622" y="30" width="48" height="38" rx="5" fill="#FAEEDA" stroke="#EF9F27"/>
+  <text x="646" y="53" text-anchor="middle" font-size="10.5" font-weight="600" fill="#633806">Soroban</text>
+
+  <!-- Lifelines -->
+  <g stroke="#D3D1C7" stroke-width="1" stroke-dasharray="3 4">
+    <line x1="55" y1="68" x2="55" y2="740"/>
+    <line x1="145" y1="68" x2="145" y2="740"/>
+    <line x1="235" y1="68" x2="235" y2="740"/>
+    <line x1="325" y1="68" x2="325" y2="740"/>
+    <line x1="415" y1="68" x2="415" y2="740"/>
+    <line x1="505" y1="68" x2="505" y2="740"/>
+    <line x1="584" y1="68" x2="584" y2="740"/>
+    <line x1="646" y1="68" x2="646" y2="740"/>
+  </g>
+
+  <!-- 1-2: acessa pagina -->
+  <line x1="55" y1="94" x2="143" y2="94" stroke="#55534D" stroke-width="1.1" marker-end="url(#a1)"/>
+  <text x="99" y="89" text-anchor="middle" font-size="10">GET /eventos/:slug</text>
+  <line x1="145" y1="112" x2="233" y2="112" stroke="#55534D" stroke-width="1.1" marker-end="url(#a1)"/>
+  <text x="189" y="107" text-anchor="middle" font-size="10">GET /events/:slug</text>
+  <line x1="235" y1="130" x2="147" y2="130" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a1r)"/>
+  <text x="189" y="125" text-anchor="middle" font-size="10" fill="#73726c">event data</text>
+
+  <!-- 4-5: seleciona e paga -->
+  <line x1="55" y1="156" x2="143" y2="156" stroke="#55534D" stroke-width="1.1" marker-end="url(#a1)"/>
+  <text x="99" y="151" text-anchor="middle" font-size="10">seleciona ingresso</text>
+  <line x1="145" y1="174" x2="233" y2="174" stroke="#55534D" stroke-width="1.1" marker-end="url(#a1)"/>
+  <text x="189" y="169" text-anchor="middle" font-size="10">POST /purchases</text>
+
+  <!-- 6-7: cria payin -->
+  <line x1="235" y1="192" x2="323" y2="192" stroke="#55534D" stroke-width="1.1" marker-end="url(#a1)"/>
+  <text x="278" y="187" text-anchor="middle" font-size="10">POST /quotes (payin)</text>
+  <line x1="325" y1="210" x2="237" y2="210" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a1r)"/>
+  <text x="278" y="205" text-anchor="middle" font-size="10" fill="#73726c">pix_code, expires_at</text>
+
+  <!-- 8-9: exibe QR -->
+  <line x1="235" y1="228" x2="147" y2="228" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a1r)"/>
+  <text x="189" y="223" text-anchor="middle" font-size="10" fill="#73726c">QR Code Pix</text>
+  <line x1="145" y1="246" x2="57" y2="246" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a1r)"/>
+  <text x="99" y="241" text-anchor="middle" font-size="10" fill="#73726c">exibe QR + contador</text>
+
+  <!-- separador pagamento -->
+  <rect x="36" y="260" width="620" height="20" rx="3" fill="#F1EFE8"/>
+  <text x="340" y="274" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5F5E5A">Comprador escaneia e paga o Pix no app do banco</text>
+
+  <!-- webhook -->
+  <line x1="325" y1="308" x2="237" y2="308" stroke="#D85A30" stroke-width="1.5" marker-end="url(#a1w)"/>
+  <text x="278" y="303" text-anchor="middle" font-size="10" fill="#D85A30">webhook payin.completed</text>
+
+  <path d="M235,322 Q216,322 216,334 Q216,346 235,346" fill="none" stroke="#55534D" stroke-width="0.9"/>
+  <text x="210" y="338" text-anchor="end" font-size="10" fill="#73726c">HMAC · idempotência</text>
+
+  <!-- enfileira -->
+  <line x1="235" y1="360" x2="413" y2="360" stroke="#55534D" stroke-width="1.1" marker-end="url(#a1)"/>
+  <text x="322" y="355" text-anchor="middle" font-size="10">MintTicketJob</text>
+
+  <line x1="235" y1="378" x2="147" y2="378" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a1r)"/>
+  <text x="185" y="373" text-anchor="middle" font-size="10" fill="#73726c">200 OK &lt; 200ms</text>
+
+  <!-- separador async -->
+  <rect x="36" y="392" width="620" height="20" rx="3" fill="#FAEEDA"/>
+  <text x="340" y="406" text-anchor="middle" font-size="10.5" font-style="italic" fill="#854F0B">Processamento assíncrono — MintWorker consome a fila</text>
+
+  <line x1="415" y1="428" x2="503" y2="428" stroke="#55534D" stroke-width="1.1" marker-end="url(#a1)"/>
+  <text x="458" y="423" text-anchor="middle" font-size="10">MintTicketJob</text>
+
+  <line x1="505" y1="446" x2="582" y2="446" stroke="#55534D" stroke-width="1.1" marker-end="url(#a1)"/>
+  <text x="542" y="441" text-anchor="middle" font-size="10">createWallet</text>
+  <line x1="584" y1="462" x2="507" y2="462" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a1r)"/>
+  <text x="544" y="457" text-anchor="middle" font-size="10" fill="#73726c">stellarAddress</text>
+
+  <line x1="505" y1="482" x2="640" y2="482" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#a1c)"/>
+  <text x="572" y="477" text-anchor="middle" font-size="10" fill="#0F6E56">TicketContract.mint()</text>
+  <line x1="646" y1="498" x2="507" y2="498" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a1r)"/>
+  <text x="576" y="493" text-anchor="middle" font-size="10" fill="#73726c">ticket_id</text>
+
+  <line x1="505" y1="518" x2="237" y2="518" stroke="#55534D" stroke-width="1.1" marker-end="url(#a1)"/>
+  <text x="370" y="513" text-anchor="middle" font-size="10">UPDATE Purchase → ticket_issued</text>
+
+  <path d="M505,536 Q525,536 525,546 Q525,556 505,556" fill="none" stroke="#55534D" stroke-width="0.9"/>
+  <text x="530" y="549" text-anchor="start" font-size="10" fill="#73726c">saldo pending</text>
+
+  <!-- separador entrega -->
+  <rect x="36" y="572" width="620" height="20" rx="3" fill="#E1F5EE"/>
+  <text x="340" y="586" text-anchor="middle" font-size="10.5" font-style="italic" fill="#0F6E56">Comprador recebe email + ingresso com QR Code de entrada</text>
+
+  <line x1="235" y1="608" x2="147" y2="608" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a1r)"/>
+  <text x="184" y="603" text-anchor="middle" font-size="10" fill="#73726c">WS: ticket.issued</text>
+  <line x1="145" y1="626" x2="57" y2="626" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a1r)"/>
+  <text x="99" y="621" text-anchor="middle" font-size="10" fill="#73726c">QR Code de entrada</text>
+
+  <!-- legenda -->
+  <line x1="40" y1="700" x2="70" y2="700" stroke="#55534D" stroke-width="1.1"/>
+  <text x="76" y="704" font-size="10.5" fill="#444441">Síncrono</text>
+  <line x1="160" y1="700" x2="190" y2="700" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="196" y="704" font-size="10.5" fill="#444441">Resposta</text>
+  <line x1="270" y1="700" x2="300" y2="700" stroke="#D85A30" stroke-width="1.5"/>
+  <text x="306" y="704" font-size="10.5" fill="#444441">Webhook BlindPay</text>
+  <line x1="430" y1="700" x2="460" y2="700" stroke="#0F6E56" stroke-width="1.5"/>
+  <text x="466" y="704" font-size="10.5" fill="#444441">Chamada on-chain</text>
+</svg>

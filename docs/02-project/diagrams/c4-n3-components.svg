@@ -1,0 +1,113 @@
+<svg width="680" height="600" viewBox="0 0 680 600" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">
+  <rect width="680" height="600" fill="#FFFFFF"/>
+  <defs>
+    <marker id="arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#B4B2A9" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="340" y="20" text-anchor="middle" font-size="12" fill="#8A8880">N3 · Componentes internos — API NestJS</text>
+
+  <!-- Camada 1: Entrada -->
+  <line x1="30" y1="36" x2="650" y2="36" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="40" y="54" font-size="11" font-weight="600" fill="#5F5E5A">Camada de entrada</text>
+
+  <rect x="40" y="62" width="138" height="54" rx="6" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="109" y="84" text-anchor="middle" font-size="12" font-weight="600" fill="#2C2C2A">AuthModule</text>
+  <text x="109" y="100" text-anchor="middle" font-size="10.5" fill="#444441">Privy JWT · guard</text>
+
+  <rect x="196" y="62" width="148" height="54" rx="6" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="270" y="84" text-anchor="middle" font-size="12" font-weight="600" fill="#2C2C2A">WebhooksModule</text>
+  <text x="270" y="100" text-anchor="middle" font-size="10.5" fill="#444441">HMAC · idempotência</text>
+
+  <rect x="362" y="62" width="148" height="54" rx="6" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="436" y="84" text-anchor="middle" font-size="12" font-weight="600" fill="#2C2C2A">WebSocket Gateway</text>
+  <text x="436" y="100" text-anchor="middle" font-size="10.5" fill="#444441">Socket.io · rooms</text>
+
+  <rect x="528" y="62" width="112" height="54" rx="6" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="584" y="84" text-anchor="middle" font-size="11.5" font-weight="600" fill="#2C2C2A">TenantInterceptor</text>
+  <text x="584" y="100" text-anchor="middle" font-size="10.5" fill="#444441">RLS context</text>
+
+  <!-- Camada 2: Dominio -->
+  <line x1="30" y1="134" x2="650" y2="134" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="40" y="152" font-size="11" font-weight="600" fill="#5F5E5A">Camada de domínio</text>
+
+  <rect x="40" y="160" width="138" height="66" rx="6" fill="#EEEDFE" stroke="#7F77DD"/>
+  <text x="109" y="180" text-anchor="middle" font-size="12" font-weight="600" fill="#3C3489">TicketsModule</text>
+  <text x="109" y="196" text-anchor="middle" font-size="10.5" fill="#534AB7">Write: Postgres·Soroban</text>
+  <text x="109" y="210" text-anchor="middle" font-size="10.5" fill="#534AB7">Read: Redis cache</text>
+
+  <rect x="196" y="160" width="148" height="66" rx="6" fill="#EEEDFE" stroke="#7F77DD"/>
+  <text x="270" y="180" text-anchor="middle" font-size="12" font-weight="600" fill="#3C3489">FinanceModule</text>
+  <text x="270" y="196" text-anchor="middle" font-size="10.5" fill="#534AB7">ledger append-only</text>
+  <text x="270" y="210" text-anchor="middle" font-size="10.5" fill="#534AB7">split · saldo</text>
+
+  <rect x="362" y="160" width="148" height="66" rx="6" fill="#EEEDFE" stroke="#7F77DD"/>
+  <text x="436" y="180" text-anchor="middle" font-size="12" font-weight="600" fill="#3C3489">WithdrawalsModule</text>
+  <text x="436" y="196" text-anchor="middle" font-size="10.5" fill="#534AB7">lock Redis · payout</text>
+  <text x="436" y="210" text-anchor="middle" font-size="10.5" fill="#534AB7">recovery</text>
+
+  <rect x="528" y="160" width="112" height="66" rx="6" fill="#EEEDFE" stroke="#7F77DD"/>
+  <text x="584" y="180" text-anchor="middle" font-size="12" font-weight="600" fill="#3C3489">CheckinModule</text>
+  <text x="584" y="196" text-anchor="middle" font-size="10.5" fill="#534AB7">QR Code · sync</text>
+  <text x="584" y="210" text-anchor="middle" font-size="10.5" fill="#534AB7">snapshot HMAC</text>
+
+  <rect x="40" y="242" width="138" height="46" rx="6" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="109" y="270" text-anchor="middle" font-size="11.5" font-weight="600" fill="#2C2C2A">EventsModule</text>
+
+  <rect x="196" y="242" width="148" height="46" rx="6" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="270" y="270" text-anchor="middle" font-size="11.5" font-weight="600" fill="#2C2C2A">OrganizationsModule</text>
+
+  <rect x="362" y="242" width="148" height="46" rx="6" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="436" y="270" text-anchor="middle" font-size="11.5" font-weight="600" fill="#2C2C2A">NotificationsModule</text>
+
+  <!-- Camada 3: Infraestrutura -->
+  <line x1="30" y1="308" x2="650" y2="308" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="40" y="326" font-size="11" font-weight="600" fill="#5F5E5A">Camada de infraestrutura</text>
+
+  <rect x="40" y="334" width="138" height="60" rx="6" fill="#E1F5EE" stroke="#5DCAA5"/>
+  <text x="109" y="356" text-anchor="middle" font-size="12" font-weight="600" fill="#085041">StellarService</text>
+  <text x="109" y="372" text-anchor="middle" font-size="10.5" fill="#0F6E56">Treasury · fee-bump</text>
+  <text x="109" y="386" text-anchor="middle" font-size="10.5" fill="#0F6E56">Horizon · KMS</text>
+
+  <rect x="196" y="334" width="148" height="60" rx="6" fill="#E1F5EE" stroke="#5DCAA5"/>
+  <text x="270" y="356" text-anchor="middle" font-size="12" font-weight="600" fill="#085041">SorobanService</text>
+  <text x="270" y="372" text-anchor="middle" font-size="10.5" fill="#0F6E56">XDR · TicketContract</text>
+  <text x="270" y="386" text-anchor="middle" font-size="10.5" fill="#0F6E56">EscrowContract</text>
+
+  <rect x="362" y="334" width="148" height="60" rx="6" fill="#E1F5EE" stroke="#5DCAA5"/>
+  <text x="436" y="356" text-anchor="middle" font-size="12" font-weight="600" fill="#085041">BlindPayService</text>
+  <text x="436" y="372" text-anchor="middle" font-size="10.5" fill="#0F6E56">quotes · payin</text>
+  <text x="436" y="386" text-anchor="middle" font-size="10.5" fill="#0F6E56">payout · receivers</text>
+
+  <rect x="528" y="334" width="112" height="60" rx="6" fill="#E1F5EE" stroke="#5DCAA5"/>
+  <text x="584" y="356" text-anchor="middle" font-size="12" font-weight="600" fill="#085041">PrivyAuthService</text>
+  <text x="584" y="372" text-anchor="middle" font-size="10.5" fill="#0F6E56">verifyToken</text>
+  <text x="584" y="386" text-anchor="middle" font-size="10.5" fill="#0F6E56">createWallet</text>
+
+  <rect x="40" y="414" width="600" height="48" rx="6" fill="#E1F5EE" stroke="#5DCAA5"/>
+  <text x="340" y="434" text-anchor="middle" font-size="12" font-weight="600" fill="#085041">OutboxService + OutboxRelay</text>
+  <text x="340" y="450" text-anchor="middle" font-size="10.5" fill="#0F6E56">Escreve domain_events na mesma tx · polling 500ms · publica no BullMQ</text>
+
+  <!-- Setas verticais entre camadas -->
+  <line x1="109" y1="116" x2="109" y2="158" stroke="#B4B2A9" stroke-width="1" marker-end="url(#arrow3)"/>
+  <line x1="270" y1="116" x2="270" y2="158" stroke="#B4B2A9" stroke-width="1" marker-end="url(#arrow3)"/>
+  <line x1="436" y1="116" x2="436" y2="158" stroke="#B4B2A9" stroke-width="1" marker-end="url(#arrow3)"/>
+  <line x1="584" y1="116" x2="584" y2="158" stroke="#B4B2A9" stroke-width="1" marker-end="url(#arrow3)"/>
+
+  <line x1="109" y1="226" x2="109" y2="332" stroke="#B4B2A9" stroke-width="1" marker-end="url(#arrow3)"/>
+  <line x1="270" y1="226" x2="270" y2="332" stroke="#B4B2A9" stroke-width="1" marker-end="url(#arrow3)"/>
+  <line x1="436" y1="226" x2="436" y2="332" stroke="#B4B2A9" stroke-width="1" marker-end="url(#arrow3)"/>
+  <line x1="584" y1="226" x2="584" y2="332" stroke="#B4B2A9" stroke-width="1" marker-end="url(#arrow3)"/>
+
+  <!-- Legenda -->
+  <rect x="40" y="482" width="10" height="10" rx="2" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="56" y="491" font-size="10.5" fill="#444441">Entrada / suporte</text>
+  <rect x="200" y="482" width="10" height="10" rx="2" fill="#EEEDFE" stroke="#7F77DD"/>
+  <text x="216" y="491" font-size="10.5" fill="#444441">Domínio (CQRS)</text>
+  <rect x="360" y="482" width="10" height="10" rx="2" fill="#E1F5EE" stroke="#5DCAA5"/>
+  <text x="376" y="491" font-size="10.5" fill="#444441">Infraestrutura</text>
+
+  <text x="340" y="520" text-anchor="middle" font-size="10.5" fill="#73726c">Todos os módulos de domínio publicam eventos via OutboxService na mesma transação Postgres.</text>
+  <text x="340" y="538" text-anchor="middle" font-size="10.5" fill="#73726c">Nenhuma escrita acontece sem o evento correspondente — garantia de consistência.</text>
+</svg>

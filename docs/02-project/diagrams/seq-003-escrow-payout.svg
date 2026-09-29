@@ -1,0 +1,135 @@
+<svg width="680" height="700" viewBox="0 0 680 700" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">
+  <rect width="680" height="700" fill="#FFFFFF"/>
+  <defs>
+    <marker id="c1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#55534D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="c1r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#B4B2A9" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="c1g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#0F6E56" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="c1w" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#D85A30" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="340" y="18" text-anchor="middle" font-size="12" fill="#8A8880">SEQ-003 · Escrow, liberação de saldo e payout</text>
+
+  <rect x="28" y="30" width="84" height="38" rx="5" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="70" y="45" text-anchor="middle" font-size="10" font-weight="600" fill="#2C2C2A">Escrow</text>
+  <text x="70" y="59" text-anchor="middle" font-size="9.5" fill="#444441">MonitorJob</text>
+
+  <rect x="128" y="30" width="84" height="38" rx="5" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="170" y="53" text-anchor="middle" font-size="10.5" font-weight="600" fill="#2C2C2A">PostgreSQL</text>
+
+  <rect x="228" y="30" width="84" height="38" rx="5" fill="#FAEEDA" stroke="#EF9F27"/>
+  <text x="270" y="45" text-anchor="middle" font-size="10" font-weight="600" fill="#633806">Escrow</text>
+  <text x="270" y="59" text-anchor="middle" font-size="9.5" fill="#854F0B">Contract</text>
+
+  <rect x="328" y="30" width="84" height="38" rx="5" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="370" y="45" text-anchor="middle" font-size="10" font-weight="600" fill="#2C2C2A">WebSocket</text>
+  <text x="370" y="59" text-anchor="middle" font-size="9.5" fill="#444441">Gateway</text>
+
+  <rect x="428" y="30" width="74" height="38" rx="5" fill="#E1F5EE" stroke="#5DCAA5"/>
+  <text x="465" y="53" text-anchor="middle" font-size="10.5" font-weight="600" fill="#085041">Produtor</text>
+
+  <rect x="518" y="30" width="64" height="38" rx="5" fill="#EEEDFE" stroke="#7F77DD"/>
+  <text x="550" y="53" text-anchor="middle" font-size="10.5" font-weight="600" fill="#3C3489">API</text>
+
+  <rect x="598" y="30" width="64" height="38" rx="5" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="630" y="53" text-anchor="middle" font-size="10" font-weight="600" fill="#2C2C2A">BlindPay</text>
+
+  <g stroke="#D3D1C7" stroke-width="1" stroke-dasharray="3 4">
+    <line x1="70" y1="68" x2="70" y2="670"/>
+    <line x1="170" y1="68" x2="170" y2="670"/>
+    <line x1="270" y1="68" x2="270" y2="670"/>
+    <line x1="370" y1="68" x2="370" y2="670"/>
+    <line x1="465" y1="68" x2="465" y2="670"/>
+    <line x1="550" y1="68" x2="550" y2="670"/>
+    <line x1="630" y1="68" x2="630" y2="670"/>
+  </g>
+
+  <!-- Fase 1: liberacao automatica -->
+  <rect x="28" y="82" width="640" height="18" rx="3" fill="#EEEDFE"/>
+  <text x="340" y="95" text-anchor="middle" font-size="10.5" font-weight="600" fill="#3C3489">Fase 1 — Liberação automática · cron a cada 1 minuto</text>
+
+  <line x1="70" y1="118" x2="168" y2="118" stroke="#55534D" stroke-width="1.1" marker-end="url(#c1)"/>
+  <text x="118" y="113" text-anchor="middle" font-size="9.5">SELECT elegíveis (release_at &lt; now)</text>
+
+  <line x1="170" y1="136" x2="72" y2="136" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#c1r)"/>
+  <text x="118" y="131" text-anchor="middle" font-size="9.5" fill="#73726c">escrow_id, seller, amount</text>
+
+  <line x1="70" y1="154" x2="268" y2="154" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#c1g)"/>
+  <text x="168" y="149" text-anchor="middle" font-size="9.5" fill="#0F6E56">release() · multi-sig 2-of-3</text>
+
+  <path d="M270,168 Q290,168 290,178 Q290,188 270,188" fill="none" stroke="#55534D" stroke-width="0.9"/>
+  <text x="296" y="181" text-anchor="start" font-size="9.5" fill="#73726c">time-lock ✓ rate-limit ✓</text>
+
+  <line x1="270" y1="200" x2="72" y2="200" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#c1r)"/>
+  <text x="168" y="195" text-anchor="middle" font-size="9.5" fill="#73726c">status: released</text>
+
+  <line x1="70" y1="218" x2="168" y2="218" stroke="#55534D" stroke-width="1.1" marker-end="url(#c1)"/>
+  <text x="118" y="213" text-anchor="middle" font-size="9.5">UPDATE Balance → available</text>
+
+  <line x1="170" y1="236" x2="368" y2="236" stroke="#55534D" stroke-width="1.1" marker-end="url(#c1)"/>
+  <text x="268" y="231" text-anchor="middle" font-size="9.5">pub/sub balance.released</text>
+
+  <line x1="370" y1="254" x2="463" y2="254" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#c1g)"/>
+  <text x="416" y="249" text-anchor="middle" font-size="9.5" fill="#0F6E56">saldo disponível</text>
+
+  <!-- Fase 2: retirada -->
+  <rect x="28" y="272" width="640" height="18" rx="3" fill="#FAEEDA"/>
+  <text x="340" y="285" text-anchor="middle" font-size="10.5" font-weight="600" fill="#854F0B">Fase 2 — Retirada manual pelo produtor</text>
+
+  <line x1="465" y1="306" x2="548" y2="306" stroke="#55534D" stroke-width="1.1" marker-end="url(#c1)"/>
+  <text x="507" y="301" text-anchor="middle" font-size="9.5">POST /withdrawals</text>
+
+  <path d="M550,320 Q570,320 570,330 Q570,340 550,340" fill="none" stroke="#55534D" stroke-width="0.9"/>
+  <text x="576" y="333" text-anchor="start" font-size="9.5" fill="#73726c">lock Redis</text>
+
+  <line x1="550" y1="352" x2="172" y2="352" stroke="#55534D" stroke-width="1.1" marker-end="url(#c1)"/>
+  <text x="360" y="347" text-anchor="middle" font-size="9.5">verifica balance available</text>
+  <line x1="170" y1="366" x2="548" y2="366" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#c1r)"/>
+  <text x="358" y="361" text-anchor="middle" font-size="9.5" fill="#73726c">saldo OK</text>
+
+  <line x1="550" y1="384" x2="272" y2="384" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#c1g)"/>
+  <text x="410" y="379" text-anchor="middle" font-size="9.5" fill="#0F6E56">EscrowContract.release()</text>
+
+  <line x1="270" y1="398" x2="548" y2="398" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#c1r)"/>
+  <text x="408" y="393" text-anchor="middle" font-size="9.5" fill="#73726c">tx_hash</text>
+
+  <line x1="550" y1="416" x2="172" y2="416" stroke="#55534D" stroke-width="1.1" marker-end="url(#c1)"/>
+  <text x="360" y="411" text-anchor="middle" font-size="9.5">→ withdraw_escrow_done</text>
+
+  <line x1="550" y1="434" x2="628" y2="434" stroke="#55534D" stroke-width="1.1" marker-end="url(#c1)"/>
+  <text x="588" y="429" text-anchor="middle" font-size="9.5">POST /payouts</text>
+
+  <line x1="630" y1="450" x2="552" y2="450" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#c1r)"/>
+  <text x="590" y="445" text-anchor="middle" font-size="9.5" fill="#73726c">payout_id</text>
+
+  <path d="M550,462 Q570,462 570,472 Q570,482 550,482" fill="none" stroke="#55534D" stroke-width="0.9"/>
+  <text x="576" y="475" text-anchor="start" font-size="9.5" fill="#73726c">→ withdraw_payout_sent</text>
+
+  <line x1="630" y1="500" x2="552" y2="500" stroke="#D85A30" stroke-width="1.5" marker-end="url(#c1w)"/>
+  <text x="590" y="495" text-anchor="middle" font-size="9.5" fill="#D85A30">webhook payout.completed</text>
+
+  <path d="M550,514 Q570,514 570,524 Q570,534 550,534" fill="none" stroke="#55534D" stroke-width="0.9"/>
+  <text x="576" y="527" text-anchor="start" font-size="9.5" fill="#73726c">→ withdrawn · libera lock</text>
+
+  <line x1="550" y1="548" x2="467" y2="548" stroke="#55534D" stroke-width="1.1" marker-end="url(#c1)"/>
+  <text x="507" y="543" text-anchor="middle" font-size="9.5">email comprovante</text>
+
+  <rect x="30" y="570" width="620" height="34" rx="4" fill="#FFFFFF" stroke="#D3D1C7"/>
+  <text x="340" y="588" text-anchor="middle" font-size="9.5" fill="#5F5E5A">Se a API cair entre withdraw_escrow_done e o payout:</text>
+  <text x="340" y="600" text-anchor="middle" font-size="9.5" fill="#5F5E5A">PayoutRecoveryWorker detecta após 10 min e retenta sem re-executar o release on-chain</text>
+
+  <!-- legenda -->
+  <line x1="30" y1="640" x2="50" y2="640" stroke="#0F6E56" stroke-width="1.5"/>
+  <text x="56" y="644" font-size="10" fill="#444441">Chamada on-chain</text>
+  <line x1="180" y1="640" x2="200" y2="640" stroke="#D85A30" stroke-width="1.5"/>
+  <text x="206" y="644" font-size="10" fill="#444441">Webhook BlindPay</text>
+  <line x1="340" y1="640" x2="360" y2="640" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="366" y="644" font-size="10" fill="#444441">Resposta / retorno</text>
+</svg>

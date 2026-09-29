@@ -1,0 +1,73 @@
+# GreetUp Access — Documentação Técnica
+
+> Plataforma de venda de ingressos, credenciamento e repasse financeiro para eventos corporativos B2B.
+> Stack: Stellar · Soroban · Privy · BlindPay · NestJS · Next.js · PostgreSQL · BullMQ
+
+---
+
+## Índice
+
+### [01 · Visão do Produto](./01-vision/product-vision.md)
+Problema, escopo, funcionalidades, regras de negócio, fluxos principais, stack e custos.
+
+### 02 · Documento de Projeto
+
+| Arquivo | Conteúdo |
+|---|---|
+| [Atores e Personas](./02-project/actors-and-personas.md) | Perfis, responsabilidades e interações com o sistema |
+| [Casos de Uso](./02-project/use-cases.md) | Todos os fluxos com pré-condições e resultados esperados |
+| [Histórias de Usuário](./02-project/user-stories.md) | Por perfil, com critério de aceite |
+| [Arquitetura C4](./02-project/architecture-c4.md) | Contexto (N1), Containers (N2), Componentes (N3) |
+| [Diagramas de Sequência](./02-project/sequence-diagrams.md) | Um fluxo por seção — compra, credenciamento, escrow, payout |
+| [Modelo de Dados](./02-project/data-model.md) | Entidades, enums de estado, relacionamentos, dados on/off-chain |
+| [Contratos de Integração](./02-project/integrations.md) | BlindPay, Privy, Soroban — endpoints, payloads, webhooks |
+
+### 03 · Architecture Decision Records (ADRs)
+
+| ADR | Decisão |
+|---|---|
+| [ADR-001](./03-adrs/ADR-001-stellar-over-evm.md) | Stellar sobre EVM como blockchain principal |
+| [ADR-002](./03-adrs/ADR-002-outbox-pattern.md) | Outbox Pattern para garantia de entrega de eventos |
+| [ADR-003](./03-adrs/ADR-003-cqrs-tickets-finance.md) | CQRS nos domínios de Tickets e Finance |
+| [ADR-004](./03-adrs/ADR-004-blindpay-ramp.md) | BlindPay como provedor exclusivo de on/off-ramp no MVP |
+| [ADR-005](./03-adrs/ADR-005-rls-multitenancy.md) | Row-Level Security para isolamento de tenants |
+| [ADR-006](./03-adrs/ADR-006-bullmq-over-kafka.md) | BullMQ sobre Kafka para mensageria |
+| [ADR-007](./03-adrs/ADR-007-railway-deploy.md) | Railway como plataforma de deploy no MVP |
+| [ADR-008](./03-adrs/ADR-008-soroban-contracts.md) | Contratos Soroban próprios sobre padrão SEP-50 |
+
+### 04 · Runbooks Operacionais
+
+| Runbook | Situação |
+|---|---|
+| [RB-001](./04-runbooks/RB-001-production-deploy.md) | Deploy em produção |
+| [RB-002](./04-runbooks/RB-002-kms-key-compromise.md) | Comprometimento de chave KMS |
+| [RB-003](./04-runbooks/RB-003-dead-letter-queue.md) | Jobs na Dead-Letter Queue |
+| [RB-004](./04-runbooks/RB-004-live-event-incident.md) | Incidente durante evento ao vivo |
+| [RB-005](./04-runbooks/RB-005-blindpay-failure.md) | Falha do BlindPay |
+| [RB-006](./04-runbooks/RB-006-treasury-recharge.md) | Recarga da conta Treasury Stellar |
+| [RB-007](./04-runbooks/RB-007-soroban-migration.md) | Migração de contrato Soroban |
+
+### [05 · Glossário Técnico](./05-glossary/glossary.md)
+Todos os termos do projeto com definição precisa no contexto do GreetUp Access.
+
+---
+
+## Convenções
+
+- **Estados de entidade** são sempre em `snake_case` e definidos no modelo de dados
+- **Nomes de eventos** seguem o padrão `dominio.acao` (ex: `ticket.issued`, `payment.confirmed`)
+- **Nomes de jobs** seguem o padrão `NomeJob` em PascalCase (ex: `MintTicketJob`)
+- **Variáveis de ambiente** em `SCREAMING_SNAKE_CASE` documentadas em cada serviço
+- Diagramas em texto (Mermaid/ASCII) — renderizáveis no GitHub e no VS Code com extensão Mermaid
+
+## Status
+
+| Documento | Versão | Status |
+|---|---|---|
+| Visão do Produto | 0.2 | Em revisão |
+| Documento de Projeto | 0.1 | Em revisão |
+| ADRs | 0.1 | Em revisão |
+| Runbooks | 0.1 | Em revisão |
+| Glossário | 0.1 | Em revisão |
+
+> **Última atualização:** 25/06/2026 · **Responsável:** Matheus Aguiar

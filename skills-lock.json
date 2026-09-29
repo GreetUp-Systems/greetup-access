@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "blindpay": {
+      "source": "blindpaylabs/blindpay-skills",
+      "sourceType": "github",
+      "skillPath": "skills/blindpay/SKILL.md",
+      "computedHash": "125e2c80aa1096e566ea37809b928a4490d60606da531983f1cce51c0d076045"
+    }
+  }
+}

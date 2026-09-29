@@ -1,0 +1,106 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - develop    # → DEV automático
+      - staging    # → STAGING automático após CI
+      - main       # → PROD com approval manual
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ─── Deploy DEV (automático) ───────────────────────────────────────────────
+  deploy-dev:
+    name: Deploy → DEV
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Railway (DEV)
+        uses: bervProject/railway-deploy@main
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN_DEV }}
+          service: ${{ matrix.service }}
+        strategy:
+          matrix:
+            service: [api, workers, web]
+
+      - name: Notify deploy
+        run: echo "Deployed to DEV — ${{ github.sha }}"
+
+  # ─── Deploy STAGING (automático após CI passar) ───────────────────────────
+  deploy-staging:
+    name: Deploy → STAGING
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/staging'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Railway (STAGING)
+        uses: bervProject/railway-deploy@main
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN_STG }}
+
+      - name: Wait for deployment health check
+        run: |
+          sleep 30
+          curl --fail https://api-staging.greetup.com/health || exit 1
+
+      - name: Run E2E smoke tests
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9'
+      - run: |
+          pnpm install --frozen-lockfile
+          pnpm turbo test:e2e
+        env:
+          BASE_URL: https://staging.greetup.com
+          API_URL: https://api-staging.greetup.com
+
+  # ─── Deploy PROD (approval manual obrigatório) ───────────────────────────
+  deploy-prod:
+    name: Deploy → PRODUCTION
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production  # requer 2 aprovadores configurados no GitHub
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Railway (PROD) — blue-green
+        uses: bervProject/railway-deploy@main
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN_PROD }}
+
+      - name: Wait for green replicas health check
+        run: |
+          sleep 60
+          curl --fail https://api.greetup.com/health || exit 1
+
+      - name: Canary period (5 minutes)
+        run: |
+          echo "Monitoring canary for 5 minutes..."
+          sleep 300
+
+      - name: Verify metrics post-deploy
+        run: |
+          # Verifica error rate via API do Grafana
+          # Threshold: error_rate < 1%
+          echo "Metrics check placeholder — implementar com Grafana API"
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            Deploy automático em produção
+            Commit: ${{ github.sha }}
+          draft: false
+          prerelease: false
