@@ -3,7 +3,7 @@ name: Contracts Deploy
 on:
   push:
     branches:
-      - 'contracts/**'  # ex: contracts/ticket-v2, contracts/escrow-v1
+      - 'contracts/**'  # ex: contracts/ticket-v2
 
 jobs:
   deploy-testnet:
@@ -36,28 +36,16 @@ jobs:
           echo "ticket_address=$ADDRESS" >> $GITHUB_OUTPUT
           echo "TicketContract deployed at: $ADDRESS"
 
-      - name: Deploy EscrowContract → Testnet
-        id: deploy-escrow
-        run: |
-          ADDRESS=$(stellar contract deploy \
-            --wasm packages/contracts/target/wasm32-unknown-unknown/release/escrow_contract.wasm \
-            --source ${{ secrets.DEPLOY_KEYPAIR_TESTNET }} \
-            --network testnet)
-          echo "escrow_address=$ADDRESS" >> $GITHUB_OUTPUT
-          echo "EscrowContract deployed at: $ADDRESS"
-
       - name: Run integration tests against testnet
         run: pnpm turbo test:integration
         env:
           SOROBAN_TICKET_CONTRACT_ADDRESS: ${{ steps.deploy-ticket.outputs.ticket_address }}
-          SOROBAN_ESCROW_CONTRACT_ADDRESS: ${{ steps.deploy-escrow.outputs.escrow_address }}
           STELLAR_NETWORK: testnet
 
       - name: Summary
         run: |
           echo "## Testnet Deploy Summary" >> $GITHUB_STEP_SUMMARY
           echo "- TicketContract: ${{ steps.deploy-ticket.outputs.ticket_address }}" >> $GITHUB_STEP_SUMMARY
-          echo "- EscrowContract: ${{ steps.deploy-escrow.outputs.escrow_address }}" >> $GITHUB_STEP_SUMMARY
 
   # ─── Mainnet requer aprovação manual obrigatória ──────────────────────────
   deploy-mainnet:
@@ -81,46 +69,19 @@ jobs:
       - name: Final SHA256 verification
         run: sha256sum packages/contracts/target/wasm32-unknown-unknown/release/*.wasm
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
-
       - name: Deploy TicketContract → Mainnet
         id: deploy-ticket-mainnet
         run: |
-          # Chave de deploy armazenada no KMS — nunca em secret do GitHub
           ADDRESS=$(stellar contract deploy \
             --wasm packages/contracts/target/wasm32-unknown-unknown/release/ticket_contract.wasm \
             --source ${{ secrets.DEPLOY_KEYPAIR_MAINNET }} \
             --network mainnet)
           echo "ticket_address=$ADDRESS" >> $GITHUB_OUTPUT
 
-      - name: Deploy EscrowContract → Mainnet
-        id: deploy-escrow-mainnet
-        run: |
-          ADDRESS=$(stellar contract deploy \
-            --wasm packages/contracts/target/wasm32-unknown-unknown/release/escrow_contract.wasm \
-            --source ${{ secrets.DEPLOY_KEYPAIR_MAINNET }} \
-            --network mainnet)
-          echo "escrow_address=$ADDRESS" >> $GITHUB_OUTPUT
-
-      - name: Store contract addresses in AWS Secrets Manager
-        run: |
-          aws secretsmanager put-secret-value \
-            --secret-id greetup/mainnet/ticket-contract-address \
-            --secret-string "${{ steps.deploy-ticket-mainnet.outputs.ticket_address }}"
-
-          aws secretsmanager put-secret-value \
-            --secret-id greetup/mainnet/escrow-contract-address \
-            --secret-string "${{ steps.deploy-escrow-mainnet.outputs.escrow_address }}"
-
       - name: Summary
         run: |
           echo "## ✅ Mainnet Deploy Summary" >> $GITHUB_STEP_SUMMARY
           echo "- TicketContract: ${{ steps.deploy-ticket-mainnet.outputs.ticket_address }}" >> $GITHUB_STEP_SUMMARY
-          echo "- EscrowContract: ${{ steps.deploy-escrow-mainnet.outputs.escrow_address }}" >> $GITHUB_STEP_SUMMARY
           echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Update SOROBAN_*_CONTRACT_ADDRESS in Doppler/Railway for all services.**" >> $GITHUB_STEP_SUMMARY
+          echo "**Update SOROBAN_TICKET_CONTRACT_ADDRESS in Doppler/Railway for all services.**" >> $GITHUB_STEP_SUMMARY

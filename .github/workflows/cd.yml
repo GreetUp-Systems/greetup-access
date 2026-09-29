@@ -86,12 +86,6 @@ jobs:
           echo "Monitoring canary for 5 minutes..."
           sleep 300
 
-      - name: Verify metrics post-deploy
-        run: |
-          # Verifica error rate via API do Grafana
-          # Threshold: error_rate < 1%
-          echo "Metrics check placeholder — implementar com Grafana API"
-
       - name: Create GitHub Release
         uses: actions/create-release@v1
         env:

@@ -175,7 +175,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/greetup-corp/access-platform-${{ matrix.app }}
+          images: ghcr.io/greetup-systems/greetup-access-${{ matrix.app }}
           tags: |
             type=sha,prefix={{branch}}-
             type=ref,event=branch
