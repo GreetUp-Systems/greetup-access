@@ -27,6 +27,7 @@ Problema, escopo, funcionalidades, regras de negócio, fluxos principais, stack 
 | [Diagramas de Sequência](./02-project/sequence-diagrams.md) | Um fluxo por seção — compra, credenciamento, payout |
 | [Modelo de Dados](./02-project/data-model.md) | Entidades, enums de estado, relacionamentos, dados on/off-chain |
 | [Contratos de Integração](./02-project/integrations.md) | BlindPay, Privy, Soroban — endpoints, payloads, webhooks |
+| [Ferramentas de Desenvolvimento](./02-project/development-tooling.md) | Setup das skills e conexões MCP sem credenciais |
 
 ### 03 · Architecture Decision Records (ADRs)
 

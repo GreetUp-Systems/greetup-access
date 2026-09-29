@@ -58,6 +58,9 @@ playwright-report/
 !.vscode/extensions.json
 !.vscode/tasks.json
 
+# Adaptadores locais gerados por ferramentas de agentes
+.aider-desk/
+
 # ─── OS ───────────────────────────────────────────────────────────────────────
 .DS_Store
 .DS_Store?
