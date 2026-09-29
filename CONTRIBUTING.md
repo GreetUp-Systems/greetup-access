@@ -67,6 +67,8 @@ pnpm db:seed
 pnpm dev
 ```
 
+`git config core.hooksPath .githooks` — ativa os hooks do repositório
+
 ## Testes
 
 Antes de abrir um PR, garanta que:
