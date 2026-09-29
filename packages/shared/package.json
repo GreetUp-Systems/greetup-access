@@ -1,0 +1,15 @@
+{
+  "name": "@access/shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf dist *.tsbuildinfo",
+    "lint": "eslint \"src/**/*.ts\" --max-warnings=0",
+    "test": "jest --config jest.config.ts --runInBand --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

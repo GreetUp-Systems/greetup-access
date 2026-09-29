@@ -13,19 +13,15 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "test/**", "jest.config.*"],
-      "outputs": ["coverage/**"]
+      "inputs": ["src/**", "test/**", "jest.config.*", "../../jest.preset.cjs"],
+      "outputs": []
     },
     "test:integration": {
       "cache": false,
       "dependsOn": ["^build"]
     },
-    "test:e2e": {
-      "cache": false,
-      "dependsOn": ["^build"]
-    },
     "lint": {
-      "inputs": ["src/**", "*.ts", "eslint.config.*"],
+      "inputs": ["src/**", "test/**", "*.ts", "../../eslint.config.mjs"],
       "outputs": []
     },
     "format": {
@@ -44,9 +40,6 @@
     "db:migrate": {
       "cache": false
     },
-    "db:seed": {
-      "cache": false
-    },
     "clean": {
       "cache": false
     }
@@ -54,5 +47,13 @@
   "globalDependencies": [
     ".env",
     "tsconfig.json"
+  ],
+  "globalEnv": [
+    "NODE_ENV",
+    "API_PORT",
+    "DATABASE_URL",
+    "DATABASE_URL_DIRECT",
+    "REDIS_URL",
+    "HEALTH_CHECK_TIMEOUT_MS"
   ]
 }

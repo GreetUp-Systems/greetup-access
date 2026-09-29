@@ -1,0 +1,1 @@
+export const HEALTH_CHECK_TIMEOUT_MS = Symbol("HEALTH_CHECK_TIMEOUT_MS");

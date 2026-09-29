@@ -1,549 +1,569 @@
-# SPEC-001 — Foundation
+# SPEC-001 — Foundation v2
 
-> ⚠️ **Válida, com resíduos** — o schema Prisma ainda traz `WITHDRAW_ESCROW_DONE` e `sorobanEscrowId`, e a árvore usa `access-platform/`; remover ao implementar (D-12). Em qualquer conflito, vale o [MVP-REVISADO.md](./MVP-REVISADO.md).
+> **Status:** implementada e validada
+>
+> **Versão:** 2.0
+>
+> **Atualizada em:** 29/09/2026
+>
+> **Fonte arquitetural:** [`MVP-REVISADO.md`](./MVP-REVISADO.md)
 
-**Objetivo:** Configurar o monorepo Turborepo, schema Prisma completo, Docker para dev, variáveis de ambiente e estrutura base de todos os apps.
+## 1. Objetivo
 
-**Pré-requisitos:** Nenhum. Esta é a primeira spec.
+Entregar a menor fundação técnica capaz de sustentar as próximas SPECs do Access com segurança e
+reprodutibilidade.
 
-**Tempo estimado:** 1 dia
+Ao final desta SPEC, o repositório deve instalar, compilar, subir a infraestrutura local, executar
+a API e o processo de workers, aplicar uma migration inicial e passar por testes unitários e de
+integração.
 
----
+Esta SPEC não implementa nenhum fluxo de produto.
 
-## 1. Estrutura de arquivos a criar
+## 2. Resultado esperado
 
+Uma pessoa deve conseguir clonar o repositório e, sem conhecimento prévio do projeto:
+
+1. instalar as dependências com pnpm;
+2. subir PostgreSQL e Redis via Docker Compose;
+3. aplicar as migrations;
+4. iniciar a API e o processo de workers;
+5. consultar liveness e readiness;
+6. executar build, lint, typecheck e testes pelos comandos da raiz.
+
+## 3. Estado inicial
+
+No início desta SPEC:
+
+- a raiz já contém a configuração preliminar de pnpm, Turborepo, TypeScript e Docker Compose;
+- `apps/api`, `apps/web`, `apps/workers` e os packages contêm apenas placeholders;
+- não existe `pnpm-lock.yaml`;
+- não existe código de aplicação nem schema Prisma implementado;
+- a antiga SPEC-001 contém modelos financeiros e de domínio que não correspondem ao
+  `MVP-REVISADO.md`.
+
+## 4. Escopo
+
+### 4.1 Incluído
+
+- workspace pnpm e pipeline Turborepo funcional;
+- aplicação NestJS mínima em `apps/api`;
+- processo NestJS standalone mínimo em `apps/workers`;
+- packages `config`, `database`, `redis` e `shared`;
+- validação tipada das variáveis de ambiente da fundação;
+- conexão com PostgreSQL por Prisma;
+- conexão com Redis preparada para uso posterior pelo BullMQ;
+- migration inicial contendo somente a infraestrutura do Outbox;
+- endpoints separados de liveness e readiness;
+- encerramento gracioso da API, Prisma, Redis e workers;
+- testes unitários e de integração com PostgreSQL e Redis reais;
+- geração e versionamento de `pnpm-lock.yaml`;
+- inicialização idempotente de `.env` a partir de `.env.example`;
+- atualização de `.env.example` apenas com as variáveis usadas nesta etapa.
+
+### 4.2 Fora do escopo
+
+- frontend em `apps/web`;
+- autenticação, usuários, organizações, memberships e RLS;
+- Privy e criação de wallets;
+- BlindPay, KYC/KYB, payins, payouts e webhooks;
+- Stellar, Soroban, OpenZeppelin e Relayer;
+- eventos, tipos de ingresso, compras, tickets, check-in e financeiro;
+- filas e processors BullMQ;
+- relay do Outbox;
+- CI/CD, deploy e observabilidade externa;
+- qualquer secret ou credencial real.
+
+As integrações externas não devem aparecer como dependências, variáveis de ambiente ou stubs nesta
+SPEC.
+
+## 5. Restrições e invariantes
+
+1. Node.js 22 ou superior e pnpm 9, conforme o `package.json` da raiz.
+2. TypeScript em modo strict, preservando as flags já definidas no `tsconfig.json` da raiz.
+3. Nenhum pacote pode depender de código interno de outro app.
+4. Apps podem depender de packages; packages não podem depender de apps.
+5. `packages/shared` não pode abrir conexões nem ler `process.env`.
+6. Apenas `packages/config` interpreta e valida variáveis de ambiente.
+7. Apenas `packages/database` instancia e exporta o Prisma Client.
+8. Apenas `packages/redis` instancia e exporta clientes Redis.
+9. Redis será usado para filas, não como cache. A política de eviction deve ser `noeviction`.
+10. Testes de integração usam serviços reais do `docker-compose.test.yml`; Prisma e Redis não são
+   mockados nesses testes.
+11. A API não deve retornar stack trace, URL de conexão ou detalhes internos de erro.
+12. Nenhuma tabela de tenant será criada nesta SPEC; portanto, RLS fica explicitamente adiado.
+13. Todo script da raiz deve funcionar em Windows, Linux e macOS, sem comandos específicos como
+   `rm -rf`.
+
+## 6. Estrutura de arquivos
+
+```text
+apps/
+├── api/
+│   ├── src/
+│   │   ├── main.ts
+│   │   ├── app.module.ts
+│   │   └── health/
+│   │       ├── health.module.ts
+│   │       ├── health.controller.ts
+│   │       ├── health.service.ts
+│   │       └── health.types.ts
+│   ├── test/
+│   │   └── health.integration.spec.ts
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── tsconfig.build.json
+│   └── jest.config.ts
+└── workers/
+    ├── src/
+    │   ├── main.ts
+    │   └── workers.module.ts
+    ├── package.json
+    ├── tsconfig.json
+    └── tsconfig.build.json
+
+packages/
+├── config/
+│   ├── src/
+│   │   ├── env.schema.ts
+│   │   ├── env.service.ts
+│   │   └── index.ts
+│   ├── package.json
+│   └── tsconfig.json
+├── database/
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── migrations/
+│   ├── src/
+│   │   ├── prisma.module.ts
+│   │   ├── prisma.service.ts
+│   │   └── index.ts
+│   ├── package.json
+│   └── tsconfig.json
+├── redis/
+│   ├── src/
+│   │   ├── redis.module.ts
+│   │   ├── redis.service.ts
+│   │   └── index.ts
+│   ├── package.json
+│   └── tsconfig.json
+└── shared/
+    ├── src/
+    │   └── index.ts
+    ├── package.json
+    └── tsconfig.json
 ```
-access-platform/
-├── apps/
-│   ├── api/
-│   │   ├── src/
-│   │   │   ├── main.ts
-│   │   │   ├── app.module.ts
-│   │   │   └── health/
-│   │   │       ├── health.module.ts
-│   │   │       └── health.controller.ts
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── Dockerfile
-│   ├── web/
-│   │   ├── app/
-│   │   │   ├── layout.tsx
-│   │   │   └── page.tsx
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── next.config.ts
-│   └── workers/
-│       ├── src/
-│       │   └── main.ts
-│       ├── package.json
-│       └── tsconfig.json
-├── packages/
-│   ├── database/
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma       ← schema completo definido abaixo
-│   │   │   └── migrations/
-│   │   ├── src/
-│   │   │   └── index.ts            ← exporta PrismaService e PrismaModule
-│   │   └── package.json
-│   ├── shared/
-│   │   ├── src/
-│   │   │   ├── index.ts
-│   │   │   ├── types/
-│   │   │   │   ├── ticket.types.ts
-│   │   │   │   ├── finance.types.ts
-│   │   │   │   └── events.types.ts
-│   │   │   └── constants/
-│   │   │       └── index.ts
-│   │   └── package.json
-│   └── config/
-│       ├── eslint.config.js
-│       ├── tsconfig.base.json
-│       └── package.json
+
+`apps/web` e `packages/contracts` permanecem reservados, sem implementação nesta etapa.
+
+## 7. Contratos dos packages
+
+### 7.1 `@access/config`
+
+Responsável por validar o ambiente uma única vez no startup e fornecer configuração tipada.
+
+Interface pública mínima:
+
+```typescript
+export type AppEnvironment = "development" | "test" | "production";
+
+export interface InfrastructureConfig {
+  nodeEnv: AppEnvironment;
+  databaseUrl: string;
+  databaseDirectUrl: string;
+  redisUrl: string;
+}
+
+export interface ApiConfig extends InfrastructureConfig {
+  apiPort: number;
+  healthCheckTimeoutMs: number;
+}
+
+export function loadInfrastructureConfig(
+  environment?: NodeJS.ProcessEnv,
+): InfrastructureConfig;
+
+export function loadApiConfig(
+  environment?: NodeJS.ProcessEnv,
+): ApiConfig;
 ```
 
----
+Regras:
 
-## 2. Schema Prisma completo
+- variáveis obrigatórias ausentes impedem o processo de iniciar;
+- números inválidos, portas fora do intervalo e URLs inválidas são rejeitados;
+- a mensagem de erro informa o nome da variável, mas nunca imprime seu valor;
+- os apps recebem o objeto validado por injeção de dependência;
+- não deve existir fallback silencioso para credenciais ou URLs de produção.
 
-Arquivo: `packages/database/prisma/schema.prisma`
+### 7.2 `@access/database`
+
+Responsável pela instância única de Prisma em cada processo NestJS.
+
+Interface pública mínima:
+
+```typescript
+export class PrismaService extends PrismaClient
+  implements OnModuleDestroy {
+  onModuleDestroy(): Promise<void>;
+  ping(): Promise<void>;
+}
+
+export class PrismaModule {}
+```
+
+Regras:
+
+- `PrismaModule` é global;
+- `ping()` executa uma consulta constante equivalente a `SELECT 1`;
+- a API usa conexão lazy para conseguir expor liveness mesmo durante indisponibilidade do banco;
+- processos que exigem banco no startup, como workers, chamam `ping()` explicitamente;
+- o módulo não conhece tenant, RLS ou modelos futuros;
+- a configuração de conexão vem exclusivamente de `@access/config`;
+- desconexão deve ocorrer no encerramento gracioso.
+
+### 7.3 `@access/redis`
+
+Responsável pelo ciclo de vida do cliente Redis usado pela API e pelos workers.
+
+Interface pública mínima:
+
+```typescript
+export class RedisService implements OnModuleDestroy {
+  ping(): Promise<void>;
+  quit(): Promise<void>;
+  onModuleDestroy(): Promise<void>;
+}
+
+export class RedisModule {}
+```
+
+Regras:
+
+- `RedisModule` é global;
+- a API pode iniciar sem conexão estabelecida e reporta a falha em readiness;
+- workers chamam `ping()` no startup e falham imediatamente se Redis estiver indisponível;
+- nenhuma opção de conexão pode habilitar cache ou esconder falhas indefinidamente;
+- encerramento normal usa `QUIT`; desconexão forçada é reservada para falha de shutdown.
+
+### 7.4 `@access/shared`
+
+Começa deliberadamente pequeno. Pode exportar apenas tipos e constantes que já tenham dois ou mais
+consumidores reais. Não deve virar um depósito de DTOs ou abstrações futuras.
+
+## 8. Persistência inicial
+
+### 8.1 Schema Prisma
+
+A única entidade persistida nesta etapa é o registro técnico do Outbox, pois o padrão já foi
+confirmado pelo ADR-002 e pela decisão D-14.
 
 ```prisma
-generator client {
-  provider = "prisma-client-js"
+enum OutboxEventStatus {
+  PENDING    @map("pending")
+  PROCESSING @map("processing")
+  PROCESSED  @map("processed")
+  FAILED     @map("failed")
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL_DIRECT")
-}
+model OutboxEvent {
+  id               String            @id @default(uuid()) @db.Uuid
+  deduplicationKey String            @unique @map("deduplication_key")
+  aggregateType    String            @map("aggregate_type")
+  aggregateId      String            @map("aggregate_id")
+  eventType        String            @map("event_type")
+  payload          Json
+  status           OutboxEventStatus @default(PENDING)
+  attempts         Int               @default(0)
+  availableAt      DateTime          @default(now()) @map("available_at")
+  processedAt      DateTime?         @map("processed_at")
+  lastError        String?           @map("last_error")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
 
-// ─── Enums ───────────────────────────────────────────────────────────────────
-
-enum OrganizationStatus {
-  PENDING_KYB
-  ACTIVE
-  SUSPENDED
-}
-
-enum KYBStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  UNDER_REVIEW
-}
-
-enum EventStatus {
-  DRAFT
-  PUBLISHED
-  CANCELLED
-  POSTPONED
-  COMPLETED
-}
-
-enum PurchaseStatus {
-  INITIATED
-  AWAITING_PAYMENT
-  PAYMENT_CONFIRMED
-  TICKET_ISSUED
-  PAYMENT_FAILED
-  PAYMENT_EXPIRED
-  PAYMENT_REFUNDED
-}
-
-enum TicketStatus {
-  RESERVED
-  ISSUED
-  CHECKED_IN
-  CANCELLED
-  REFUNDED
-  EXPIRED
-  INVALIDATED
-}
-
-enum BalanceStatus {
-  PENDING_SETTLEMENT
-  BLOCKED
-  AVAILABLE
-  WITHDRAWN
-  REFUNDED
-  DISPUTED
-}
-
-enum WithdrawalStatus {
-  WITHDRAW_REQUESTED
-  WITHDRAW_ESCROW_DONE
-  WITHDRAW_PAYOUT_SENT
-  WITHDRAWN
-  WITHDRAW_FAILED
-}
-
-enum DomainEventStatus {
-  PENDING
-  PROCESSED
-  FAILED
-}
-
-enum LedgerEntryType {
-  PAYMENT_RECEIVED
-  PLATFORM_FEE
-  BLINDPAY_FEE
-  BALANCE_RELEASED
-  BALANCE_BLOCKED
-  WITHDRAWAL_INITIATED
-  WITHDRAWAL_COMPLETED
-  REFUND_ISSUED
-  DISPUTE_HOLD
-  DISPUTE_RESOLVED
-}
-
-// ─── Models ──────────────────────────────────────────────────────────────────
-
-model Organization {
-  id                  String             @id @default(uuid())
-  name                String
-  email               String             @unique
-  cnpj                String?            @unique
-  status              OrganizationStatus @default(PENDING_KYB)
-  createdAt           DateTime           @default(now()) @map("created_at")
-  updatedAt           DateTime           @updatedAt @map("updated_at")
-
-  blindPayReceiver    BlindPayReceiver?
-  walletAccount       WalletAccount?
-  events              Event[]
-  balances            Balance[]
-  withdrawals         Withdrawal[]
-  staffAccesses       StaffAccess[]
-  financialLedger     FinancialLedger[]
-
-  @@map("organizations")
-}
-
-model BlindPayReceiver {
-  id                    String    @id @default(uuid())
-  organizationId        String    @unique @map("organization_id")
-  blindpayReceiverId    String    @unique @map("blindpay_receiver_id")
-  kybStatus             KYBStatus @default(PENDING) @map("kyb_status")
-  pixKey                String?   @map("pix_key")
-  bankAccountId         String?   @map("bank_account_id")
-  blindpayWalletId      String?   @map("blindpay_wallet_id")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
-
-  organization          Organization @relation(fields: [organizationId], references: [id])
-
-  @@map("blindpay_receivers")
-}
-
-model WalletAccount {
-  id              String   @id @default(uuid())
-  organizationId  String?  @unique @map("organization_id")
-  buyerUserId     String?  @map("buyer_user_id")
-  stellarAddress  String   @unique @map("stellar_address")
-  privyWalletId   String?  @unique @map("privy_wallet_id")
-  walletType      String   @map("wallet_type") // "organization" | "buyer"
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  organization    Organization? @relation(fields: [organizationId], references: [id])
-  buyerUser       BuyerUser?    @relation(fields: [buyerUserId], references: [id])
-
-  @@map("wallet_accounts")
-}
-
-model BuyerUser {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  name          String?
-  privyUserId   String?  @unique @map("privy_user_id")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  walletAccount WalletAccount?
-  purchases     Purchase[]
-
-  @@map("buyer_users")
-}
-
-model Event {
-  id                   String      @id @default(uuid())
-  organizationId       String      @map("organization_id")
-  slug                 String      @unique
-  name                 String
-  description          String?
-  location             String?
-  eventDate            DateTime    @map("event_date")
-  capacityMax          Int         @map("capacity_max")
-  status               EventStatus @default(DRAFT)
-  sorobanEventId       String?     @map("soroban_event_id")
-  securityWindowDays   Int         @default(7) @map("security_window_days")
-  refundPolicy         Json        @map("refund_policy")
-  coverImageUrl        String?     @map("cover_image_url")
-  createdAt            DateTime    @default(now()) @map("created_at")
-  updatedAt            DateTime    @updatedAt @map("updated_at")
-
-  organization         Organization  @relation(fields: [organizationId], references: [id])
-  ticketTypes          TicketType[]
-  purchases            Purchase[]
-  balances             Balance[]
-  staffAccesses        StaffAccess[]
-  checkinEvents        CheckinEvent[]
-
-  @@map("events")
-}
-
-model TicketType {
-  id              String   @id @default(uuid())
-  eventId         String   @map("event_id")
-  name            String
-  description     String?
-  priceBrl        Decimal  @map("price_brl") @db.Decimal(10, 2)
-  quantityTotal   Int      @map("quantity_total")
-  quantitySold    Int      @default(0) @map("quantity_sold")
-  transferable    Boolean  @default(false)
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  event           Event      @relation(fields: [eventId], references: [id])
-  purchases       Purchase[]
-  tickets         Ticket[]
-
-  @@map("ticket_types")
-}
-
-model Purchase {
-  id                  String         @id @default(uuid())
-  eventId             String         @map("event_id")
-  ticketTypeId        String         @map("ticket_type_id")
-  buyerUserId         String         @map("buyer_user_id")
-  status              PurchaseStatus @default(INITIATED)
-  amountBrl           Decimal        @map("amount_brl") @db.Decimal(10, 2)
-  blindpayPayinId     String?        @unique @map("blindpay_payin_id")
-  blindpayQuoteId     String?        @map("blindpay_quote_id")
-  pixCode             String?        @map("pix_code")
-  pixExpiresAt        DateTime?      @map("pix_expires_at")
-  attempts            Int            @default(0)
-  createdAt           DateTime       @default(now()) @map("created_at")
-  updatedAt           DateTime       @updatedAt @map("updated_at")
-
-  event               Event      @relation(fields: [eventId], references: [id])
-  ticketType          TicketType @relation(fields: [ticketTypeId], references: [id])
-  buyerUser           BuyerUser  @relation(fields: [buyerUserId], references: [id])
-  ticket              Ticket?
-
-  @@map("purchases")
-}
-
-model Ticket {
-  id                String       @id @default(uuid())
-  purchaseId        String       @unique @map("purchase_id")
-  ticketTypeId      String       @map("ticket_type_id")
-  buyerUserId       String       @map("buyer_user_id")
-  eventId           String       @map("event_id")
-  sorobanTicketId   String?      @unique @map("soroban_ticket_id")
-  stellarTxHash     String?      @map("stellar_tx_hash")
-  status            TicketStatus @default(RESERVED)
-  qrNonce           String       @unique @default(uuid()) @map("qr_nonce")
-  issuedAt          DateTime?    @map("issued_at")
-  expiresAt         DateTime?    @map("expires_at")
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
-
-  purchase          Purchase       @relation(fields: [purchaseId], references: [id])
-  ticketType        TicketType     @relation(fields: [ticketTypeId], references: [id])
-  checkinEvents     CheckinEvent[]
-
-  @@map("tickets")
-}
-
-model CheckinEvent {
-  id              String    @id @default(uuid())
-  ticketId        String    @map("ticket_id")
-  eventId         String    @map("event_id")
-  staffUserId     String?   @map("staff_user_id")
-  stellarTxHash   String?   @map("stellar_tx_hash")
-  deviceId        String?   @map("device_id")
-  isConflict      Boolean   @default(false) @map("is_conflict")
-  checkedInAt     DateTime  @map("checked_in_at")
-  syncedAt        DateTime? @map("synced_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  ticket          Ticket @relation(fields: [ticketId], references: [id])
-  event           Event  @relation(fields: [eventId], references: [id])
-
-  @@map("checkin_events")
-}
-
-model Balance {
-  id                String        @id @default(uuid())
-  eventId           String        @map("event_id")
-  organizationId    String        @map("organization_id")
-  sorobanEscrowId   String?       @unique @map("soroban_escrow_id")
-  amountUsdc        Decimal       @map("amount_usdc") @db.Decimal(20, 6)
-  amountBrlEquiv    Decimal       @map("amount_brl_equiv") @db.Decimal(10, 2)
-  status            BalanceStatus @default(PENDING_SETTLEMENT)
-  releaseAt         DateTime?     @map("release_at")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-
-  event             Event        @relation(fields: [eventId], references: [id])
-  organization      Organization @relation(fields: [organizationId], references: [id])
-  withdrawals       Withdrawal[]
-
-  @@map("balances")
-}
-
-model Withdrawal {
-  id                    String           @id @default(uuid())
-  organizationId        String           @map("organization_id")
-  balanceId             String           @map("balance_id")
-  amountUsdc            Decimal          @map("amount_usdc") @db.Decimal(20, 6)
-  amountBrl             Decimal          @map("amount_brl") @db.Decimal(10, 2)
-  status                WithdrawalStatus @default(WITHDRAW_REQUESTED)
-  blindpayPayoutId      String?          @unique @map("blindpay_payout_id")
-  stellarTxHash         String?          @map("stellar_tx_hash")
-  pixKey                String?          @map("pix_key")
-  requestedAt           DateTime         @default(now()) @map("requested_at")
-  completedAt           DateTime?        @map("completed_at")
-  createdAt             DateTime         @default(now()) @map("created_at")
-  updatedAt             DateTime         @updatedAt @map("updated_at")
-
-  organization          Organization @relation(fields: [organizationId], references: [id])
-  balance               Balance      @relation(fields: [balanceId], references: [id])
-
-  @@map("withdrawals")
-}
-
-model DomainEvent {
-  id            String            @id @default(uuid())
-  aggregateId   String            @map("aggregate_id")
-  eventType     String            @map("event_type")
-  payload       Json
-  status        DomainEventStatus @default(PENDING)
-  retryCount    Int               @default(0) @map("retry_count")
-  error         String?
-  createdAt     DateTime          @default(now()) @map("created_at")
-  processedAt   DateTime?         @map("processed_at")
-
-  @@unique([aggregateId, eventType])
-  @@index([status, createdAt])
-  @@map("domain_events")
-}
-
-model FinancialLedger {
-  id              String          @id @default(uuid())
-  organizationId  String          @map("organization_id")
-  eventId         String?         @map("event_id")
-  entryType       LedgerEntryType @map("entry_type")
-  amountBrl       Decimal         @map("amount_brl") @db.Decimal(10, 2)
-  referenceId     String          @map("reference_id")
-  referenceType   String          @map("reference_type")
-  createdAt       DateTime        @default(now()) @map("created_at")
-
-  organization    Organization @relation(fields: [organizationId], references: [id])
-
-  @@index([organizationId, createdAt])
-  @@map("financial_ledger")
-}
-
-model StaffAccess {
-  id              String   @id @default(uuid())
-  eventId         String   @map("event_id")
-  organizationId  String   @map("organization_id")
-  email           String
-  role            String   @default("staff")
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  event           Event        @relation(fields: [eventId], references: [id])
-  organization    Organization @relation(fields: [organizationId], references: [id])
-
-  @@unique([eventId, email])
-  @@map("staff_accesses")
+  @@index([status, availableAt, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("outbox_events")
 }
 ```
 
----
+O campo `deduplicationKey` deve ser fornecido pelo caso de uso futuro. Não usar a combinação
+`aggregateId + eventType` como unicidade, pois o mesmo agregado pode emitir o mesmo tipo de evento
+mais de uma vez durante sua vida.
 
-## 3. PrismaService (packages/database/src/index.ts)
+### 8.2 Migration
 
-```typescript
-import { Injectable, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
-import { PrismaClient } from "@prisma/client";
+A migration inicial deve:
 
-@Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  async onModuleInit(): Promise<void> {
-    await this.$connect();
-  }
+- criar somente o enum e a tabela acima;
+- criar os índices e a constraint de unicidade declarados;
+- não criar tabelas de produto;
+- não habilitar extensões PostgreSQL sem uma necessidade concreta;
+- ser aplicável tanto no banco de desenvolvimento quanto no banco de testes.
 
-  async onModuleDestroy(): Promise<void> {
-    await this.$disconnect();
-  }
+### 8.3 RLS
+
+RLS não será simulado nesta etapa. Ele será introduzido junto ao primeiro modelo de tenant, depois
+de definida a relação entre identidade, organização e membership.
+
+Quando introduzido, o contexto deverá compartilhar a mesma transação e conexão das queries de
+negócio. Um `SET LOCAL` executado isoladamente por interceptor não é uma solução válida.
+
+## 9. Redis
+
+API e workers devem usar o `RedisModule` de `@access/redis`, configurado por `REDIS_URL`.
+
+Regras:
+
+- `maxmemory-policy` deve ser `noeviction` nos Compose de desenvolvimento e teste;
+- a conexão deve falhar de maneira explícita no startup dos workers;
+- a API pode iniciar para expor liveness, mas readiness deve falhar enquanto Redis estiver
+  indisponível;
+- os clientes devem ser fechados no `SIGTERM` e no `SIGINT`;
+- nenhuma chave de cache será criada nesta SPEC.
+
+## 10. API
+
+### 10.1 Bootstrap
+
+O bootstrap deve:
+
+- carregar e validar o ambiente antes de abrir a porta HTTP;
+- habilitar shutdown hooks;
+- usar o prefixo global `/api`;
+- configurar JSON com limite explícito de payload;
+- não habilitar CORS permissivo por padrão;
+- iniciar na porta configurada por `API_PORT`.
+
+### 10.2 Liveness
+
+`GET /api/health/live`
+
+Não consulta dependências externas. Confirma somente que o processo HTTP está vivo.
+
+Resposta `200`:
+
+```json
+{
+  "status": "alive",
+  "timestamp": "2026-09-29T12:00:00.000Z"
 }
-
-export { PrismaClient } from "@prisma/client";
-export * from "@prisma/client";
 ```
 
----
+### 10.3 Readiness
 
-## 4. Health check (apps/api/src/health/)
+`GET /api/health/ready`
 
-```typescript
-// health.controller.ts
-@Controller("health")
-export class HealthController {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly redis: Redis,
-  ) {}
+Executa, em paralelo e com timeout, `PrismaService.ping()` e `PING` no Redis.
 
-  @Get()
-  async check(): Promise<{ status: string; db: string; redis: string; ts: string }> {
-    const [dbOk, redisOk] = await Promise.allSettled([
-      this.prisma.$queryRaw`SELECT 1`,
-      this.redis.ping(),
-    ]);
-    return {
-      status: "ok",
-      db: dbOk.status === "fulfilled" ? "ok" : "error",
-      redis: redisOk.status === "fulfilled" ? "ok" : "error",
-      ts: new Date().toISOString(),
-    };
-  }
+Resposta `200` quando ambas as dependências respondem:
+
+```json
+{
+  "status": "ready",
+  "checks": {
+    "database": "up",
+    "redis": "up"
+  },
+  "timestamp": "2026-09-29T12:00:00.000Z"
 }
 ```
 
----
+Resposta `503` quando pelo menos uma dependência falha ou excede o timeout:
 
-## 5. Migrations SQL necessárias
-
-Após `prisma migrate dev --name init`, adicionar manualmente:
-
-```sql
--- Habilitar RLS em tabelas de tenant
-ALTER TABLE events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ticket_types ENABLE ROW LEVEL SECURITY;
-ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE balances ENABLE ROW LEVEL SECURITY;
-ALTER TABLE withdrawals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE staff_accesses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE financial_ledger ENABLE ROW LEVEL SECURITY;
-
--- Policies RLS
-CREATE POLICY tenant_isolation_events ON events
-  USING (organization_id::text = current_setting('app.current_organization_id', true));
-
-CREATE POLICY tenant_isolation_balances ON balances
-  USING (organization_id::text = current_setting('app.current_organization_id', true));
-
--- (repetir para cada tabela com organization_id)
-
--- Extensões
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-
--- Trigger updated_at
-CREATE OR REPLACE FUNCTION trigger_set_updated_at()
-RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql;
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON organizations
-  FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
--- (repetir para cada tabela com updated_at)
+```json
+{
+  "status": "not_ready",
+  "checks": {
+    "database": "up",
+    "redis": "down"
+  },
+  "timestamp": "2026-09-29T12:00:00.000Z"
+}
 ```
 
----
+A resposta não inclui mensagens de driver, hostnames, credenciais ou stack traces.
 
-## 6. Testes esperados
+## 11. Processo de workers
 
-### Unitários
-- `PrismaService` conecta e desconecta corretamente
-- Health controller retorna `{ status: "ok" }` quando Postgres e Redis respondem
-- Health controller retorna status de erro individualizado quando um dos serviços está offline
+`apps/workers` deve iniciar um contexto NestJS sem servidor HTTP.
 
-### Integração
-- `GET /health` retorna 200 com Postgres e Redis rodando (docker-compose.test.yml)
-- `GET /health` retorna 200 com status parcial quando Redis está indisponível
+Nesta SPEC ele apenas:
 
----
+- valida o ambiente;
+- conecta a PostgreSQL e Redis;
+- registra que o processo ficou pronto usando o logger do NestJS;
+- encerra as conexões de forma graciosa;
+- retorna código diferente de zero se uma dependência obrigatória não puder ser inicializada.
 
-## 7. Variáveis de ambiente necessárias
+Não criar filas vazias, processors fictícios ou nomes de jobs antecipadamente.
 
-```bash
+## 12. Variáveis de ambiente
+
+Somente estas variáveis são consumidas nesta etapa:
+
+```dotenv
+NODE_ENV=development
+API_PORT=3001
 DATABASE_URL=postgresql://access:access@localhost:5432/access_dev
 DATABASE_URL_DIRECT=postgresql://access:access@localhost:5432/access_dev
 REDIS_URL=redis://localhost:6379
+HEALTH_CHECK_TIMEOUT_MS=2000
 ```
 
----
+As variáveis de Privy, BlindPay, Stellar, OpenZeppelin, email, rate limiting e contratos podem
+continuar documentadas fora desta SPEC, mas nenhum processo deve exigi-las até a etapa que as
+introduzir.
 
-## 8. Definição de Pronto
+## 13. Docker Compose
 
-- [ ] `pnpm install` executa sem erro
-- [ ] `pnpm turbo build` compila todos os apps
-- [ ] `docker compose up -d` sobe Postgres e Redis
-- [ ] `pnpm db:migrate` executa sem erro
-- [ ] `GET /health` retorna `{ status: "ok", db: "ok", redis: "ok" }`
-- [ ] `pnpm turbo typecheck` sem erros
-- [ ] `pnpm turbo test` passa (unitários do health)
+### 13.1 Desenvolvimento
+
+O `docker-compose.yml` deve oferecer:
+
+- PostgreSQL 16;
+- Redis 7 com `noeviction`;
+- healthchecks para os dois serviços;
+- volumes persistentes;
+- ferramentas administrativas apenas por profiles opcionais;
+- nenhum secret de produção.
+
+Evitar `container_name` quando não houver necessidade, para permitir múltiplos worktrees e evitar
+colisão entre projetos.
+
+### 13.2 Testes
+
+O `docker-compose.test.yml` deve oferecer:
+
+- portas diferentes das usadas em desenvolvimento;
+- PostgreSQL e Redis isolados;
+- armazenamento efêmero;
+- healthchecks;
+- Redis com `noeviction`;
+- nenhuma dependência de estado local anterior.
+
+## 14. Scripts obrigatórios
+
+Na raiz, os seguintes comandos devem delegar para o Turborepo e funcionar em todos os sistemas
+operacionais suportados:
+
+```text
+pnpm build
+pnpm dev
+pnpm env:init
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:integration
+pnpm db:generate
+pnpm db:migrate
+pnpm clean
+```
+
+Cada workspace deve declarar somente os scripts que realmente implementa. O comando `clean` não
+pode depender de `rm`, `rmdir` ou outro utilitário específico do shell.
+
+## 15. Testes esperados
+
+### 15.1 Unitários
+
+- configuração de infraestrutura válida é convertida para `InfrastructureConfig`;
+- configuração da API exige e converte `API_PORT` e `HEALTH_CHECK_TIMEOUT_MS`;
+- variável obrigatória ausente interrompe o startup sem revelar valores;
+- porta e timeout inválidos são rejeitados;
+- liveness retorna o contrato definido;
+- readiness agrega corretamente os estados de PostgreSQL e Redis;
+- readiness retorna `503` quando uma dependência falha;
+- readiness respeita `HEALTH_CHECK_TIMEOUT_MS`.
+
+### 15.2 Integração
+
+Usando `docker-compose.test.yml`:
+
+- migrations aplicam em banco vazio;
+- `PrismaService.ping()` responde;
+- a constraint de `deduplicationKey` impede duplicidade no Outbox;
+- Redis responde a `PING`;
+- `GET /api/health/live` retorna `200` sem consultar dependências;
+- `GET /api/health/ready` retorna `200` com PostgreSQL e Redis disponíveis;
+- readiness retorna `503` quando Redis está indisponível;
+- a aplicação fecha conexões sem deixar o processo de testes pendurado.
+
+Não haverá teste end-to-end de fluxo de produto nesta etapa.
+
+## 16. Ordem de implementação
+
+1. Corrigir os manifests da raiz e criar o lockfile.
+2. Implementar `packages/config` e seus testes.
+3. Implementar `packages/database`, schema e migration.
+4. Implementar `packages/redis`.
+5. Ajustar os Docker Compose de desenvolvimento e teste.
+6. Implementar bootstrap e health checks da API.
+7. Implementar o bootstrap dos workers.
+8. Configurar lint, typecheck e testes em todos os workspaces.
+9. Executar a sequência completa de aceitação em ambiente limpo.
+
+Não iniciar a SPEC-002 enquanto esta sequência não estiver verde.
+
+## 17. Validação de aceitação
+
+Em um checkout limpo, a seguinte sequência deve passar:
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+pnpm env:init
+docker compose up -d --wait postgres redis
+pnpm db:generate
+pnpm db:migrate
+pnpm build
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:integration
+```
+
+Também deve ser demonstrado:
+
+```bash
+curl --fail http://localhost:3001/api/health/live
+curl --fail http://localhost:3001/api/health/ready
+```
+
+## 18. Definição de pronto
+
+- [x] `pnpm-lock.yaml` existe e está versionado.
+- [x] Não restam `.gitkeep` nos workspaces implementados.
+- [x] Nenhuma dependência de Privy, BlindPay, Stellar ou OpenZeppelin foi adicionada.
+- [x] Nenhuma tabela de produto foi antecipada.
+- [x] PostgreSQL e Redis sobem saudáveis em desenvolvimento e teste.
+- [x] Redis usa `noeviction`.
+- [x] Migration inicial aplica em banco vazio.
+- [x] API e workers iniciam e encerram corretamente.
+- [x] Liveness e readiness obedecem aos contratos desta SPEC.
+- [x] `build`, `lint`, `typecheck`, testes unitários e testes de integração passam.
+- [x] `.env.example` contém todas e somente as variáveis da fundação na seção ativa.
+- [x] Nenhum secret foi adicionado ao repositório ou aos logs.
+- [x] O diff foi revisado para confirmar que não implementa itens da SPEC-002.
+
+### Evidência de validação — 29/09/2026
+
+- instalação reproduzível confirmada com `pnpm install --frozen-lockfile`;
+- `build`, `lint` e `typecheck` executados sem erros ou warnings;
+- 11 testes unitários e 5 testes de integração aprovados;
+- API validada em execução real nos endpoints `/api/health/live` e `/api/health/ready`;
+- processo de workers validado contra PostgreSQL e Redis reais;
+- migration inicial aplicada em banco vazio e política `noeviction` confirmada nos ambientes de
+  desenvolvimento e teste.
+
+## 19. Decisões adiadas explicitamente
+
+As decisões abaixo pertencem às próximas etapas e não podem ser tomadas implicitamente durante a
+implementação desta SPEC:
+
+- modelo `User × Organization × Membership`;
+- onboarding do comprador e resposta à Q-03;
+- criação e propriedade de wallets Privy;
+- estratégia transacional para contexto RLS;
+- criação e patrocínio de contas Stellar;
+- contratos e autoridade de assinatura;
+- modelos de customer, pagamento e payout da BlindPay.

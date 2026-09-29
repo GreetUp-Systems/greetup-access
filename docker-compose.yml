@@ -1,9 +1,8 @@
-version: '3.9'
+name: access-platform
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: access_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: access
@@ -13,7 +12,6 @@ services:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U access -d access_dev']
       interval: 5s
@@ -22,13 +20,12 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: access_redis
     restart: unless-stopped
     ports:
       - '6379:6379'
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory-policy noeviction
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -38,7 +35,6 @@ services:
   # Opcional: Redis Commander para visualizar filas em dev
   redis-commander:
     image: rediscommander/redis-commander:latest
-    container_name: access_redis_commander
     restart: unless-stopped
     environment:
       REDIS_HOSTS: local:redis:6379
@@ -53,7 +49,6 @@ services:
   # Opcional: pgAdmin para inspecionar o banco em dev
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: access_pgadmin
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: dev@greetup.com

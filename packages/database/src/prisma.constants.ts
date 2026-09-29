@@ -1,0 +1,1 @@
+export const PRISMA_DATABASE_URL = Symbol("PRISMA_DATABASE_URL");

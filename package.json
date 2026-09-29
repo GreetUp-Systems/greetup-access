@@ -5,7 +5,7 @@
   "description": "Access — ticketing, check-in and payouts for events of any kind and size",
   "repository": {
     "type": "git",
-    "url": "https://github.com/GreetUp-Systems/greetup-access.git"
+    "url": "https://github.com/GreetUp-Corp/access-platform.git"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {
@@ -13,25 +13,37 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
+    "env:init": "node scripts/init-env.mjs",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "test": "turbo run test",
     "test:integration": "turbo run test:integration",
-    "test:e2e": "turbo run test:e2e",
     "lint": "turbo run lint",
     "format": "turbo run format",
     "typecheck": "turbo run typecheck",
     "db:generate": "turbo run db:generate",
     "db:migrate": "turbo run db:migrate",
-    "db:seed": "turbo run db:seed",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "clean": "turbo run clean"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
+    "@eslint/js": "^10.0.0",
+    "@types/jest": "^29.5.0",
     "@types/node": "^22.0.0",
+    "@types/supertest": "^6.0.0",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^10.0.0",
+    "globals": "^17.0.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.0",
+    "rimraf": "^6.0.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.0",
+    "ts-node": "^10.9.0",
+    "tsx": "^4.19.0",
+    "turbo": "^2.0.0",
     "typescript": "^5.5.0",
-    "eslint": "^9.0.0",
-    "prettier": "^3.3.0"
+    "typescript-eslint": "^8.0.0"
   },
   "workspaces": [
     "apps/*",
