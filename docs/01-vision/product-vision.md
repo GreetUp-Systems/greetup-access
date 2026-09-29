@@ -18,7 +18,7 @@ A solução resolve a ausência de uma infraestrutura programável e confiável 
 
 **Para o comprador:** paga com Pix e recebe um ingresso digital. Nenhuma interação com blockchain, stablecoin ou wallet.  
 **Para o produtor:** cria eventos, acompanha saldo e solicita retirada de valores.  
-**Para o staff:** escaneia QR Code e valida ingressos no dia do evento, inclusive offline.
+**Para o staff:** escaneia QR Code e valida ingressos no dia do evento, com modo offline a partir da fase 2.
 
 A complexidade de blockchain e stablecoins acontece nos bastidores. A experiência final é Web2.
 
@@ -75,7 +75,7 @@ Membro da equipe operacional do evento responsável pela entrada dos participant
 
 **Jornada:** faz login no PWA → seleciona evento → sincroniza lista → escaneia QR Codes → valida ingressos → sincroniza check-ins quando online.
 
-**Requisito crítico:** funcionar offline com resposta visual em menos de 2 segundos.
+**Requisito crítico:** resposta visual em menos de 2 segundos. Funcionamento offline a partir da fase 2.
 
 ---
 

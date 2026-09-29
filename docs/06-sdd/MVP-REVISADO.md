@@ -13,7 +13,7 @@ bancária.
 
 **Comprador:** vê os ingressos, compra com Pix, recebe o ingresso na conta dele, entra no evento.
 
-**Staff:** escaneia o QR Code e valida o ingresso, inclusive sem internet.
+**Staff:** escaneia o QR Code e valida o ingresso online. A capacidade offline entra na fase 2 (D-19).
 
 ---
 
@@ -115,8 +115,10 @@ na conta bancária.
 
 ### 4.4 Credenciamento
 
-Snapshot assinado baixado antes do evento, validação local por HMAC no PWA, fila de sincronização
-local, e registro on-chain do check-in em lote quando houver rede.
+**Fase 1 (MVP):** check-in online. O staff escaneia o QR Code, a API valida e registra o check-in.
+
+**Fase 2 (após validação, D-19):** snapshot assinado baixado antes do evento, validação local por
+HMAC no PWA, fila de sincronização local e registro on-chain do check-in em lote quando houver rede.
 
 ---
 
@@ -189,7 +191,22 @@ Não são decisões nem pendências — são coisas que mordem se ninguém soube
 | `SPEC-009` — credenciamento | Dividir: check-in online na fase 1, capacidade offline na fase 2. |
 | `SPEC-012` — dashboard | Reduzir: polling em vez de WebSocket. |
 | `SPEC-013` — pipeline | Reduzir: sem OpenTelemetry, Grafana nem deploy de contrato multi-sig. |
-| `RN-005`, `RN-009` | Reescrever no `product-vision.md`. |
+| `RN-005`, `RN-009` | Reescritas no `product-vision.md` v0.3. |
 
 `ADR-001` (Stellar sobre EVM), `ADR-002` (Outbox), `ADR-004` (BlindPay), `ADR-005` (RLS) e
 `ADR-006` (BullMQ) seguem válidos.
+
+Os documentos superados foram movidos para [docs/_archive/](../_archive/README.md).
+
+---
+
+## 9. Questões de arquitetura em aberto
+
+Precisam de decisão antes de implementar os blocos afetados. Até lá, nenhuma implementação deve
+escolher uma resposta por conta própria.
+
+| # | Questão | Blocos afetados |
+|---|---|---|
+| **Q-01** | **Chave de assinatura da plataforma.** D-05 exige assinatura da plataforma na transferência, e mint e check-in on-chain também precisam de uma autoridade no contrato. O Relayer paga a taxa, mas não substitui essa autoridade. Onde a chave vive, como é custodiada e rotacionada? | 5, 6, 8 |
+| **Q-02** | **Conta Stellar do comprador.** Se o comprador assina a transferência (D-05), a conta `G…` dele precisa existir na rede, com reserva patrocinada de ~1 XLM (D-02). Num evento de 500 pessoas, isso trava ~500 XLM na conta patrocinadora. A conta é criada no mint, ou só quando o comprador for transferir? | 3, 6 |
+| **Q-03** | **Onboarding do comprador no Privy.** O comprador paga "sem cadastro", mas a wallet Privy criada no checkout (D-06) depende de login por email/OTP para ele acessar o ingresso depois. Como fica essa etapa na UX? | 2, 6, 7 |
