@@ -1,5 +1,7 @@
 # SPEC-001 — Foundation
 
+> ⚠️ **Válida, com resíduos** — o schema Prisma ainda traz `WITHDRAW_ESCROW_DONE` e `sorobanEscrowId`, e a árvore usa `access-platform/`; remover ao implementar (D-12). Em qualquer conflito, vale o [MVP-REVISADO.md](./MVP-REVISADO.md).
+
 **Objetivo:** Configurar o monorepo Turborepo, schema Prisma completo, Docker para dev, variáveis de ambiente e estrutura base de todos os apps.
 
 **Pré-requisitos:** Nenhum. Esta é a primeira spec.

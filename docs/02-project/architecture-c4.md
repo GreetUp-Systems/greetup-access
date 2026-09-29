@@ -1,5 +1,9 @@
 # Arquitetura C4 — GreetUp Access
 
+> ⚠️ **Documento anterior à revisão de arquitetura de 20/08/2026.** Parte do conteúdo está
+> superada (escrow, Treasury própria, KMS, CQRS, WebSocket). Em qualquer conflito, vale o
+> [`MVP-REVISADO.md`](../06-sdd/MVP-REVISADO.md). Será revisado junto com as SPECs de cada bloco.
+
 Diagramas como SVG estático em `docs/02-project/diagrams/` — renderizam corretamente no GitHub, no VS Code e em qualquer visualizador, sem depender de motor de renderização de terceiros.
 
 ---
@@ -37,7 +41,7 @@ Detalha os módulos internos do container de API, organizados em três camadas.
 
 **Leitura:** a camada de entrada lida com autenticação, webhooks e WebSocket. A camada de domínio contém a lógica de negócio — os módulos em roxo (Tickets, Finance, Withdrawals, Checkin) implementam CQRS com write side forte e read side em cache; os módulos em cinza (Events, Organizations, Notifications) são CRUD simples sem necessidade de CQRS. A camada de infraestrutura contém os adapters para sistemas externos (Stellar, Soroban, BlindPay, Privy) e o Outbox, que é atravessado por todos os módulos de domínio.
 
-**Por que só alguns módulos têm CQRS:** ver [ADR-003](../03-adrs/ADR-003-cqrs-tickets-finance.md). Tickets e Finance têm disparidade real entre volume de leitura e escrita; os demais não justificam a complexidade adicional.
+**Por que só alguns módulos têm CQRS:** ver [ADR-003](../_archive/03-adrs/ADR-003-cqrs-tickets-finance.md). Tickets e Finance têm disparidade real entre volume de leitura e escrita; os demais não justificam a complexidade adicional.
 
 ---
 

@@ -1,5 +1,9 @@
 # Casos de Uso — GreetUp Access
 
+> ⚠️ **Documento anterior à revisão de arquitetura de 20/08/2026.** Parte do conteúdo está
+> superada (escrow, Treasury própria, KMS, CQRS, WebSocket). Em qualquer conflito, vale o
+> [`MVP-REVISADO.md`](../06-sdd/MVP-REVISADO.md). Será revisado junto com as SPECs de cada bloco.
+
 ---
 
 ## UC-001 — Compra de Ingresso via Pix

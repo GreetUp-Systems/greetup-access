@@ -1,5 +1,7 @@
 # SPEC-013 — Pipeline CI/CD (GitHub Actions + Railway + Cloudflare + KMS)
 
+> ⚠️ **SPEC a reduzir** — sem OpenTelemetry, Grafana nem deploy de contrato multi-sig (D-18). Em qualquer conflito, vale o [MVP-REVISADO.md](./MVP-REVISADO.md). Não implemente a partir desta versão.
+
 **Objetivo:** Configurar toda a infraestrutura de CI/CD, deploy blue-green no Railway, CDN e WAF via Cloudflare, key management com AWS KMS e observabilidade com OpenTelemetry.
 
 **Pré-requisitos:** Nenhum em termos de código. Pode ser implementado em paralelo.

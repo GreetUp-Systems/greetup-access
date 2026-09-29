@@ -70,9 +70,10 @@ open https://status.blindpay.com
 # 1. Verificar DLQ do MintWorker
 # Ver RB-003 para procedimento completo
 
-# 2. Verificar saldo da Treasury Stellar
-stellar account info --account ${TREASURY_STELLAR_ADDRESS}
-# Se XLM < 50: ver RB-006 URGENTE
+# 2. Verificar saldo da conta patrocinadora (D-02)
+stellar account info --account ${STELLAR_SPONSOR_ADDRESS}
+# Se não houver XLM livre para novas reservas: recarregar a conta patrocinadora
+# Verificar também status e saldo do OpenZeppelin Relayer
 
 # 3. Verificar se Stellar Horizon está respondendo
 curl https://horizon.stellar.org/

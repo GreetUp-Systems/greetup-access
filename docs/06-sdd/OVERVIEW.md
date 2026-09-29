@@ -14,7 +14,7 @@
 
 ## Contexto do Projeto
 
-**Repositório:** `github.com/GreetUp-Corp/access-platform`
+**Repositório:** `github.com/GreetUp-Systems/greetup-access`
 
 **Stack:** Stellar · Privy · BlindPay · OpenZeppelin (contratos + Relayer) · NestJS · Next.js 15 ·
 PostgreSQL 16 · BullMQ · Redis · Turborepo
@@ -95,16 +95,16 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 |---|---|
 | SPEC-001 foundation | Válida, com ajustes de env |
 | SPEC-002 auth | Válida — Privy segue sendo o provedor |
-| SPEC-003 organizations | Reescrever: BlindPay usa *customer*, não *receiver* |
-| SPEC-004 events | Válida |
-| SPEC-005 purchase | Reescrever: fluxo de payin quote → payin |
-| SPEC-006 contracts | **Reescrever:** `EscrowContract` sai; `TicketContract` vira extensão da OZ. Contém bug de tipo (`Symbol` não comporta UUID) |
-| SPEC-007 mint worker | Reescrever: sai Treasury própria e criação de wallet do caminho crítico |
-| SPEC-008 ticket read | Reescrever sem CQRS |
+| SPEC-003 organizations | Reescrever: BlindPay usa *customer*, não *receiver* — [arquivada](../_archive/06-sdd/SPEC-003-organizations.md) |
+| SPEC-004 events | Válida, com resíduo de escrow no cancelamento |
+| SPEC-005 purchase | Reescrever: fluxo de payin quote → payin — [arquivada](../_archive/06-sdd/SPEC-005-purchase.md) |
+| SPEC-006 contracts | **Reescrever:** `EscrowContract` sai; `TicketContract` vira extensão da OZ. Contém bug de tipo (`Symbol` não comporta UUID) — [arquivada](../_archive/06-sdd/SPEC-006-contracts.md) |
+| SPEC-007 mint worker | Reescrever: sai Treasury própria e criação de wallet do caminho crítico — [arquivada](../_archive/06-sdd/SPEC-007-mint-worker.md) |
+| SPEC-008 ticket read | Reescrever sem CQRS — [arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md) |
 | SPEC-009 checkin | Dividir: online na fase 1, offline na fase 2 |
-| SPEC-010 finance | Reescrever: não há escrow |
-| SPEC-011 withdrawal | Reescrever: saque é payout da BlindPay |
+| SPEC-010 finance | Reescrever: não há escrow — [arquivada](../_archive/06-sdd/SPEC-010-finance.md) |
+| SPEC-011 withdrawal | Reescrever: saque é payout da BlindPay — [arquivada](../_archive/06-sdd/SPEC-011-withdrawal.md) |
 | SPEC-012 dashboard | Reduzir: polling em vez de WebSocket |
 | SPEC-013 pipeline | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig |
 
-As SPECs serão reescritas **no momento de implementar cada bloco**, não antes.
+As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Antes de reescrever as dos blocos 3, 5, 6 e 8, resolver as questões em aberto do §9 do MVP-REVISADO.md.

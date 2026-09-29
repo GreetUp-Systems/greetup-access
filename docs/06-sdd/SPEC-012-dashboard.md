@@ -1,5 +1,7 @@
 # SPEC-012 — Dashboard (Produtor + WebSocket Real-time)
 
+> ⚠️ **SPEC a reduzir** — polling em vez de WebSocket (D-17). Em qualquer conflito, vale o [MVP-REVISADO.md](./MVP-REVISADO.md). Não implemente a partir desta versão.
+
 **Objetivo:** Implementar o dashboard completo do produtor com WebSocket para atualizações em tempo real, resumo de vendas, lista de participantes e painel financeiro com CQRS.
 
 **Pré-requisitos:** SPEC-008, SPEC-010, SPEC-011

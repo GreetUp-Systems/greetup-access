@@ -11,7 +11,7 @@ feat: adiciona fluxo de reembolso parcial
 fix: corrige timeout no MintWorker
 docs: atualiza ADR-001 com decisão final
 chore: atualiza dependências
-test: adiciona testes de integração para EscrowService
+test: adiciona testes de integração para OutboxService
 refactor: extrai StellarService para package separado
 ```
 

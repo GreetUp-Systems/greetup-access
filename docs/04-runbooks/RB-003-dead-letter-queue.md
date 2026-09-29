@@ -45,7 +45,7 @@ for (const job of failedJobs) {
 | `HostError` — erro do contrato Soroban | Investigar antes de reprocessar — pode ser bug |
 | `BlindPayError` — API BlindPay | Verificar status do BlindPay, reprocessar após confirmação |
 | `DuplicateKeyError` — idempotência violada | Ignorar — o job já foi processado por outra instância |
-| `InsufficientFunds` — Treasury sem XLM | Ver [RB-006](./RB-006-treasury-recharge.md) antes de reprocessar |
+| `InsufficientFunds` — conta patrocinadora ou Relayer sem XLM | Verificar o saldo de `STELLAR_SPONSOR_ADDRESS` e do OpenZeppelin Relayer, recarregar e só então reprocessar |
 
 ---
 

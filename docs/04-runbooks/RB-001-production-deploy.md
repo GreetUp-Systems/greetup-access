@@ -84,4 +84,6 @@ railway logs --service workers --tail
 
 ## Deploy de Contratos Soroban (processo separado e mais cuidadoso)
 
-Ver [RB-007 — Migração de Contrato Soroban](./RB-007-soroban-migration.md).
+Pipeline própria em `.github/workflows/contracts-deploy.yml`. O runbook de migração de contrato será
+escrito junto com a SPEC do contrato (bloco 5); a versão anterior está em
+[`docs/_archive/`](../_archive/04-runbooks/RB-007-soroban-migration.md).
