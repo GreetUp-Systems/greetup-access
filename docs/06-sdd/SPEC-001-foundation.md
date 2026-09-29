@@ -302,8 +302,8 @@ A migration inicial deve:
 
 ### 8.3 RLS
 
-RLS não será simulado nesta etapa. Ele será introduzido junto ao primeiro modelo de tenant, depois
-de definida a relação entre identidade, organização e membership.
+RLS não será simulado nesta etapa. O ADR-009 definiu posteriormente o tenant como
+`ProducerProfile` 1:1 com `User`; a implementação entra com o primeiro modelo de produtor.
 
 Quando introduzido, o contexto deverá compartilhar a mesma transação e conexão das queries de
 negócio. Um `SET LOCAL` executado isoladamente por interceptor não é uma solução válida.
@@ -567,3 +567,7 @@ implementação desta SPEC:
 - criação e patrocínio de contas Stellar;
 - contratos e autoridade de assinatura;
 - modelos de customer, pagamento e payout da BlindPay.
+
+> **Situação posterior:** identidade, onboarding por OTP, propriedade da wallet e contexto RLS foram
+> resolvidos em 29/09/2026 pelo ADR-009 e pela revisão do ADR-005. Os demais itens continuam
+> adiados para suas SPECs.

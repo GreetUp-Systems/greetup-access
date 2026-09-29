@@ -1,9 +1,13 @@
 # Visão do Produto — Access
 
-**Versão:** 0.4  
-**Data:** 28/09/2026  
-**Responsável:** Matheus Aguiar  
-**Empresa:** Access  
+**Versão:** 0.5
+
+**Data:** 29/09/2026
+
+**Responsável:** Matheus Aguiar
+
+**Empresa:** Access
+
 **Status:** Em revisão
 
 > Arquitetura vigente: [`docs/06-sdd/MVP-REVISADO.md`](../06-sdd/MVP-REVISADO.md)
@@ -18,7 +22,7 @@ A proposta é ser tão simples que não precise de explicação. Comprar um ingr
 
 **Para o comprador:** paga com Pix e recebe o ingresso. O ingresso fica registrado na Stellar e é dele de verdade, mas ele nunca precisa saber disso: nada de carteira para configurar, termos técnicos ou cripto.  
 **Para o produtor:** cria eventos, acompanha saldo e solicita retirada de valores.  
-**Para o staff:** escaneia QR Code e valida ingressos no dia do evento, com modo offline a partir da fase 2.
+**Para o credenciamento:** no MVP, o próprio produtor usa a área autenticada para escanear QR Code e validar ingressos. Contas separadas de staff ficam para uma evolução posterior.
 
 Toda a camada web3 fica abstraída. Para quem usa, o Access funciona como qualquer app comum.
 
@@ -69,12 +73,12 @@ Empresa ou pessoa responsável pelo evento e pelo faturamento das vendas.
 
 **Requisito crítico:** todos os valores exibidos em BRL. Sem interação com stablecoin ou endereço de wallet.
 
-### 4.3 Staff de Credenciamento
-Membro da equipe operacional do evento responsável pela entrada dos participantes.
+### 4.3 Credenciamento no MVP
+O próprio produtor autenticado opera o credenciamento. Não há conta separada de staff, convite de equipe ou compartilhamento de tenant nesta fase.
 
-**Jornada:** faz login no PWA → seleciona evento → sincroniza lista → escaneia QR Codes → valida ingressos → sincroniza check-ins quando online.
+**Jornada:** acessa o PWA com sua conta → seleciona evento → escaneia QR Codes → valida ingressos.
 
-**Requisito crítico:** resposta visual em menos de 2 segundos. Funcionamento offline a partir da fase 2.
+**Requisito crítico:** resposta visual em menos de 2 segundos. Funcionamento offline e contas separadas de operação ficam para fases posteriores.
 
 ---
 
@@ -82,14 +86,16 @@ Membro da equipe operacional do evento responsável pela entrada dos participant
 
 ### Dentro do MVP
 - Cadastro e KYB do produtor via BlindPay
+- Uma conta e wallet Stellar próprias por pessoa; se o mesmo usuário comprar e produzir, reutiliza ambas
 - Criação de wallet Privy para compradores e produtores (invisível)
+- Login por email/OTP, sem senha e sem guest account
 - Criação de eventos, tipos de ingresso, preços e regras
 - Venda via Pix com on-ramp USDC via BlindPay (payin)
 - Emissão de ingresso tokenizado na Stellar para a wallet do comprador
 - Transferência de ingresso, uma única vez, entre contas da plataforma
 - Dashboard do organizador: vendas, participantes, faturamento
 - Área do comprador: ingresso digital, QR Code, status
-- Credenciamento online (a capacidade offline entra na fase 2)
+- Credenciamento online pela conta do produtor
 - Solicitação de retirada com off-ramp via BlindPay (payout)
 - Políticas de reembolso e cancelamento configuráveis
 
@@ -102,6 +108,7 @@ Membro da equipe operacional do evento responsável pela entrada dos participant
 - Escrow totalmente gerenciado on-chain pelo comprador
 - Conciliação contábil e emissão de notas fiscais
 - White-label para produtoras
+- Equipes, convites, múltiplos administradores e contas separadas de staff
 - Migração para Polygon/EVM (item de roadmap futuro)
 
 ---
@@ -119,7 +126,7 @@ Membro da equipe operacional do evento responsável pela entrada dos participant
 | Frontend | Next.js 15 (App Router) | Web responsivo, PWA para credenciamento, único codebase |
 | Backend | NestJS + TypeScript | Modular, testável, guards/interceptors nativos |
 | ORM | Prisma | Schema centralizado no monorepo |
-| Banco de dados | PostgreSQL 16 com RLS | Row-Level Security para isolamento de tenants |
+| Banco de dados | PostgreSQL 16 com RLS | Row-Level Security para isolamento por produtor |
 | Filas | BullMQ + Redis | Mensageria, retry, DLQ, cron jobs |
 | Monorepo | Turborepo | Cache incremental, pipelines paralelas |
 | Deploy | Railway (Pro) | Blue-green, health checks, graceful shutdown |
@@ -136,7 +143,7 @@ Membro da equipe operacional do evento responsável pela entrada dos participant
 Comprador (browser/mobile)
   └── Next.js PWA
         └── NestJS API (+ SSE na tela de espera)
-              ├── PostgreSQL (RLS por tenant)
+              ├── PostgreSQL (RLS por produtor)
               ├── Redis (BullMQ)
               ├── Privy SDK (wallets)
               ├── BlindPay API (payin/payout)
@@ -147,7 +154,7 @@ Produtor (browser desktop)
   └── Next.js Dashboard
         └── (mesma API)
 
-Staff (browser mobile)
+Produtor no credenciamento (browser mobile)
   └── Next.js PWA (Service Worker + IndexedDB)
         └── (mesma API, modo offline)
 ```
@@ -162,8 +169,8 @@ Eventos de domínio escritos na **mesma transação** do banco de dados. Um rela
 ### 8.2 Leitura direta do Postgres
 Sem cache e sem CQRS. Redis serve exclusivamente ao BullMQ. Cache entra depois, em queries específicas, se e quando o volume justificar.
 
-### 8.3 Multi-tenancy com Row-Level Security
-Cada request carrega `organizationId` no JWT. Interceptor seta `app.current_organization_id` na sessão do Postgres antes de cada query. RLS filtra automaticamente — nenhum leak de dados entre tenants possível.
+### 8.3 Isolamento por produtor com Row-Level Security
+O backend resolve `producerId` a partir do `User` autenticado. O contexto é configurado dentro da mesma transação e conexão Prisma das queries protegidas; não vem diretamente do JWT ou de um ID aceito do cliente. As policies filtram leitura e escrita por `producer_id`.
 
 ### 8.4 Contrato de ingresso sobre base auditada
 O contrato estende o módulo Non-Fungible Token da OpenZeppelin Stellar Contracts. Código próprio fica restrito a check-in, vínculo com evento e idempotência por `purchase_id`.
@@ -185,10 +192,11 @@ Server-Sent Events em uma única tela — o comprador aguardando a emissão do i
 ```
 Comprador acessa página do evento
   └── Escolhe ingresso + informa email
-        └── Wallet Privy criada no checkout
-              └── Backend cria payin quote apontando para a wallet do produtor
-                    └── BlindPay retorna código Pix (quote expira em 5 min)
-                          └── Comprador paga Pix — sem cadastro, sem KYC
+        └── Confirma email por OTP — sem senha ou KYC
+              └── User e wallet Privy Stellar são criados ou reutilizados
+                    └── Backend cria payin quote apontando para a wallet do produtor
+                          └── BlindPay retorna código Pix (quote expira em 5 min)
+                          └── Comprador paga Pix — sem KYC na BlindPay
                                 └── BlindPay entrega USDC na wallet do produtor
                                       └── Webhook payin.complete → valida HMAC + idempotência
                                             └── Outbox: payment.confirmed

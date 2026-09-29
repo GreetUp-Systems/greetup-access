@@ -90,10 +90,10 @@ Provedor de wallet abstraction. Cria e gerencia wallets Stellar embedded invisí
 Entidade que representa uma tentativa de compra de ingresso. Tem máquina de estados: `initiated → awaiting_payment → payment_confirmed → ticket_issued`. Também pode ir para `payment_failed`, `payment_expired` ou `payment_refunded`. A idempotência de webhooks é garantida pelo campo `blindpayPayinId`.
 
 **PWA (Progressive Web App)**  
-Aplicação web que pode ser instalada no dispositivo, funcionar offline e receber notificações push. Usado para o app de credenciamento do staff — funciona no browser sem necessidade de app store.
+Aplicação web que pode ser instalada no dispositivo, funcionar offline e receber notificações push. No Access, será usada pelo produtor no credenciamento sem exigir publicação em app store. Capacidade offline e contas separadas de staff ficam para fases posteriores.
 
 **RLS (Row-Level Security)**  
-Feature do PostgreSQL que aplica políticas de acesso automaticamente em nível de linha para cada query. No Access, garante isolamento de tenants: cada organização só vê seus próprios dados, mesmo que o código da aplicação esqueça de filtrar por `organization_id`.
+Feature do PostgreSQL que aplica políticas de acesso automaticamente em nível de linha para cada query. No Access, garante isolamento por `producer_id`. O contexto é resolvido a partir do usuário autenticado e usado dentro da mesma transação e conexão das queries protegidas.
 
 **Soroban**  
 Plataforma de smart contracts da Stellar. Contratos escritos em Rust, compilados para WebAssembly (WASM) e executados na rede Stellar. Usado para o TicketContract e EscrowContract do Access.
