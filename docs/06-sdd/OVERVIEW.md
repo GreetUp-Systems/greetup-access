@@ -2,7 +2,7 @@
 
 > ⚠️ **Leia [`MVP-REVISADO.md`](./MVP-REVISADO.md) antes de qualquer coisa.**
 >
-> A arquitetura foi revisada em 20/08/2026 e boa parte das SPEC-001 a SPEC-013 ficou vencida.
+> A arquitetura foi revisada em 20/08/2026 e boa parte das SPEC-002 a SPEC-013 ficou vencida.
 > O `MVP-REVISADO.md` é a **fonte de verdade** da arquitetura: dezenove decisões, com o porquê
 > de cada uma, e a tabela do que foi superado.
 >
@@ -30,6 +30,23 @@ PostgreSQL 16 · BullMQ · Redis · Turborepo
 
 ---
 
+## Execução incremental
+
+O desenvolvimento avança com **uma SPEC ativa por vez**:
+
+1. a SPEC é revisada contra o `MVP-REVISADO.md` e as fontes atuais das integrações afetadas;
+2. escopo, não escopo, invariantes, contratos e critérios de aceite são fechados;
+3. somente então a implementação começa;
+4. a próxima SPEC permanece bloqueada até build, lint, typecheck e testes da etapa ativa passarem;
+5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
+
+**SPEC concluída mais recente:** [`SPEC-001 — Foundation v2`](./SPEC-001-foundation.md).
+
+**Próxima etapa:** fechar o ADR de identidade/tenancy e a Q-03 para então reescrever e aprovar a
+SPEC-002.
+
+---
+
 ## Regras globais
 
 1. **TypeScript strict mode** em todos os arquivos. Sem `any` implícito.
@@ -40,7 +57,8 @@ PostgreSQL 16 · BullMQ · Redis · Turborepo
 5. **Toda escrita no banco** que gera evento de domínio usa `prisma.$transaction` + `OutboxService`.
 6. **Nomenclatura:** estados em `snake_case`, eventos em `dominio.acao`, jobs em `PascalCase + Job`.
 7. **Testes de integração** usam banco e Redis reais (`docker-compose.test.yml`). Nunca mockar Prisma.
-8. **RLS sempre ativo.** O `TenantInterceptor` roda antes de qualquer query de tenant.
+8. **RLS obrigatório em tabelas de tenant.** O contexto deve usar a mesma transação e conexão das
+   queries protegidas; `SET LOCAL` isolado em um interceptor não é suficiente.
 
 ---
 
@@ -62,8 +80,8 @@ Derivada das decisões do `MVP-REVISADO.md`. Cada bloco é entregável e testáv
 
 | # | Bloco | Conteúdo | Depende de |
 |---|---|---|---|
-| 1 | Fundação | Monorepo, Prisma, Docker, envs, health check | — |
-| 2 | Auth e wallet | Privy, sessão, `TenantInterceptor` com RLS | 1 |
+| 1 | Fundação | Monorepo, runtime da API/workers, Prisma, Outbox mínimo, Docker, configuração, liveness/readiness e testes | — |
+| 2 | Identidade, auth e wallet | ADR de identidade/tenancy, Privy, sessão, wallet e RLS transacional | 1 |
 | 3 | Produtor | Cadastro, customer BlindPay + KYC, conta Stellar e trustline patrocinadas pelo Relayer | 2 |
 | 4 | Eventos | CRUD de eventos e tipos de ingresso, página pública | 3 |
 | 5 | Contrato do ingresso | Extensão do NFT auditado da OpenZeppelin: mint idempotente, check-in, vínculo com evento | 1 |
@@ -81,11 +99,13 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 ## Definição global de "Pronto"
 
 - [ ] Todos os arquivos definidos existem
-- [ ] `pnpm turbo typecheck` passa sem erros
-- [ ] `pnpm turbo lint` passa sem warnings
+- [ ] `pnpm typecheck` passa sem erros
+- [ ] `pnpm lint` passa sem warnings
+- [ ] `pnpm build` passa sem erros
 - [ ] Testes unitários e de integração passam
 - [ ] Nenhuma variável de ambiente não documentada em `.env.example`
 - [ ] Nenhum `console.log` de debug no código commitado
+- [ ] A implementação não antecipa itens de SPECs posteriores
 
 ---
 
@@ -93,8 +113,8 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 
 | SPEC | Situação |
 |---|---|
-| SPEC-001 foundation | Válida, com ajustes de env |
-| SPEC-002 auth | Válida — Privy segue sendo o provedor |
+| SPEC-001 foundation | **Implementada e validada em 29/09/2026** — Foundation v2 concluída |
+| SPEC-002 auth | Próxima para revisão; depende do ADR de identidade/tenancy e da Q-03 |
 | SPEC-003 organizations | Reescrever: BlindPay usa *customer*, não *receiver* — [arquivada](../_archive/06-sdd/SPEC-003-organizations.md) |
 | SPEC-004 events | Válida, com resíduo de escrow no cancelamento |
 | SPEC-005 purchase | Reescrever: fluxo de payin quote → payin — [arquivada](../_archive/06-sdd/SPEC-005-purchase.md) |
@@ -107,4 +127,7 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | SPEC-012 dashboard | Reduzir: polling em vez de WebSocket |
 | SPEC-013 pipeline | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig |
 
-As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Antes de reescrever as dos blocos 3, 5, 6 e 8, resolver as questões em aberto do §9 do MVP-REVISADO.md.
+As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Antes da SPEC-002,
+deve ser resolvida a Q-03 e fechado o modelo `User × Organization × Membership`. Antes de
+reescrever as dos blocos 3, 5, 6 e 8, devem ser resolvidas as demais questões aplicáveis do §9 do
+`MVP-REVISADO.md`.

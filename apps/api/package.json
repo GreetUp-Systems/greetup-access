@@ -1,0 +1,31 @@
+{
+  "name": "@access/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf dist coverage *.tsbuildinfo",
+    "dev": "dotenv -e ../../.env -- tsx watch src/main.ts",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --max-warnings=0",
+    "start": "dotenv -e ../../.env -- node dist/main.js",
+    "test": "jest --config jest.config.ts --runInBand",
+    "test:integration": "node test/run-integration.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@access/config": "workspace:*",
+    "@access/database": "workspace:*",
+    "@access/redis": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "express": "^5.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.0.0",
+    "@types/express": "^5.0.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@access/redis",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf dist coverage *.tsbuildinfo",
+    "lint": "eslint \"src/**/*.ts\" --max-warnings=0",
+    "test": "jest --config jest.config.ts --runInBand --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "ioredis": "^5.4.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0"
+  }
+}

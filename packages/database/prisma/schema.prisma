@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_DIRECT")
+}
+
+enum OutboxEventStatus {
+  PENDING    @map("pending")
+  PROCESSING @map("processing")
+  PROCESSED  @map("processed")
+  FAILED     @map("failed")
+}
+
+model OutboxEvent {
+  id               String            @id @default(uuid()) @db.Uuid
+  deduplicationKey String            @unique @map("deduplication_key")
+  aggregateType    String            @map("aggregate_type")
+  aggregateId      String            @map("aggregate_id")
+  eventType        String            @map("event_type")
+  payload          Json
+  status           OutboxEventStatus @default(PENDING)
+  attempts         Int               @default(0)
+  availableAt      DateTime          @default(now()) @map("available_at")
+  processedAt      DateTime?         @map("processed_at")
+  lastError        String?           @map("last_error")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  @@index([status, availableAt, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("outbox_events")
+}

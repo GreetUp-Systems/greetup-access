@@ -1,0 +1,24 @@
+{
+  "name": "@access/workers",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf dist coverage *.tsbuildinfo",
+    "dev": "dotenv -e ../../.env -- tsx watch src/main.ts",
+    "lint": "eslint \"src/**/*.ts\" --max-warnings=0",
+    "start": "dotenv -e ../../.env -- node dist/main.js",
+    "test": "jest --config jest.config.ts --runInBand --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@access/config": "workspace:*",
+    "@access/database": "workspace:*",
+    "@access/redis": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0"
+  }
+}
