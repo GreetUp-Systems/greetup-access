@@ -1,4 +1,8 @@
-# Modelo de Dados — GreetUp Access
+# Modelo de Dados — Access
+
+> ⚠️ **Documento anterior à revisão de arquitetura de 20/08/2026.** Parte do conteúdo está
+> superada (escrow, Treasury própria, KMS, CQRS, WebSocket). Em qualquer conflito, vale o
+> [`MVP-REVISADO.md`](../06-sdd/MVP-REVISADO.md). Será revisado junto com as SPECs de cada bloco.
 
 Dados pessoais e financeiros ficam **exclusivamente off-chain** (PostgreSQL).  
 A blockchain armazena apenas dados não-pessoais: IDs, endereços de wallet, status e timestamps.
@@ -362,7 +366,7 @@ O `FinancialLedger` é uma tabela de auditoria imutável. Nenhuma linha é alter
 // entry_type values
 type LedgerEntryType =
   | 'payment_received'       // Pix confirmado, valor atribuído ao produtor
-  | 'greetup_fee'            // Taxa da plataforma deduzida
+  | 'platform_fee'            // Taxa da plataforma deduzida
   | 'blindpay_fee'           // Taxa BlindPay deduzida
   | 'balance_released'       // Saldo liberado para retirada
   | 'balance_blocked'        // Saldo bloqueado

@@ -1,11 +1,11 @@
 {
-  "name": "access-platform",
+  "name": "access",
   "version": "0.1.0",
   "private": true,
-  "description": "GreetUp Access — Corporate event ticketing, credentialing and financial settlement platform",
+  "description": "Access — ticketing, check-in and payouts for events of any kind and size",
   "repository": {
     "type": "git",
-    "url": "https://github.com/GreetUp-Corp/access-platform.git"
+    "url": "https://github.com/GreetUp-Systems/greetup-access.git"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {

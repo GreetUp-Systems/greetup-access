@@ -1,4 +1,4 @@
-# MVP Revisado — GreetUp Access
+# MVP Revisado — Access
 
 > **Escopo:** camada blockchain, trilho financeiro e camada de aplicação.
 >
@@ -13,7 +13,7 @@ bancária.
 
 **Comprador:** vê os ingressos, compra com Pix, recebe o ingresso na conta dele, entra no evento.
 
-**Staff:** escaneia o QR Code e valida o ingresso, inclusive sem internet.
+**Staff:** escaneia o QR Code e valida o ingresso online. A capacidade offline entra na fase 2 (D-19).
 
 ---
 
@@ -49,7 +49,7 @@ Comprador                                   Produtor
 | # | Decisão | Por quê |
 |---|---|---|
 | **D-01** | Wallet via **Privy** | Gratuito até 500 MAU — suficiente para validar. Tem MCP, o que acelera o desenvolvimento. Recuperação, login social e sincronização entre dispositivos vêm prontos. |
-| **D-02** | Gas patrocinado via **OpenZeppelin Relayer** | Fee bump nativo, sem Treasury própria nem gestão de sequence number. Substituiu o Launchtube (descontinuado). **Cobre também a criação da conta Stellar e a trustline de USDC**: a transação leva `beginSponsoringFutureReserves` → `createAccount` → `changeTrust` → `endSponsoringFutureReserves`, e o Relayer paga a taxa. A reserva mínima (~1 XLM por conta, ~0,5 por trustline) fica travada na conta patrocinadora da GreetUp e volta se a conta for encerrada. Nem produtor nem comprador precisam de XLM. |
+| **D-02** | Gas patrocinado via **OpenZeppelin Relayer** | Fee bump nativo, sem Treasury própria nem gestão de sequence number. Substituiu o Launchtube (descontinuado). **Cobre também a criação da conta Stellar e a trustline de USDC**: a transação leva `beginSponsoringFutureReserves` → `createAccount` → `changeTrust` → `endSponsoringFutureReserves`, e o Relayer paga a taxa. A reserva mínima (~1 XLM por conta, ~0,5 por trustline) fica travada na conta patrocinadora do Access e volta se a conta for encerrada. Nem produtor nem comprador precisam de XLM. |
 | **D-03** | Ingresso é **extensão do módulo NFT auditado da OpenZeppelin** | `max_supply`, `owner_of`, `get_owner_tokens`, `transfer`, `burn` já prontos. Só check-in, vínculo com evento e idempotência são código nosso. |
 | **D-04** | Comprador **é dono do ingresso**. Transferência **única**, só para conta válida na plataforma, e ingresso transferido **não é reembolsável** | Cobre mercado secundário, lista de credenciamento e o golpe do "transfiro e peço estorno". Transferência errada não tem reversão no MVP. |
 | **D-05** | Transferência exige **assinatura do comprador e da plataforma** (auth-entry signing) | Propriedade real com regra aplicável. Funciona com conta clássica `G…`, que é o formato do Privy. |
@@ -61,11 +61,11 @@ Comprador                                   Produtor
 | # | Decisão | Por quê |
 |---|---|---|
 | **D-08** | **BlindPay** como provedor de pagamento | O comprador **não é identificado** — paga o Pix e pronto. Stellar suportado em payin e payout com USDC. Testnet gratuita. Tem MCP. Os US$ 399 são mínimo contra taxa gerada, não custo fixo. |
-| **D-09** | **Cada produtor é um customer próprio dentro da instância da GreetUp**, com KYC e blockchain wallet próprios | Não é escolha: é a regra anti-*nesting* da BlindPay. A GreetUp não pode receber em nome de terceiros. |
+| **D-09** | **Cada produtor é um customer próprio dentro da instância do Access**, com KYC e blockchain wallet próprios | Não é escolha: é a regra anti-*nesting* da BlindPay. O Access não pode receber em nome de terceiros. |
 | **D-10** | **Wallet externa (`bw_...`), não managed wallet** | Managed wallets da BlindPay não suportam Stellar — só EVM e Solana. A wallet Privy do produtor entra como blockchain wallet externa. |
 | **D-11** | **CCTP e cross-chain ficam fora do MVP** | Entram depois da validação. |
 | **D-12** | **Não há escrow nem retenção no MVP** | Consequência aceita de D-09: o payin entrega direto na wallet do produtor. Cancelamento de evento e reembolso ficam cobertos por relacionamento e contrato — viável porque os produtores do piloto são conhecidos pessoalmente. |
-| **D-13** | **Taxa da GreetUp via partner fee nativa da BlindPay** | `POST /partner-fees` cria a configuração (`pf_...`); a quote referencia `partner_fee_id`. Percentual em basis points (teto 10%) e/ou fixo, separados para payin e payout. Sem cálculo nem movimentação nossa. |
+| **D-13** | **Taxa do Access via partner fee nativa da BlindPay** | `POST /partner-fees` cria a configuração (`pf_...`); a quote referencia `partner_fee_id`. Percentual em basis points (teto 10%) e/ou fixo, separados para payin e payout. Sem cálculo nem movimentação nossa. |
 
 ### Camada de aplicação
 
@@ -84,8 +84,8 @@ Comprador                                   Produtor
 
 ### 4.1 Onboarding do produtor
 
-1. Produtor se cadastra na GreetUp e cria a wallet Privy
-2. Criar a conta Stellar e a trustline de USDC, patrocinadas pela GreetUp (D-02)
+1. Produtor se cadastra no Access e cria a wallet Privy
+2. Criar a conta Stellar e a trustline de USDC, patrocinadas pelo Access (D-02)
 3. Criar o customer na BlindPay (`POST /v1/instances/{instance_id}/customers`) com `tos_id`, `type`,
    `kyc_type`, `email` e dados pessoais/endereço
 4. Registrar a blockchain wallet dele (`bw_...`) apontando para o endereço Stellar
@@ -115,8 +115,10 @@ na conta bancária.
 
 ### 4.4 Credenciamento
 
-Snapshot assinado baixado antes do evento, validação local por HMAC no PWA, fila de sincronização
-local, e registro on-chain do check-in em lote quando houver rede.
+**Fase 1 (MVP):** check-in online. O staff escaneia o QR Code, a API valida e registra o check-in.
+
+**Fase 2 (após validação, D-19):** snapshot assinado baixado antes do evento, validação local por
+HMAC no PWA, fila de sincronização local e registro on-chain do check-in em lote quando houver rede.
 
 ---
 
@@ -146,7 +148,7 @@ marketplace.
 
 ## 6. Dívidas conscientes
 
-Duas, e as duas têm a mesma causa: sem retenção de valor, a GreetUp não tem lastro para desfazer
+Duas, e as duas têm a mesma causa: sem retenção de valor, o Access não tem lastro para desfazer
 nada. Funcionam no piloto porque os produtores são conhecidos pessoalmente. **Nenhuma das duas
 escala**, e as duas precisam de solução antes da abertura ao mercado.
 
@@ -189,7 +191,22 @@ Não são decisões nem pendências — são coisas que mordem se ninguém soube
 | `SPEC-009` — credenciamento | Dividir: check-in online na fase 1, capacidade offline na fase 2. |
 | `SPEC-012` — dashboard | Reduzir: polling em vez de WebSocket. |
 | `SPEC-013` — pipeline | Reduzir: sem OpenTelemetry, Grafana nem deploy de contrato multi-sig. |
-| `RN-005`, `RN-009` | Reescrever no `product-vision.md`. |
+| `RN-005`, `RN-009` | Reescritas no `product-vision.md` v0.3. |
 
 `ADR-001` (Stellar sobre EVM), `ADR-002` (Outbox), `ADR-004` (BlindPay), `ADR-005` (RLS) e
 `ADR-006` (BullMQ) seguem válidos.
+
+Os documentos superados foram movidos para [docs/_archive/](../_archive/README.md).
+
+---
+
+## 9. Questões de arquitetura em aberto
+
+Precisam de decisão antes de implementar os blocos afetados. Até lá, nenhuma implementação deve
+escolher uma resposta por conta própria.
+
+| # | Questão | Blocos afetados |
+|---|---|---|
+| **Q-01** | **Chave de assinatura da plataforma.** D-05 exige assinatura da plataforma na transferência, e mint e check-in on-chain também precisam de uma autoridade no contrato. O Relayer paga a taxa, mas não substitui essa autoridade. Onde a chave vive, como é custodiada e rotacionada? | 5, 6, 8 |
+| **Q-02** | **Conta Stellar do comprador.** Se o comprador assina a transferência (D-05), a conta `G…` dele precisa existir na rede, com reserva patrocinada de ~1 XLM (D-02). Num evento de 500 pessoas, isso trava ~500 XLM na conta patrocinadora. A conta é criada no mint, ou só quando o comprador for transferir? | 3, 6 |
+| **Q-03** | **Onboarding do comprador no Privy.** O comprador paga "sem cadastro", mas a wallet Privy criada no checkout (D-06) depende de login por email/OTP para ele acessar o ingresso depois. Como fica essa etapa na UX? | 2, 6, 7 |

@@ -1,5 +1,7 @@
 # SPEC-013 — Pipeline CI/CD (GitHub Actions + Railway + Cloudflare + KMS)
 
+> ⚠️ **SPEC a reduzir** — sem OpenTelemetry, Grafana nem deploy de contrato multi-sig (D-18). Em qualquer conflito, vale o [MVP-REVISADO.md](./MVP-REVISADO.md). Não implemente a partir desta versão.
+
 **Objetivo:** Configurar toda a infraestrutura de CI/CD, deploy blue-green no Railway, CDN e WAF via Cloudflare, key management com AWS KMS e observabilidade com OpenTelemetry.
 
 **Pré-requisitos:** Nenhum em termos de código. Pode ser implementado em paralelo.
@@ -123,7 +125,7 @@ import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { NestInstrumentation } from "@opentelemetry/instrumentation-nestjs-core";
 
 const sdk = new NodeSDK({
-  serviceName: process.env.OTEL_SERVICE_NAME ?? "greetup-api",
+  serviceName: process.env.OTEL_SERVICE_NAME ?? "access-api",
   traceExporter: new OTLPTraceExporter({
     url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
   }),
@@ -151,7 +153,7 @@ process.on("SIGTERM", () => sdk.shutdown());
       "Sid": "AllowSign",
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::ACCOUNT:role/greetup-api-role"
+        "AWS": "arn:aws:iam::ACCOUNT:role/access-api-role"
       },
       "Action": ["kms:Sign", "kms:GetPublicKey"],
       "Resource": "*",
@@ -261,11 +263,11 @@ SENTRY_DSN=
 
 ```bash
 # Validar que o Dockerfile builda corretamente
-docker build -f apps/api/Dockerfile -t greetup-api:test .
-docker run --rm greetup-api:test node -e "console.log('build ok')"
+docker build -f apps/api/Dockerfile -t access-api:test .
+docker run --rm access-api:test node -e "console.log('build ok')"
 
 # Validar que o health check funciona no container
-docker run --env-file .env.test -p 3001:3001 greetup-api:test &
+docker run --env-file .env.test -p 3001:3001 access-api:test &
 curl --retry 5 --retry-delay 2 http://localhost:3001/health
 ```
 

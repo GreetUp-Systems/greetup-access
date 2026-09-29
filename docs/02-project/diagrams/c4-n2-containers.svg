@@ -21,9 +21,9 @@
   <text x="66" y="265" text-anchor="middle" font-size="12" font-weight="600" fill="#085041">Staff</text>
   <text x="66" y="281" text-anchor="middle" font-size="10.5" fill="#0F6E56">PWA offline</text>
 
-  <!-- Fronteira GreetUp -->
+  <!-- Fronteira Access -->
   <rect x="136" y="46" width="380" height="480" rx="12" fill="none" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="6 4"/>
-  <text x="150" y="64" font-size="10.5" fill="#8A8880">GreetUp Access — boundary</text>
+  <text x="150" y="64" font-size="10.5" fill="#8A8880">Access — boundary</text>
 
   <!-- Containers internos -->
   <rect x="152" y="76" width="160" height="64" rx="8" fill="#EEEDFE" stroke="#7F77DD"/>

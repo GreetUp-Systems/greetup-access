@@ -1,5 +1,7 @@
 # SPEC-009 — Checkin (Snapshot HMAC + PWA Offline + IndexedDB + Sync)
 
+> ⚠️ **SPEC a dividir** — check-in online na fase 1; capacidade offline na fase 2 (D-19). Em qualquer conflito, vale o [MVP-REVISADO.md](./MVP-REVISADO.md). Não implemente a partir desta versão.
+
 **Objetivo:** Implementar o sistema completo de credenciamento: geração de snapshot assinado, validação offline no PWA (IndexedDB + Service Worker), sincronização em batch e registro on-chain.
 
 **Pré-requisitos:** SPEC-007, SPEC-008
@@ -190,7 +192,7 @@ export class CheckinDatabase extends Dexie {
   snapshots!: Table<{ eventId: string; data: string; generatedAt: number }>;
 
   constructor() {
-    super("greetup-checkin");
+    super("access-checkin");
     this.version(1).stores({
       tickets: "ticketId, eventId, status",
       syncQueue: "++id, ticketId, eventId",

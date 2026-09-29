@@ -1,6 +1,10 @@
-# Glossário Técnico — GreetUp Access
+# Glossário Técnico — Access
 
-Termos ordenados alfabeticamente com definição precisa no contexto do GreetUp Access.
+> ⚠️ **Documento anterior à revisão de arquitetura de 20/08/2026.** Parte do conteúdo está
+> superada (escrow, Treasury própria, KMS, CQRS, WebSocket). Em qualquer conflito, vale o
+> [`MVP-REVISADO.md`](../06-sdd/MVP-REVISADO.md). Será revisado junto com as SPECs de cada bloco.
+
+Termos ordenados alfabeticamente com definição precisa no contexto do Access.
 
 ---
 
@@ -17,13 +21,13 @@ API nativa do browser (parte dos Service Workers) que permite sincronização au
 Estado do saldo do produtor para um determinado evento. Valores: `pending_settlement`, `blocked`, `available`, `withdrawn`, `refunded`, `disputed`. Controlado tanto no Postgres (auditoria) quanto no EscrowContract Soroban (autorização).
 
 **BlindPay**  
-Provedor de on/off-ramp Pix ↔ USDC da plataforma. Parceiro nativo Stellar, YC-backed, LatAm-first. Responsável por: processar pagamentos Pix (payin), executar retiradas via Pix (payout), realizar KYB dos produtores e garantir compliance regulatório. A GreetUp nunca custodia os valores — o BlindPay é o liquidante.
+Provedor de on/off-ramp Pix ↔ USDC da plataforma. Parceiro nativo Stellar, YC-backed, LatAm-first. Responsável por: processar pagamentos Pix (payin), executar retiradas via Pix (payout), realizar KYB dos produtores e garantir compliance regulatório. O Access nunca custodia os valores — o BlindPay é o liquidante.
 
 **BullMQ**  
 Biblioteca de filas de trabalho sobre Redis Streams para Node.js. Oferece retry exponencial, Dead-Letter Queue (DLQ), prioridade, delay, concorrência configurável e cron jobs. Usado para processar todos os jobs assíncronos do sistema.
 
 **CQRS (Command Query Responsibility Segregation)**  
-Padrão arquitetural que separa operações de escrita (commands) e leitura (queries) em modelos distintos. No GreetUp Access, aplicado nos domínios de Tickets e Finance: escrita via Postgres + Soroban com consistência forte; leitura via Redis com projeção denormalizada e consistência eventual.
+Padrão arquitetural que separa operações de escrita (commands) e leitura (queries) em modelos distintos. No Access, aplicado nos domínios de Tickets e Finance: escrita via Postgres + Soroban com consistência forte; leitura via Redis com projeção denormalizada e consistência eventual.
 
 **Dead-Letter Queue (DLQ)**  
 Fila especial no BullMQ que recebe jobs que falharam após todas as tentativas de retry. Todo job na DLQ gera alerta automático no Prometheus. Operador pode inspecionar, diagnosticar e reprocessar via painel admin.
@@ -47,13 +51,13 @@ Algoritmo de autenticação de mensagem usando função de hash criptográfica. 
 Interface REST e streaming da Stellar para interagir com a rede. Usada pelo backend para submeter transações assinadas, consultar estado de contas e indexar eventos dos contratos Soroban.
 
 **Idempotência**  
-Propriedade de uma operação que, quando executada múltiplas vezes com os mesmos parâmetros, produz o mesmo resultado sem efeitos colaterais adicionais. Crítico no GreetUp Access para: webhooks do BlindPay (por `blindpayPayinId`), mints Soroban (por `purchase_id` no contrato), check-ins (contrato rejeita duplicatas).
+Propriedade de uma operação que, quando executada múltiplas vezes com os mesmos parâmetros, produz o mesmo resultado sem efeitos colaterais adicionais. Crítico no Access para: webhooks do BlindPay (por `blindpayPayinId`), mints Soroban (por `purchase_id` no contrato), check-ins (contrato rejeita duplicatas).
 
 **IndexedDB**  
 Banco de dados NoSQL embutido no browser, usado pelo PWA de credenciamento para armazenar o snapshot de tickets válidos e a fila de check-ins offline.
 
 **KYB (Know Your Business)**  
-Processo de verificação da identidade e documentação de pessoas jurídicas ou físicas que recebem pagamentos. Obrigatório para produtores de eventos no GreetUp Access. Realizado pelo BlindPay durante o onboarding — inclui upload de documentos e selfie. O comprador de ingresso nunca passa por KYC.
+Processo de verificação da identidade e documentação de pessoas jurídicas ou físicas que recebem pagamentos. Obrigatório para produtores de eventos no Access. Realizado pelo BlindPay durante o onboarding — inclui upload de documentos e selfie. O comprador de ingresso nunca passa por KYC.
 
 **Ledger (Financial Ledger)**  
 Tabela `financial_ledger` append-only no Postgres que registra todos os eventos financeiros do sistema. Nenhuma linha é alterada ou deletada. O saldo atual de qualquer produtor é derivado da sequência de entradas no ledger. Garante rastreabilidade completa e irrefutável para auditoria.
@@ -65,19 +69,19 @@ Mecanismo de exclusão mútua via Redis que garante que apenas uma instância ex
 Usuário que realizou pelo menos uma ação na plataforma no mês. Métrica de billing do Privy: grátis até 499 MAU/mês, $299/mês até 2.499, $499/mês até 9.999, Enterprise acima disso.
 
 **Multi-sig (Multi-signature)**  
-Mecanismo que requer múltiplas assinaturas para autorizar uma operação. No GreetUp Access: esquema 2-of-3 para operações críticas do EscrowContract (release, block) e TicketContract (cancel_event). Signers: KMS prod (Signer A) + HSM físico do fundador (Signer B) + cold storage de emergência (Signer C).
+Mecanismo que requer múltiplas assinaturas para autorizar uma operação. No Access: esquema 2-of-3 para operações críticas do EscrowContract (release, block) e TicketContract (cancel_event). Signers: KMS prod (Signer A) + HSM físico do fundador (Signer B) + cold storage de emergência (Signer C).
 
 **Outbox Pattern (Transactional Outbox)**  
 Padrão de design que garante entrega atômica de eventos de domínio. O evento é escrito na tabela `domain_events` na mesma transação do banco que atualiza o estado da entidade. Um processo separado (OutboxRelay) publica os eventos no BullMQ. Elimina o risco de estado atualizado sem evento correspondente.
 
 **Payin**  
-Operação de on-ramp no BlindPay: recebe pagamento em BRL via Pix e envia USDC para uma wallet blockchain especificada. No fluxo do GreetUp Access, o destino é a wallet do EscrowContract.
+Operação de on-ramp no BlindPay: recebe pagamento em BRL via Pix e envia USDC para uma wallet blockchain especificada. No fluxo do Access, o destino é a wallet do EscrowContract.
 
 **Payout**  
 Operação de off-ramp no BlindPay: recebe USDC de uma wallet blockchain e envia BRL via Pix para a conta bancária cadastrada do produtor. Requer que o produtor seja um receiver com KYB aprovado.
 
 **Policy Signer**  
-Signer adicional configurado em uma wallet Privy com permissões restritas a um conjunto específico de operações. No GreetUp Access, o backend usa um policy signer na wallet do comprador para assinar mints e check-ins sem interação do usuário — escopo mínimo de segurança.
+Signer adicional configurado em uma wallet Privy com permissões restritas a um conjunto específico de operações. No Access, o backend usa um policy signer na wallet do comprador para assinar mints e check-ins sem interação do usuário — escopo mínimo de segurança.
 
 **Privy**  
 Provedor de wallet abstraction. Cria e gerencia wallets Stellar embedded invisíveis para o usuário. Login por email, social ou passkey. O usuário nunca vê endereço de wallet, seed phrase ou chave privada. Adquirido pela Stripe em junho de 2025.
@@ -89,13 +93,13 @@ Entidade que representa uma tentativa de compra de ingresso. Tem máquina de est
 Aplicação web que pode ser instalada no dispositivo, funcionar offline e receber notificações push. Usado para o app de credenciamento do staff — funciona no browser sem necessidade de app store.
 
 **RLS (Row-Level Security)**  
-Feature do PostgreSQL que aplica políticas de acesso automaticamente em nível de linha para cada query. No GreetUp Access, garante isolamento de tenants: cada organização só vê seus próprios dados, mesmo que o código da aplicação esqueça de filtrar por `organization_id`.
+Feature do PostgreSQL que aplica políticas de acesso automaticamente em nível de linha para cada query. No Access, garante isolamento de tenants: cada organização só vê seus próprios dados, mesmo que o código da aplicação esqueça de filtrar por `organization_id`.
 
 **Soroban**  
-Plataforma de smart contracts da Stellar. Contratos escritos em Rust, compilados para WebAssembly (WASM) e executados na rede Stellar. Usado para o TicketContract e EscrowContract do GreetUp Access.
+Plataforma de smart contracts da Stellar. Contratos escritos em Rust, compilados para WebAssembly (WASM) e executados na rede Stellar. Usado para o TicketContract e EscrowContract do Access.
 
 **Stellar**  
-Blockchain de pagamentos com foco em velocidade e baixo custo. Transações finalizam em 3–5 segundos, custo ~$0.00001/tx. USDC disponível como ativo nativo (não bridged). Usado como blockchain principal do GreetUp Access.
+Blockchain de pagamentos com foco em velocidade e baixo custo. Transações finalizam em 3–5 segundos, custo ~$0.00001/tx. USDC disponível como ativo nativo (não bridged). Usado como blockchain principal do Access.
 
 **Ticket Status**  
 Estado de um ingresso tokenizado. Valores: `reserved → issued → checked_in` (fluxo feliz) ou `cancelled`, `refunded`, `expired`, `invalidated` (fluxos alternativos). Controlado tanto no Postgres quanto no TicketContract Soroban.
@@ -107,13 +111,13 @@ Contrato Soroban (Rust) que controla a emissão, estados e check-in de ingressos
 Restrição on-chain no EscrowContract que impede qualquer release de saldo antes de um timestamp específico (`release_at`). Definido no momento do depósito e imutável. Mesmo que todas as chaves do multi-sig sejam comprometidas, o saldo não pode ser liberado antes do tempo.
 
 **Treasury**  
-Conta Stellar da GreetUp que paga fee-bumps de todas as transações dos compradores e produtores. A chave privada da Treasury nunca é exposta — signing acontece dentro do AWS KMS. Requer monitoramento de saldo mínimo de XLM.
+Conta Stellar do Access que paga fee-bumps de todas as transações dos compradores e produtores. A chave privada da Treasury nunca é exposta — signing acontece dentro do AWS KMS. Requer monitoramento de saldo mínimo de XLM.
 
 **Trustline**  
 Autorização explícita de uma conta Stellar para receber um ativo não-nativo (como USDC). Toda nova wallet Stellar precisa estabelecer uma trustline antes de poder receber USDC. Custo: 0.5 XLM (base reserve). Gerenciado automaticamente pelo backend, patrocinado pela Treasury.
 
 **USDC (USD Coin)**  
-Stablecoin emitida pelo Circle, lastreada 1:1 em dólar americano. Disponível nativamente na Stellar com supply > $83M e volume > $4.2B. Usado como moeda de liquidação intermediária no GreetUp Access — o comprador paga em BRL, o sistema opera internamente em USDC, o produtor recebe em BRL.
+Stablecoin emitida pelo Circle, lastreada 1:1 em dólar americano. Disponível nativamente na Stellar com supply > $83M e volume > $4.2B. Usado como moeda de liquidação intermediária no Access — o comprador paga em BRL, o sistema opera internamente em USDC, o produtor recebe em BRL.
 
 **WebSocket Gateway**  
 Componente NestJS baseado em Socket.io que mantém conexões bidirecionais com clientes web e PWA. Emite eventos em tempo real para rooms específicas (por tenant, por evento, por comprador). Alimentado por Redis Pub/Sub — os workers publicam no Redis após concluir operações.

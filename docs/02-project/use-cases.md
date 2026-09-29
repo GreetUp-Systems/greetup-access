@@ -1,4 +1,8 @@
-# Casos de Uso — GreetUp Access
+# Casos de Uso — Access
+
+> ⚠️ **Documento anterior à revisão de arquitetura de 20/08/2026.** Parte do conteúdo está
+> superada (escrow, Treasury própria, KMS, CQRS, WebSocket). Em qualquer conflito, vale o
+> [`MVP-REVISADO.md`](../06-sdd/MVP-REVISADO.md). Será revisado junto com as SPECs de cada bloco.
 
 ---
 
@@ -126,7 +130,7 @@
 
 ## UC-005 — Cancelamento de Evento
 
-**Ator principal:** Produtor ou GreetUp (admin)  
+**Ator principal:** Produtor ou Access (admin)  
 **Pré-condições:** evento ativo com ingressos emitidos  
 **Resultado esperado:** evento cancelado, saldo bloqueado, compradores elegíveis a reembolso
 

@@ -1,5 +1,7 @@
 # SPEC-001 — Foundation
 
+> ⚠️ **Válida, com resíduos** — o schema Prisma ainda traz `WITHDRAW_ESCROW_DONE` e `sorobanEscrowId`, e a árvore usa `access-platform/`; remover ao implementar (D-12). Em qualquer conflito, vale o [MVP-REVISADO.md](./MVP-REVISADO.md).
+
 **Objetivo:** Configurar o monorepo Turborepo, schema Prisma completo, Docker para dev, variáveis de ambiente e estrutura base de todos os apps.
 
 **Pré-requisitos:** Nenhum. Esta é a primeira spec.
@@ -144,7 +146,7 @@ enum DomainEventStatus {
 
 enum LedgerEntryType {
   PAYMENT_RECEIVED
-  GREETUP_FEE
+  PLATFORM_FEE
   BLINDPAY_FEE
   BALANCE_RELEASED
   BALANCE_BLOCKED
@@ -529,8 +531,8 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON organizations
 ## 7. Variáveis de ambiente necessárias
 
 ```bash
-DATABASE_URL=postgresql://greetup:greetup@localhost:5432/greetup_dev
-DATABASE_URL_DIRECT=postgresql://greetup:greetup@localhost:5432/greetup_dev
+DATABASE_URL=postgresql://access:access@localhost:5432/access_dev
+DATABASE_URL_DIRECT=postgresql://access:access@localhost:5432/access_dev
 REDIS_URL=redis://localhost:6379
 ```
 

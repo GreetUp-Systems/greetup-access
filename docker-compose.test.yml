@@ -6,24 +6,24 @@ version: '3.9'
 services:
   postgres-test:
     image: postgres:16-alpine
-    container_name: greetup_postgres_test
+    container_name: access_postgres_test
     environment:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
-      POSTGRES_DB: greetup_test
+      POSTGRES_DB: access_test
     ports:
       - '5433:5432'
     tmpfs:
       - /var/lib/postgresql/data  # in-memory para velocidade
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U test -d greetup_test']
+      test: ['CMD-SHELL', 'pg_isready -U test -d access_test']
       interval: 2s
       timeout: 3s
       retries: 10
 
   redis-test:
     image: redis:7-alpine
-    container_name: greetup_redis_test
+    container_name: access_redis_test
     ports:
       - '6380:6379'
     command: redis-server --save ""  # sem persistência

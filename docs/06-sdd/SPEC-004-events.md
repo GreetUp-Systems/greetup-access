@@ -1,8 +1,10 @@
 # SPEC-004 — Events (CRUD de Eventos e Ticket Types)
 
+> ⚠️ **Válida, com resíduo** — o cancelamento ainda chama `EscrowContract.block()`; não há escrow (D-12), cancelamento é tratado por contrato e relacionamento (RN-014). Em qualquer conflito, vale o [MVP-REVISADO.md](./MVP-REVISADO.md).
+
 **Objetivo:** Implementar criação, edição e publicação de eventos, tipos de ingresso e políticas de reembolso. Página pública do evento.
 
-**Pré-requisitos:** SPEC-001, SPEC-002, SPEC-003
+**Pré-requisitos:** SPEC-001, SPEC-002, SPEC de organizations (bloco 3 do OVERVIEW.md — a versão anterior foi arquivada)
 
 **Tempo estimado:** 1 dia
 

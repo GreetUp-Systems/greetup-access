@@ -1,6 +1,6 @@
-# GreetUp Access
+# Access
 
-> Plataforma de venda de ingressos, credenciamento e repasse financeiro para eventos corporativos B2B.
+> Solução para vender ingressos, controlar a entrada e receber pelas vendas, para eventos de qualquer tipo e tamanho.
 
 **Stack:** Stellar · Soroban · Privy · BlindPay · NestJS · Next.js 15 · PostgreSQL · BullMQ · Turborepo
 
@@ -10,12 +10,12 @@
 
 ```
 apps/
-├── api/          # NestJS — API REST + WebSocket Gateway
+├── api/          # NestJS — API REST + SSE
 ├── web/          # Next.js 15 — frontend + PWA de credenciamento
-└── workers/      # BullMQ workers isolados (MintWorker, CheckinWorker, etc.)
+└── workers/      # BullMQ — OutboxRelay, MintTicketWorker, NotifyWorker
 
 packages/
-├── contracts/    # Rust + Soroban — TicketContract + EscrowContract
+├── contracts/    # Rust + Soroban — TicketContract (extensão do NFT OpenZeppelin)
 ├── database/     # Prisma schema + migrations
 ├── shared/       # Tipos TypeScript compartilhados
 └── config/       # ESLint, TSConfig base
@@ -102,7 +102,9 @@ stellar contract build --release
 
 ## Documentação
 
-A documentação técnica completa está em [`docs/`](./docs/README.md), incluindo:
+A documentação técnica completa está em [`docs/`](./docs/README.md). A **fonte de verdade da
+arquitetura** é o [`MVP-REVISADO.md`](./docs/06-sdd/MVP-REVISADO.md) — em qualquer conflito com
+outro documento, vale ele. Também em `docs/`:
 
 - [Visão do Produto](./docs/01-vision/product-vision.md)
 - [Arquitetura C4](./docs/02-project/architecture-c4.md)
@@ -125,9 +127,9 @@ A documentação técnica completa está em [`docs/`](./docs/README.md), incluin
 
 Ver [`.env.example`](./.env.example) para a lista completa de variáveis necessárias.
 
-Secrets em produção gerenciados via **Doppler** + **AWS Secrets Manager**.  
+Secrets em produção gerenciados via **Doppler**.  
 Nunca commitar o `.env` com valores reais.
 
 ---
 
-> **GreetUp-Corp/access-platform** · Confidencial
+> **GreetUp-Systems/greetup-access** · Confidencial
