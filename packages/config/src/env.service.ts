@@ -14,6 +14,10 @@ export interface InfrastructureConfig {
 export interface ApiConfig extends InfrastructureConfig {
   apiPort: number;
   healthCheckTimeoutMs: number;
+  privyAppId: string;
+  privyAppSecret: string;
+  privyJwtVerificationKey: string;
+  privyApiTimeoutMs: number;
 }
 
 function parseEnvironment<TSchema extends z.ZodTypeAny>(
@@ -56,5 +60,9 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     databaseDirectUrl: parsed.DATABASE_URL_DIRECT,
     redisUrl: parsed.REDIS_URL,
     healthCheckTimeoutMs: parsed.HEALTH_CHECK_TIMEOUT_MS,
+    privyAppId: parsed.PRIVY_APP_ID,
+    privyAppSecret: parsed.PRIVY_APP_SECRET,
+    privyJwtVerificationKey: parsed.PRIVY_JWT_VERIFICATION_KEY,
+    privyApiTimeoutMs: parsed.PRIVY_API_TIMEOUT_MS,
   };
 }

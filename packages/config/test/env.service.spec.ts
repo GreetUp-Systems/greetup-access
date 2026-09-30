@@ -7,6 +7,10 @@ const validEnvironment: NodeJS.ProcessEnv = {
   DATABASE_URL_DIRECT: "postgresql://test:test@localhost:5433/access_test",
   REDIS_URL: "redis://localhost:6380",
   HEALTH_CHECK_TIMEOUT_MS: "500",
+  PRIVY_APP_ID: "test-app-id",
+  PRIVY_APP_SECRET: "test-app-secret",
+  PRIVY_JWT_VERIFICATION_KEY: "test-verification-key",
+  PRIVY_API_TIMEOUT_MS: "5000",
 };
 
 describe("environment configuration", () => {
@@ -14,6 +18,10 @@ describe("environment configuration", () => {
     const environment = { ...validEnvironment };
     delete environment.API_PORT;
     delete environment.HEALTH_CHECK_TIMEOUT_MS;
+    delete environment.PRIVY_APP_ID;
+    delete environment.PRIVY_APP_SECRET;
+    delete environment.PRIVY_JWT_VERIFICATION_KEY;
+    delete environment.PRIVY_API_TIMEOUT_MS;
 
     expect(loadInfrastructureConfig(environment)).toEqual({
       nodeEnv: "test",
@@ -27,6 +35,7 @@ describe("environment configuration", () => {
     expect(loadApiConfig(validEnvironment)).toMatchObject({
       apiPort: 3001,
       healthCheckTimeoutMs: 500,
+      privyApiTimeoutMs: 5000,
     });
   });
 
@@ -49,7 +58,19 @@ describe("environment configuration", () => {
     ["API_PORT", "65536"],
     ["HEALTH_CHECK_TIMEOUT_MS", "99"],
     ["HEALTH_CHECK_TIMEOUT_MS", "not-a-number"],
+    ["PRIVY_API_TIMEOUT_MS", "99"],
+    ["PRIVY_API_TIMEOUT_MS", "not-a-number"],
   ])("rejects invalid %s", (key, value) => {
     expect(() => loadApiConfig({ ...validEnvironment, [key]: value })).toThrow(key);
   });
+
+  it.each(["PRIVY_APP_ID", "PRIVY_APP_SECRET", "PRIVY_JWT_VERIFICATION_KEY"])(
+    "requires %s for the API",
+    (key) => {
+      const environment = { ...validEnvironment };
+      delete environment[key];
+
+      expect(() => loadApiConfig(environment)).toThrow(key);
+    },
+  );
 });
