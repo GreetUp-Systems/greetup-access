@@ -34,3 +34,28 @@ model OutboxEvent {
   @@index([aggregateType, aggregateId])
   @@map("outbox_events")
 }
+
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  privyUserId String   @unique @map("privy_user_id")
+  email       String   @unique @db.VarChar(320)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  wallet WalletAccount?
+
+  @@map("users")
+}
+
+model WalletAccount {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  privyWalletId  String   @unique @map("privy_wallet_id")
+  stellarAddress String   @unique @map("stellar_address") @db.VarChar(56)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("wallet_accounts")
+}

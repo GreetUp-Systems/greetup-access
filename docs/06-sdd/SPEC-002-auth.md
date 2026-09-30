@@ -1,6 +1,6 @@
 # SPEC-002 — Identidade, autenticação e wallet
 
-> **Status:** aprovada para implementação
+> **Status:** implementada e validada
 >
 > **Versão:** 2.0
 >
@@ -385,18 +385,18 @@ E executar o smoke test Privy descrito no §11 sem registrar credenciais.
 
 ## 15. Definição de pronto
 
-- [ ] ADR-009 permanece refletido no schema e nos contratos.
-- [ ] Access token Privy é verificado pelo SDK oficial.
-- [ ] Rotas privadas falham com `401` sem autenticação.
-- [ ] Health permanece pública.
-- [ ] Bootstrap cria ou reutiliza `User` e wallet de forma idempotente.
-- [ ] A wallet é Stellar, user-owned e pertence ao usuário autenticado.
-- [ ] Concorrência não produz duplicatas.
-- [ ] `GET /api/me` é somente leitura.
-- [ ] Nenhum secret, token ou dado sensível aparece em banco, fixtures ou logs.
-- [ ] Migration, build, lint, typecheck e testes passam.
-- [ ] Smoke test development confirma a integração real.
-- [ ] Nenhum modelo ou fluxo da SPEC-003 foi antecipado.
+- [x] ADR-009 permanece refletido no schema e nos contratos.
+- [x] Access token Privy é verificado pelo SDK oficial.
+- [x] Rotas privadas falham com `401` sem autenticação.
+- [x] Health permanece pública.
+- [x] Bootstrap cria ou reutiliza `User` e wallet de forma idempotente.
+- [x] A wallet é Stellar, user-owned e pertence ao usuário autenticado.
+- [x] Concorrência não produz duplicatas.
+- [x] `GET /api/me` é somente leitura.
+- [x] Nenhum secret, token ou dado sensível aparece em banco, fixtures ou logs.
+- [x] Migration, build, lint, typecheck e testes passam.
+- [x] Smoke test development confirma a integração real.
+- [x] Nenhum modelo ou fluxo da SPEC-003 foi antecipado.
 
 ## 16. Decisões adiadas
 

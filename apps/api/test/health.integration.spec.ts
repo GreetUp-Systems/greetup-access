@@ -15,6 +15,10 @@ const baseConfig: ApiConfig = {
   databaseDirectUrl: "postgresql://test:test@localhost:5433/access_test",
   redisUrl: "redis://localhost:6380",
   healthCheckTimeoutMs: 250,
+  privyAppId: "test-app-id",
+  privyAppSecret: "test-app-secret",
+  privyJwtVerificationKey: "test-verification-key",
+  privyApiTimeoutMs: 500,
 };
 
 async function createApp(config: ApiConfig): Promise<INestApplication> {
