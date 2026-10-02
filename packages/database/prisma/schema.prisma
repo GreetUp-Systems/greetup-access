@@ -34,6 +34,14 @@ enum BlindPayCustomerCreationStatus {
   FAILED  @map("failed")
 }
 
+enum StellarProvisioningStatus {
+  PENDING   @map("pending")
+  SIGNING   @map("signing")
+  SUBMITTED @map("submitted")
+  ACTIVE    @map("active")
+  FAILED    @map("failed")
+}
+
 model OutboxEvent {
   id               String            @id @default(uuid()) @db.Uuid
   deduplicationKey String            @unique @map("deduplication_key")
@@ -75,7 +83,8 @@ model ProducerProfile {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
-  blindPayCustomers BlindPayCustomer[]
+  blindPayCustomers   BlindPayCustomer[]
+  stellarProvisioning StellarAccountProvisioning?
 
   @@map("producer_profiles")
 }
@@ -120,7 +129,28 @@ model WalletAccount {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user                User                        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  stellarProvisioning StellarAccountProvisioning?
 
   @@map("wallet_accounts")
+}
+
+model StellarAccountProvisioning {
+  id              String                    @id @default(uuid()) @db.Uuid
+  producerId      String                    @unique @map("producer_id") @db.Uuid
+  walletAccountId String                    @unique @map("wallet_account_id") @db.Uuid
+  network         String                    @db.VarChar(32)
+  assetCode       String                    @map("asset_code") @db.VarChar(12)
+  assetIssuer     String                    @map("asset_issuer") @db.VarChar(56)
+  status          StellarProvisioningStatus @default(PENDING)
+  transactionHash String?                   @unique @map("transaction_hash") @db.VarChar(64)
+  failureCode     String?                   @map("failure_code") @db.VarChar(80)
+  activatedAt     DateTime?                 @map("activated_at")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @updatedAt @map("updated_at")
+
+  producer ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Restrict)
+  wallet   WalletAccount   @relation(fields: [walletAccountId], references: [id], onDelete: Restrict)
+
+  @@map("stellar_account_provisionings")
 }

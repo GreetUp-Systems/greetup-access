@@ -15,6 +15,12 @@ export interface BlindPayCreatedCustomer {
   kycStatus: BlindPayKycStatusValue;
 }
 
+export interface BlindPayBlockchainWallet {
+  id: string;
+  address: string;
+  network: "stellar_testnet";
+}
+
 export interface BlindPayRfiField {
   key: string;
   label: string;
@@ -56,6 +62,10 @@ export interface BlindPayGateway {
   ): Promise<BlindPayCreatedCustomer>;
   getOpenRfi(customerId: string): Promise<BlindPayRfi | null>;
   submitRfi(customerId: string, answers: BlindPayRfiAnswers, idempotencyKey: string): Promise<void>;
+  registerExternalStellarWallet(
+    input: { customerId: string; address: string; name: string },
+    idempotencyKey: string,
+  ): Promise<BlindPayBlockchainWallet>;
 }
 
 export class BlindPayProviderError extends Error {

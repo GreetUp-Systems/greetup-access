@@ -20,7 +20,7 @@
     "test:integration": "turbo run test:integration",
     "lint": "turbo run lint",
     "format": "turbo run format",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "pnpm db:generate && turbo run typecheck",
     "db:generate": "turbo run db:generate",
     "db:migrate": "turbo run db:migrate",
     "check": "pnpm lint && pnpm typecheck && pnpm test",

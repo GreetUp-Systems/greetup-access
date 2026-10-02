@@ -7,6 +7,7 @@ import request from "supertest";
 
 import { AppModule } from "../src/app.module";
 import { configureApplication } from "../src/app.setup";
+import { stellarTestConfig } from "./test-stellar-config";
 
 const baseConfig: ApiConfig = {
   nodeEnv: "test",
@@ -26,6 +27,7 @@ const baseConfig: ApiConfig = {
   blindPayWebhookSecret: undefined,
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
+  ...stellarTestConfig,
 };
 
 async function createApp(config: ApiConfig): Promise<INestApplication> {

@@ -19,6 +19,13 @@ const validEnvironment: NodeJS.ProcessEnv = {
   BLINDPAY_WEBHOOK_SECRET: "whsec_dGVzdA==",
   BLINDPAY_API_TIMEOUT_MS: "5000",
   BLINDPAY_ALLOWED_REDIRECT_ORIGINS: "http://localhost:3000, https://app.example.com/path",
+  STELLAR_NETWORK: "testnet",
+  STELLAR_RPC_URL: "https://soroban-testnet.stellar.org",
+  STELLAR_HORIZON_URL: "https://horizon-testnet.stellar.org",
+  STELLAR_ASSET_CODE: "USDB",
+  STELLAR_ASSET_ISSUER: "GCQSSIMOW5OCGULZATDXKU5MOJBOMFX6G65X6CXZDQ7AIB3SKFUZ67NX",
+  STELLAR_SPONSOR_PUBLIC_KEY: `G${"A".repeat(55)}`,
+  STELLAR_SPONSOR_SECRET_KEY: `S${"A".repeat(55)}`,
 };
 
 describe("environment configuration", () => {
@@ -47,6 +54,8 @@ describe("environment configuration", () => {
       blindPayApiTimeoutMs: 5000,
       blindPayBaseUrl: "https://api.blindpay.com/v1",
       blindPayAllowedRedirectOrigins: ["http://localhost:3000", "https://app.example.com"],
+      stellarNetwork: "testnet",
+      stellarAssetCode: "USDB",
     });
   });
 
@@ -118,10 +127,29 @@ describe("environment configuration", () => {
     "BLINDPAY_BASE_URL",
     "BLINDPAY_WEBHOOK_SECRET",
     "BLINDPAY_ALLOWED_REDIRECT_ORIGINS",
+    "STELLAR_NETWORK",
+    "STELLAR_RPC_URL",
+    "STELLAR_HORIZON_URL",
+    "STELLAR_ASSET_CODE",
+    "STELLAR_ASSET_ISSUER",
+    "STELLAR_SPONSOR_PUBLIC_KEY",
+    "STELLAR_SPONSOR_SECRET_KEY",
   ])("requires %s for the API", (key) => {
     const environment = { ...validEnvironment };
     delete environment[key];
 
     expect(() => loadApiConfig(environment)).toThrow(key);
+  });
+
+  it("rejects Pubnet, a different asset and a local production signer", () => {
+    expect(() => loadApiConfig({ ...validEnvironment, STELLAR_NETWORK: "public" })).toThrow(
+      "STELLAR_NETWORK",
+    );
+    expect(() => loadApiConfig({ ...validEnvironment, STELLAR_ASSET_CODE: "USDC" })).toThrow(
+      "STELLAR_ASSET_CODE",
+    );
+    expect(() => loadApiConfig({ ...validEnvironment, NODE_ENV: "production" })).toThrow(
+      "STELLAR_SPONSOR_SECRET_KEY",
+    );
   });
 });

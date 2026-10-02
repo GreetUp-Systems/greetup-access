@@ -28,6 +28,14 @@ import {
   type PrivyStellarWallet,
   type VerifiedPrivyPrincipal,
 } from "../src/common/privy/privy.types";
+import {
+  STELLAR_GATEWAY,
+  type PreparedStellarProvisioning,
+  type StellarAccountState,
+  type StellarGateway,
+  type StellarTransactionStatus,
+} from "../src/common/stellar/stellar.types";
+import { stellarTestConfig } from "./test-stellar-config";
 
 const ownerDatabaseUrl = "postgresql://test:test@localhost:5433/access_test";
 const runtimeDatabaseUrl = "postgresql://access_runtime:test_runtime@localhost:5433/access_test";
@@ -52,6 +60,7 @@ const baseConfig: ApiConfig = {
   blindPayWebhookSecret: "whsec_dGVzdA==",
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
+  ...stellarTestConfig,
 };
 
 const users = {
@@ -75,11 +84,18 @@ class FakePrivyGateway implements PrivyGateway {
   readonly tokenPrincipals = new Map<string, VerifiedPrivyPrincipal>();
   readonly identities = new Map<string, PrivyIdentity>();
   readonly wallets = new Map<string, PrivyStellarWallet>();
+  rawSignInputs: Array<{
+    walletId: string;
+    hash: string;
+    userJwt: string;
+    idempotencyKey: string;
+  }> = [];
 
   reset(): void {
     this.tokenPrincipals.clear();
     this.identities.clear();
     this.wallets.clear();
+    this.rawSignInputs = [];
 
     for (const user of Object.values(users)) {
       this.tokenPrincipals.set(user.token, {
@@ -128,6 +144,16 @@ class FakePrivyGateway implements PrivyGateway {
     this.wallets.set(privyUserId, wallet);
     return wallet;
   }
+
+  async rawSignStellarHash(
+    walletId: string,
+    hash: string,
+    userJwt: string,
+    idempotencyKey: string,
+  ): Promise<string> {
+    this.rawSignInputs.push({ walletId, hash, userJwt, idempotencyKey });
+    return `0x${"00".repeat(64)}`;
+  }
 }
 
 class FakeBlindPayGateway implements BlindPayGateway {
@@ -142,6 +168,10 @@ class FakeBlindPayGateway implements BlindPayGateway {
     answers: BlindPayRfiAnswers;
     idempotencyKey: string;
   }> = [];
+  walletRegistrations: Array<{
+    input: { customerId: string; address: string; name: string };
+    idempotencyKey: string;
+  }> = [];
   openRfi: BlindPayRfi | null = null;
   nextCustomerError: BlindPayProviderError | undefined;
   nextCustomerKycStatus: BlindPayCreatedCustomer["kycStatus"] = "verifying";
@@ -152,6 +182,7 @@ class FakeBlindPayGateway implements BlindPayGateway {
     this.uploadInputs = [];
     this.customerInputs = [];
     this.rfiSubmissions = [];
+    this.walletRegistrations = [];
     this.openRfi = null;
     this.nextCustomerError = undefined;
     this.nextCustomerKycStatus = "verifying";
@@ -198,6 +229,65 @@ class FakeBlindPayGateway implements BlindPayGateway {
     idempotencyKey: string,
   ): Promise<void> {
     this.rfiSubmissions.push({ customerId, answers, idempotencyKey });
+  }
+
+  async registerExternalStellarWallet(input: {
+    customerId: string;
+    address: string;
+    name: string;
+  }, idempotencyKey: string): Promise<{ id: string; address: string; network: "stellar_testnet" }> {
+    this.walletRegistrations.push({ input, idempotencyKey });
+    return { id: "bw_test_1", address: input.address, network: "stellar_testnet" };
+  }
+}
+
+class FakeStellarGateway implements StellarGateway {
+  readonly states = new Map<string, StellarAccountState>();
+  readonly transactionStatuses = new Map<string, StellarTransactionStatus>();
+  buildInputs: Array<{ producerAddress: string; accountExists: boolean }> = [];
+  submissionInputs: Array<{
+    prepared: PreparedStellarProvisioning;
+    producerAddress: string;
+    producerSignature: string;
+  }> = [];
+
+  reset(): void {
+    this.states.clear();
+    this.transactionStatuses.clear();
+    this.buildInputs = [];
+    this.submissionInputs = [];
+  }
+
+  async getAccountState(address: string): Promise<StellarAccountState> {
+    return this.states.get(address) ?? { accountExists: false, trustlineExists: false };
+  }
+
+  async buildProvisioningTransaction(
+    producerAddress: string,
+    accountExists: boolean,
+  ): Promise<PreparedStellarProvisioning> {
+    this.buildInputs.push({ producerAddress, accountExists });
+    return {
+      transactionXdr: `xdr-${producerAddress}`,
+      transactionHash: createHmac("sha256", "stellar-test")
+        .update(producerAddress)
+        .digest("hex"),
+    };
+  }
+
+  async submitProvisioningTransaction(
+    prepared: PreparedStellarProvisioning,
+    producerAddress: string,
+    producerSignature: string,
+  ): Promise<{ transactionHash: string }> {
+    this.submissionInputs.push({ prepared, producerAddress, producerSignature });
+    this.states.set(producerAddress, { accountExists: true, trustlineExists: true });
+    this.transactionStatuses.set(prepared.transactionHash, "success");
+    return { transactionHash: prepared.transactionHash };
+  }
+
+  async getTransactionStatus(transactionHash: string): Promise<StellarTransactionStatus> {
+    return this.transactionStatuses.get(transactionHash) ?? "not_found";
   }
 }
 
@@ -265,6 +355,7 @@ describe("producer profile and RLS integration", () => {
   let tenantContext: TenantContextService;
   const privy = new FakePrivyGateway();
   const blindPay = new FakeBlindPayGateway();
+  const stellar = new FakeStellarGateway();
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
@@ -274,6 +365,8 @@ describe("producer profile and RLS integration", () => {
       .useValue(privy)
       .overrideProvider(BLINDPAY_GATEWAY)
       .useValue(blindPay)
+      .overrideProvider(STELLAR_GATEWAY)
+      .useValue(stellar)
       .compile();
 
     app = module.createNestApplication();
@@ -289,17 +382,20 @@ describe("producer profile and RLS integration", () => {
   beforeEach(async () => {
     await ownerPrisma.blindPayWebhookDelivery.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
+    await ownerPrisma.stellarAccountProvisioning.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
     await ownerPrisma.walletAccount.deleteMany();
     await ownerPrisma.user.deleteMany();
     privy.reset();
     blindPay.reset();
+    stellar.reset();
   });
 
   afterAll(async () => {
     await ownerPrisma.blindPayWebhookDelivery.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
+    await ownerPrisma.stellarAccountProvisioning.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
     await ownerPrisma.walletAccount.deleteMany();
@@ -495,6 +591,37 @@ describe("producer profile and RLS integration", () => {
         transaction.blindPayCustomer.updateMany({
           where: { id: customerA.id },
           data: { kycStatus: "APPROVED" },
+        }),
+      ),
+    ).resolves.toMatchObject({ count: 0 });
+
+    const walletA = await ownerPrisma.walletAccount.findUniqueOrThrow({
+      where: { userId: userA.id },
+    });
+    const provisioningA = await ownerPrisma.stellarAccountProvisioning.create({
+      data: {
+        producerId: visibleToA[0]!.id,
+        walletAccountId: walletA.id,
+        network: "testnet",
+        assetCode: "USDB",
+        assetIssuer: stellarTestConfig.stellarAssetIssuer,
+      },
+    });
+    await expect(
+      tenantContext.withProducerContext(userA.id, (transaction) =>
+        transaction.stellarAccountProvisioning.count(),
+      ),
+    ).resolves.toBe(1);
+    await expect(
+      tenantContext.withProducerContext(userB.id, (transaction) =>
+        transaction.stellarAccountProvisioning.count(),
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      tenantContext.withProducerContext(userB.id, (transaction) =>
+        transaction.stellarAccountProvisioning.updateMany({
+          where: { id: provisioningA.id },
+          data: { status: "ACTIVE" },
         }),
       ),
     ).resolves.toMatchObject({ count: 0 });
@@ -868,6 +995,120 @@ describe("producer profile and RLS integration", () => {
     await expect(ownerPrisma.blindPayCustomer.findFirst()).resolves.toMatchObject({
       kycStatus: "APPROVED",
     });
+  });
+
+  it("activates a Testnet wallet once and completes producer onboarding", async () => {
+    await createProducer();
+    blindPay.nextCustomerKycStatus = "approved";
+    expect((await createBlindPayCustomer()).status).toBe(200);
+
+    const first = await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(200);
+
+    expect(first.body).toMatchObject({
+      status: "active",
+      transactionHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(stellar.buildInputs).toEqual([
+      { producerAddress: users.a.address, accountExists: false },
+    ]);
+    expect(stellar.submissionInputs).toHaveLength(1);
+    expect(privy.rawSignInputs).toEqual([
+      {
+        walletId: users.a.walletId,
+        hash: first.body.transactionHash,
+        userJwt: users.a.token,
+        idempotencyKey: expect.stringMatching(/^[a-f0-9]{64}$/),
+      },
+    ]);
+    expect(blindPay.walletRegistrations).toEqual([
+      {
+        input: {
+          customerId: "re_test_1",
+          address: users.a.address,
+          name: "Access Stellar wallet",
+        },
+        idempotencyKey: expect.stringMatching(/^[a-f0-9]{64}$/),
+      },
+    ]);
+
+    const repeated = await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(200);
+    expect(repeated.body).toEqual(first.body);
+    expect(stellar.buildInputs).toHaveLength(1);
+    expect(stellar.submissionInputs).toHaveLength(1);
+    expect(privy.rawSignInputs).toHaveLength(1);
+    expect(blindPay.walletRegistrations).toHaveLength(1);
+
+    await expect(ownerPrisma.stellarAccountProvisioning.findFirst()).resolves.toMatchObject({
+      network: "testnet",
+      assetCode: "USDB",
+      assetIssuer: stellarTestConfig.stellarAssetIssuer,
+      status: "ACTIVE",
+      transactionHash: first.body.transactionHash,
+    });
+    await expect(ownerPrisma.blindPayCustomer.findFirst()).resolves.toMatchObject({
+      externalBlockchainWalletId: "bw_test_1",
+    });
+
+    const producer = await request(app.getHttpServer())
+      .get("/api/producers/me")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(200);
+    expect(producer.body).toMatchObject({
+      onboardingStatus: "ready",
+      compliance: { status: "approved" },
+      stellar: { status: "active" },
+    });
+  });
+
+  it("reconciles an existing account and trustline without another Stellar transaction", async () => {
+    await createProducer();
+    blindPay.nextCustomerKycStatus = "approved";
+    expect((await createBlindPayCustomer()).status).toBe(200);
+    stellar.states.set(users.a.address, { accountExists: true, trustlineExists: true });
+
+    const activated = await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(200);
+
+    expect(activated.body).toEqual({ status: "active", transactionHash: null });
+    expect(stellar.buildInputs).toEqual([]);
+    expect(stellar.submissionInputs).toEqual([]);
+    expect(privy.rawSignInputs).toEqual([]);
+    expect(blindPay.walletRegistrations).toHaveLength(1);
+  });
+
+  it("requires operational KYC and current Privy wallet ownership before activation", async () => {
+    await createProducer();
+    expect((await createBlindPayCustomer()).status).toBe(200);
+
+    const pendingKyc = await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(409);
+    expect(pendingKyc.body).toMatchObject({ code: "blindpay_customer_not_operational" });
+    expect(stellar.buildInputs).toEqual([]);
+
+    await ownerPrisma.blindPayCustomer.updateMany({ data: { kycStatus: "APPROVED" } });
+    privy.wallets.set(users.a.privyUserId, {
+      id: users.a.walletId,
+      address: users.b.address,
+      chainType: "stellar",
+      ownerPrivyUserId: users.a.privyUserId,
+    });
+
+    const ownerMismatch = await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(409);
+    expect(ownerMismatch.body).toMatchObject({ code: "stellar_wallet_owner_mismatch" });
+    expect(stellar.buildInputs).toEqual([]);
   });
 
   it("keeps the webhook database role restricted to its technical tables", async () => {

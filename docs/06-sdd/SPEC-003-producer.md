@@ -1,16 +1,17 @@
 # SPEC-003 — Onboarding do produtor
 
-> **Status:** gates 3A/3B implementados e validados localmente; smoke BlindPay development
-> pendente; etapa 3C bloqueada pela Q-01
+> **Status:** gates 3A/3B e implementação automatizada de 3C validados localmente; smokes reais
+> BlindPay e Stellar/Privy/BlindPay pendentes
 >
-> **Versão:** 1.1
+> **Versão:** 1.2
 >
-> **Atualizada em:** 30/09/2026
+> **Atualizada em:** 02/10/2026
 >
 > **Aprovada em:** 30/09/2026
 >
 > **Depende de:** [`SPEC-002`](./SPEC-002-auth.md) e
-> [`ADR-009`](../03-adrs/ADR-009-identity-producer-tenancy.md)
+> [`ADR-009`](../03-adrs/ADR-009-identity-producer-tenancy.md) e
+> [`ADR-010`](../03-adrs/ADR-010-stellar-development-signer.md)
 
 ## 1. Objetivo
 
@@ -25,10 +26,10 @@ Ao final das etapas liberadas, a API deve conseguir:
 3. gerar a jornada de aceite dos termos e enviar KYC/KYB à BlindPay sem persistir o dossiê;
 4. refletir `customer.update`, RFIs e o estado operacional do customer de forma idempotente;
 5. emitir `producer.kyc_approved` uma única vez na primeira aprovação operacional;
-6. após Q-01, ativar a conta Stellar do produtor e cadastrar sua wallet externa `bw_...`.
+6. ativar na Testnet a conta Stellar do produtor e cadastrar sua wallet externa `bw_...`.
 
-Esta SPEC é dividida em três gates. Aprovar 3A e 3B não autoriza uma escolha implícita para a chave
-da plataforma em 3C.
+Esta SPEC é dividida em três gates. O ADR-010 autoriza em 3C somente o signer local de
+development/testnet; não autoriza custódia de chave no backend em produção.
 
 ## 2. Correções arquiteturais confirmadas
 
@@ -39,8 +40,8 @@ da plataforma em 3C.
   existe no ledger Stellar.
 - `fee bump` paga a taxa da transação, mas não substitui as assinaturas exigidas pela transação
   interna.
-- A reserva da conta e da trustline é patrocinada por uma conta Stellar do Access. O Relayer paga a
-  taxa e submete a transação.
+- A reserva da conta e da trustline é patrocinada por uma conta Stellar do Access. Em development,
+  essa conta também paga a taxa clássica e assina localmente conforme o ADR-010.
 - O fluxo de ativação exige autorização da conta patrocinadora e da wallet do produtor, porque as
   operações possuem fontes diferentes.
 - A assinatura da wallet user-owned pode ser solicitada no backend com o JWT válido do próprio
@@ -99,17 +100,17 @@ Inclui:
 
 ### 3C — Ativação Stellar e wallet BlindPay
 
-Inclui, depois de Q-01:
+Inclui em development/testnet, conforme o ADR-010:
 
 - conta Stellar com reserva patrocinada pelo Access;
 - trustline do USDB na Stellar Testnet;
 - assinatura do produtor via Privy;
-- assinatura da conta patrocinadora, fee bump e submissão via OpenZeppelin;
+- assinatura local da conta patrocinadora e submissão direta à Testnet;
 - reconciliação on-chain para retries e resultados ambíguos;
 - registro da wallet externa `bw_...` na BlindPay.
 
-**Gate:** 3C não começa enquanto a custódia, rotação e recuperação do signer da conta
-patrocinadora não forem aprovadas e registradas na Q-01.
+**Gate:** 3C pode ser implementado somente em development/testnet. Produção permanece bloqueada
+até a decisão de custódia, rotação e recuperação do signer na Q-01.
 
 ### Fora do escopo
 
@@ -263,8 +264,8 @@ mesma transação.
 confirmada pelo provider. Isso permite persistir a intenção antes da chamada externa, repetir com a
 mesma chave e distinguir falha definitiva de indisponibilidade temporária sem guardar o dossiê.
 
-`StellarAccountProvisioning` e suas relações pertencem ao gate 3C e não entram na migration de
-3A/3B enquanto Q-01 estiver aberta.
+`StellarAccountProvisioning` e suas relações pertencem à migration própria do gate 3C. Essa
+migration mantém o mesmo isolamento por `producer_id` das tabelas entregues em 3A/3B.
 
 `BlindPayWebhookDelivery` guarda somente metadados para deduplicação e auditoria. O body original,
 headers de assinatura e dados pessoais não são persistidos.
@@ -419,11 +420,13 @@ Regras:
 - wallet externa usa `is_account_abstraction: true` conforme o fluxo da BlindPay para Stellar;
 - API key, dados pessoais, documentos, URLs privadas e respostas de RFI nunca aparecem em logs.
 
-## 10. Fluxo Stellar, Privy e OpenZeppelin — gate 3C
+## 10. Fluxo Stellar e Privy — gate 3C development
 
-Pré-condições: customer atual operacional, wallet da SPEC-002 íntegra e signer da Q-01 configurado.
+Pré-condições: customer atual operacional, wallet da SPEC-002 íntegra e signer local do ADR-010
+configurado.
 
-1. consultar RPC e encerrar como `active` se conta e trustline já estiverem corretas;
+1. consultar a Testnet via Horizon e encerrar como `active` se conta e trustline já estiverem
+   corretas;
 2. construir transação clássica com:
    - `beginSponsoringFutureReserves`, fonte Access;
    - `createAccount` com `startingBalance = 0`, fonte Access;
@@ -432,9 +435,10 @@ Pré-condições: customer atual operacional, wallet da SPEC-002 íntegra e sign
 3. calcular o hash da transação interna;
 4. solicitar a assinatura Ed25519 da wallet user-owned via Privy `raw_sign`, autorizada pelo JWT do
    usuário atual mantido apenas no contexto efêmero da request;
-5. solicitar ao Relayer signer aprovado na Q-01 a assinatura da conta patrocinadora;
-6. aplicar fee bump, submeter e persistir somente hash/estado/código sanitizado;
-7. confirmar conta e trustline via RPC;
+5. assinar localmente com a conta patrocinadora dedicada à Testnet;
+6. submeter diretamente, com taxa paga pelo sponsor, e persistir somente hash/estado/código
+   sanitizado;
+7. confirmar conta e trustline via Horizon;
 8. registrar o endereço como wallet externa do customer na BlindPay;
 9. derivar o produtor como `ready`.
 
@@ -483,23 +487,26 @@ conexão técnica não são registrados; as chamadas de saída para ToS, upload,
 disponíveis, mas mudanças assíncronas de KYC não são refletidas até o webhook ser ativado. Configurar
 somente um dos dois valores é inválido. Em `test` e `production`, ambos são obrigatórios.
 
-3C adiciona somente depois de Q-01:
+3C development adiciona:
 
 ```dotenv
 STELLAR_NETWORK=testnet
 STELLAR_RPC_URL=https://soroban-testnet.stellar.org
+STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
 STELLAR_ASSET_CODE=USDB
 STELLAR_ASSET_ISSUER=
 STELLAR_SPONSOR_PUBLIC_KEY=
-OPENZEPPELIN_RELAYER_URL=
-OPENZEPPELIN_RELAYER_API_KEY=
-OPENZEPPELIN_RELAYER_ID=
+STELLAR_SPONSOR_SECRET_KEY=
 ```
 
-A chave secreta do sponsor não entra no processo nem no `.env` do Access. Network, passphrase,
-ativo e issuer são validados no startup. Nesta SPEC, qualquer configuração diferente de Stellar
-Testnet + USDB falha fechada; a parametrização Pubnet + USDC será habilitada somente numa etapa
-explícita de preparação para produção.
+As operações clássicas de conta, trustline e submissão usam Horizon. O endpoint RPC permanece
+fixado na Testnet para as próximas integrações Soroban, sem ser usado para inferir Pubnet.
+
+A chave secreta do sponsor é aceita somente no `.env` local de development/test e nunca é
+versionada. Ela é proibida em production. Network, passphrase implícita, ativo, issuer e
+correspondência entre public e secret são validados no startup. Nesta SPEC, qualquer configuração
+diferente de Stellar Testnet + USDB falha fechada; Pubnet + USDC exige uma etapa explícita com
+custódia gerenciada e Relayer.
 
 ## 13. Segurança e minimização de dados
 
@@ -554,7 +561,7 @@ Com PostgreSQL real e fakes apenas para BlindPay:
 
 - composição e fontes das quatro operações Stellar estão corretas;
 - assinatura Privy usa a autorização do usuário atual e rejeita owner divergente;
-- assinatura do sponsor e fee bump usam o Relayer aprovado;
+- assinatura local do sponsor paga a taxa clássica somente em development/test;
 - retry antes/depois da submissão não cria operação econômica duplicada;
 - conta/trustline existentes são reconciliadas;
 - BlindPay só recebe registro da wallet após confirmação on-chain;
@@ -564,8 +571,8 @@ Com PostgreSQL real e fakes apenas para BlindPay:
 ### Smoke tests manuais
 
 3B usa a instância development da BlindPay para completar ToS, customer e webhook/RFI sem registrar
-credenciais. 3C usa Stellar testnet, wallet user-owned real e saldo de sponsor controlado, depois de
-Q-01.
+credenciais. 3C usa Stellar Testnet, wallet user-owned real e saldo de sponsor controlado, conforme
+o ADR-010.
 
 ## 15. Sequência de implementação
 
@@ -576,9 +583,9 @@ Q-01.
 5. implementar boundary BlindPay, ToS, upload e customer;
 6. implementar webhook, RFI e Outbox;
 7. executar validações automáticas e smoke test BlindPay development;
-8. decidir Q-01 e registrar a escolha arquitetural;
-9. somente então adicionar schema/configuração e implementar 3C;
-10. executar smoke test Stellar/Privy/OpenZeppelin e validar o onboarding `ready`.
+8. registrar no ADR-010 a decisão do signer de development/testnet;
+9. adicionar schema/configuração e implementar 3C;
+10. executar smoke test Stellar/Privy/BlindPay e validar o onboarding `ready`.
 
 ## 16. Validação obrigatória
 
@@ -618,19 +625,24 @@ BlindPay e um RFI real.
 
 ### Gate 3C
 
-- [ ] Q-01 está decidida e documentada.
+- [x] Signer de development/testnet está decidido e documentado no ADR-010.
 - [ ] Conta e trustline são patrocinadas sem exigir XLM do produtor.
 - [ ] Produtor e sponsor autorizam somente o que lhes cabe.
-- [ ] Relayer paga a taxa e submete sem a aplicação custodiar a chave do sponsor.
-- [ ] Retry/reconciliação não duplica o provisionamento.
+- [x] Signer local paga a taxa e submete somente em development/test; production falha fechada.
+- [x] Retry/reconciliação não duplica o provisionamento nos testes automatizados.
 - [ ] Wallet externa `bw_...` aponta para o endereço verificado da SPEC-002.
 - [ ] Estado derivado chega a `ready` somente com todas as pré-condições reais.
 
+Validação automatizada em 02/10/2026: composição e fontes das operações, assinaturas produtor/sponsor,
+fail-closed de configuração, reconciliação, idempotência, RLS, registro BlindPay após confirmação e
+estado derivado `ready` passaram com gateways externos controlados. Os itens dependentes dos três
+providers reais permanecem abertos até o smoke manual.
+
 ## 18. Decisões adiadas
 
-- **Q-01:** tecnologia e operação do signer da conta patrocinadora. Caminho recomendado para
-  avaliação: OpenZeppelin Relayer self-hosted, keystore local somente em development e signer
-  gerenciado (por exemplo, Turnkey ou GCP KMS) em produção.
+- **Q-01:** tecnologia e operação dos signers em produção. Development/testnet foi resolvido pelo
+  ADR-010; produção continua exigindo Relayer e custódia gerenciada (por exemplo, Turnkey ou GCP
+  KMS), com rotação e recuperação definidas antes de Pubnet.
 - **Q-02:** momento de ativação da conta Stellar de compradores que não são produtores.
 - conta bancária e payout do produtor;
 - renovação de uma nova versão dos termos da BlindPay;

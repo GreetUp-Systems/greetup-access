@@ -12,7 +12,6 @@ concurrency:
 
 env:
   NODE_VERSION: "22"
-  PNPM_VERSION: "9"
 
 jobs:
   # ─── Stage 1: Secret Scan ──────────────────────────────────────────────────
@@ -22,12 +21,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # histórico completo para varredura
+          fetch-depth: 0 # inclui base e head para limitar a varredura ao intervalo do evento
 
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run Gitleaks on pull request commits
+        if: github.event_name == 'pull_request'
+        run: >-
+          docker run --rm
+          --volume "$PWD:/repo"
+          --workdir /repo
+          ghcr.io/gitleaks/gitleaks:v8.30.1
+          git --redact --verbose
+          --log-opts="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          /repo
+
+      - name: Run Gitleaks on pushed commits
+        if: github.event_name == 'push'
+        run: >-
+          docker run --rm
+          --volume "$PWD:/repo"
+          --workdir /repo
+          ghcr.io/gitleaks/gitleaks:v8.30.1
+          git --redact --verbose
+          --log-opts="${{ github.event.before }}..${{ github.sha }}"
+          /repo
 
   # ─── Stage 2: Validate ─────────────────────────────────────────────────────
   validate:
@@ -38,8 +54,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v4
         with:
@@ -57,7 +71,7 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-${{ hashFiles('**/turbo.json') }}-
 
       - name: Typecheck
-        run: pnpm turbo typecheck
+        run: pnpm typecheck
 
       - name: Lint
         run: pnpm turbo lint
@@ -74,8 +88,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v4
         with:

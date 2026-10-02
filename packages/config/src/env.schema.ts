@@ -23,6 +23,9 @@ export const infrastructureEnvironmentSchema = z.object({
 
 const optionalWebhookDatabaseUrl = z.union([z.string().url(), z.literal("")]).optional();
 const optionalWebhookSecret = z.union([z.string().startsWith("whsec_"), z.literal("")]).optional();
+const stellarPublicKey = z.string().regex(/^G[A-Z2-7]{55}$/);
+const stellarSecretKey = z.string().regex(/^S[A-Z2-7]{55}$/);
+const stellarTestnetUsdbIssuer = "GCQSSIMOW5OCGULZATDXKU5MOJBOMFX6G65X6CXZDQ7AIB3SKFUZ67NX";
 
 export const apiEnvironmentSchema = infrastructureEnvironmentSchema
   .extend({
@@ -39,6 +42,13 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
     BLINDPAY_WEBHOOK_SECRET: optionalWebhookSecret,
     BLINDPAY_API_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000),
     BLINDPAY_ALLOWED_REDIRECT_ORIGINS: z.string().min(1).refine(isHttpOriginList),
+    STELLAR_NETWORK: z.literal("testnet"),
+    STELLAR_RPC_URL: z.literal("https://soroban-testnet.stellar.org"),
+    STELLAR_HORIZON_URL: z.literal("https://horizon-testnet.stellar.org"),
+    STELLAR_ASSET_CODE: z.literal("USDB"),
+    STELLAR_ASSET_ISSUER: z.literal(stellarTestnetUsdbIssuer),
+    STELLAR_SPONSOR_PUBLIC_KEY: stellarPublicKey,
+    STELLAR_SPONSOR_SECRET_KEY: stellarSecretKey.optional(),
   })
   .superRefine((environment, context) => {
     const databaseConfigured = Boolean(environment.DATABASE_URL_BLINDPAY_WEBHOOK);
@@ -58,6 +68,22 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
         code: z.ZodIssueCode.custom,
         path: ["BLINDPAY_WEBHOOK_SECRET"],
         message: "is required when the BlindPay webhook is enabled",
+      });
+    }
+
+    if (environment.NODE_ENV === "production" && environment.STELLAR_SPONSOR_SECRET_KEY) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["STELLAR_SPONSOR_SECRET_KEY"],
+        message: "is forbidden in production",
+      });
+    }
+
+    if (environment.NODE_ENV !== "production" && !environment.STELLAR_SPONSOR_SECRET_KEY) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["STELLAR_SPONSOR_SECRET_KEY"],
+        message: "is required outside production",
       });
     }
   });

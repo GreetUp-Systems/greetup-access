@@ -32,6 +32,7 @@ const commands = [
       "jest.integration.config.ts",
       "--runInBand",
       "--detectOpenHandles",
+      "--no-cache",
     ],
     databaseUrl: testRuntimeDatabaseUrl,
   },

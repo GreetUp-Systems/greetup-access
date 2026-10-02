@@ -15,6 +15,7 @@ import {
   type PrivyStellarWallet,
   type VerifiedPrivyPrincipal,
 } from "../src/common/privy/privy.types";
+import { stellarTestConfig } from "./test-stellar-config";
 
 const baseConfig: ApiConfig = {
   nodeEnv: "test",
@@ -35,6 +36,7 @@ const baseConfig: ApiConfig = {
   blindPayWebhookSecret: "whsec_dGVzdA==",
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
+  ...stellarTestConfig,
 };
 
 const testUserId = "did:privy:test-user";
@@ -105,6 +107,10 @@ class FakePrivyGateway implements PrivyGateway {
     });
     this.creations.set(idempotencyKey, creation);
     return creation;
+  }
+
+  async rawSignStellarHash(): Promise<string> {
+    return `0x${"00".repeat(64)}`;
   }
 }
 

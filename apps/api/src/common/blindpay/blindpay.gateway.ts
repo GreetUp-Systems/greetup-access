@@ -1,5 +1,6 @@
 import {
   type BlindPayCreatedCustomer,
+  type BlindPayBlockchainWallet,
   type BlindPayGateway,
   BlindPayProviderError,
   type BlindPayRfi,
@@ -137,6 +138,37 @@ export class BlindPayHttpGateway implements BlindPayGateway {
         idempotencyKey,
       },
     );
+  }
+
+  async registerExternalStellarWallet(
+    input: { customerId: string; address: string; name: string },
+    idempotencyKey: string,
+  ): Promise<BlindPayBlockchainWallet> {
+    const response = await this.requestJson(
+      `/instances/${this.options.instanceId}/customers/${encodeURIComponent(input.customerId)}/blockchain-wallets`,
+      "register_stellar_wallet",
+      {
+        method: "POST",
+        contentType: "application/json",
+        idempotencyKey,
+        body: JSON.stringify({
+          name: input.name,
+          network: "stellar_testnet",
+          is_account_abstraction: true,
+          address: input.address,
+        }),
+      },
+    );
+    const data = this.unwrap(response, "register_stellar_wallet");
+    const id = this.requiredString(data, "id", "register_stellar_wallet");
+    const address = this.requiredString(data, "address", "register_stellar_wallet");
+    const network = this.requiredString(data, "network", "register_stellar_wallet");
+
+    if (!id.startsWith("bw_") || address !== input.address || network !== "stellar_testnet") {
+      throw new BlindPayProviderError("register_stellar_wallet_invalid_response", false);
+    }
+
+    return { id, address, network };
   }
 
   private async requestJson(

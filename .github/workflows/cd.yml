@@ -53,8 +53,6 @@ jobs:
 
       - name: Run E2E smoke tests
         uses: pnpm/action-setup@v4
-        with:
-          version: '9'
       - run: |
           pnpm install --frozen-lockfile
           pnpm turbo test:e2e

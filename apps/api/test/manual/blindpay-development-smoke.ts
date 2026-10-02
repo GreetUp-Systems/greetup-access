@@ -192,6 +192,7 @@ async function run(): Promise<void> {
     const principal = {
       privyUserId: seeded.privyUserId,
       sessionId: `blindpay-smoke-${runId}`,
+      accessToken: "manual-smoke-not-used-for-signing",
     };
 
     const redirectUrl = new URL(callbackPath, callbackOrigin).toString();

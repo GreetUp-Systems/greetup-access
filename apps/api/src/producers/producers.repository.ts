@@ -2,14 +2,15 @@ import { Prisma, TenantContextService } from "@access/database";
 import { Injectable } from "@nestjs/common";
 
 export type ProducerProfileRecord = Prisma.ProducerProfileGetPayload<{
-  include: { blindPayCustomers: true };
+  include: { blindPayCustomers: true; stellarProvisioning: true };
 }>;
 
-const currentCustomer = {
+const producerContext = {
   blindPayCustomers: {
     where: { isCurrent: true },
     take: 1,
   },
+  stellarProvisioning: true,
 } satisfies Prisma.ProducerProfileInclude;
 
 @Injectable()
@@ -24,7 +25,7 @@ export class ProducersRepository {
 
       return transaction.producerProfile.findUnique({
         where: { userId },
-        include: currentCustomer,
+        include: producerContext,
       });
     });
   }
@@ -33,7 +34,7 @@ export class ProducersRepository {
     return this.tenantContext.withUserContext(userId, (transaction) =>
       transaction.producerProfile.create({
         data: { userId, displayName },
-        include: currentCustomer,
+        include: producerContext,
       }),
     );
   }

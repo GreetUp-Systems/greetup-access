@@ -36,7 +36,8 @@ export class PrivyAuthGuard implements CanActivate {
     }
 
     try {
-      request.authenticatedPrincipal = await this.privy.verifyAccessToken(token);
+      const verified = await this.privy.verifyAccessToken(token);
+      request.authenticatedPrincipal = { ...verified, accessToken: token };
       return true;
     } catch {
       throw this.invalidToken();
