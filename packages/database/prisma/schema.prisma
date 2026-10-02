@@ -15,6 +15,25 @@ enum OutboxEventStatus {
   FAILED     @map("failed")
 }
 
+enum BlindPayCustomerType {
+  INDIVIDUAL @map("individual")
+  BUSINESS   @map("business")
+}
+
+enum BlindPayKycStatus {
+  VERIFYING          @map("verifying")
+  APPROVED           @map("approved")
+  REJECTED           @map("rejected")
+  COMPLIANCE_REQUEST @map("compliance_request")
+  APPROVED_RFI       @map("approved_rfi")
+}
+
+enum BlindPayCustomerCreationStatus {
+  PENDING @map("pending")
+  CREATED @map("created")
+  FAILED  @map("failed")
+}
+
 model OutboxEvent {
   id               String            @id @default(uuid()) @db.Uuid
   deduplicationKey String            @unique @map("deduplication_key")
@@ -42,9 +61,55 @@ model User {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  wallet WalletAccount?
+  wallet          WalletAccount?
+  producerProfile ProducerProfile?
 
   @@map("users")
+}
+
+model ProducerProfile {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @map("user_id") @db.Uuid
+  displayName String   @map("display_name") @db.VarChar(120)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  blindPayCustomers BlindPayCustomer[]
+
+  @@map("producer_profiles")
+}
+
+model BlindPayCustomer {
+  id                         String                         @id @default(uuid()) @db.Uuid
+  producerId                 String                         @map("producer_id") @db.Uuid
+  externalCustomerId         String?                        @unique @map("external_customer_id")
+  providerIdempotencyKey     String                         @unique @map("provider_idempotency_key") @db.VarChar(64)
+  customerType               BlindPayCustomerType           @map("customer_type")
+  creationStatus             BlindPayCustomerCreationStatus @default(PENDING) @map("creation_status")
+  kycStatus                  BlindPayKycStatus?             @map("kyc_status")
+  isCurrent                  Boolean                        @default(true) @map("is_current")
+  externalBlockchainWalletId String?                        @unique @map("external_blockchain_wallet_id")
+  failureCode                String?                        @map("failure_code") @db.VarChar(100)
+  createdAt                  DateTime                       @default(now()) @map("created_at")
+  updatedAt                  DateTime                       @updatedAt @map("updated_at")
+
+  producer ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Restrict)
+
+  @@index([producerId, createdAt])
+  @@map("blindpay_customers")
+}
+
+model BlindPayWebhookDelivery {
+  id                String    @id @default(uuid()) @db.Uuid
+  providerMessageId String    @unique @map("provider_message_id")
+  eventType         String    @map("event_type")
+  resourceId        String?   @map("resource_id")
+  payloadHash       String    @map("payload_hash") @db.VarChar(64)
+  processedAt       DateTime? @map("processed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@map("blindpay_webhook_deliveries")
 }
 
 model WalletAccount {

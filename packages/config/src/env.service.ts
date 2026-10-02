@@ -18,6 +18,13 @@ export interface ApiConfig extends InfrastructureConfig {
   privyAppSecret: string;
   privyJwtVerificationKey: string;
   privyApiTimeoutMs: number;
+  databaseBlindPayWebhookUrl: string | undefined;
+  blindPayApiKey: string;
+  blindPayInstanceId: string;
+  blindPayBaseUrl: string;
+  blindPayWebhookSecret: string | undefined;
+  blindPayApiTimeoutMs: number;
+  blindPayAllowedRedirectOrigins: string[];
 }
 
 function parseEnvironment<TSchema extends z.ZodTypeAny>(
@@ -52,6 +59,13 @@ export function loadInfrastructureConfig(
 
 export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): ApiConfig {
   const parsed = parseEnvironment(apiEnvironmentSchema, environment);
+  const blindPayAllowedRedirectOrigins = [
+    ...new Set(
+      parsed.BLINDPAY_ALLOWED_REDIRECT_ORIGINS.split(",").map(
+        (value) => new URL(value.trim()).origin,
+      ),
+    ),
+  ];
 
   return {
     nodeEnv: parsed.NODE_ENV,
@@ -64,5 +78,12 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     privyAppSecret: parsed.PRIVY_APP_SECRET,
     privyJwtVerificationKey: parsed.PRIVY_JWT_VERIFICATION_KEY,
     privyApiTimeoutMs: parsed.PRIVY_API_TIMEOUT_MS,
+    databaseBlindPayWebhookUrl: parsed.DATABASE_URL_BLINDPAY_WEBHOOK || undefined,
+    blindPayApiKey: parsed.BLINDPAY_API_KEY,
+    blindPayInstanceId: parsed.BLINDPAY_INSTANCE_ID,
+    blindPayBaseUrl: parsed.BLINDPAY_BASE_URL.replace(/\/$/, ""),
+    blindPayWebhookSecret: parsed.BLINDPAY_WEBHOOK_SECRET || undefined,
+    blindPayApiTimeoutMs: parsed.BLINDPAY_API_TIMEOUT_MS,
+    blindPayAllowedRedirectOrigins,
   };
 }

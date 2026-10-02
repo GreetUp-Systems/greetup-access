@@ -22,11 +22,15 @@ PostgreSQL 16 · BullMQ · Redis · Turborepo
 
 **Padrões:** Event-Driven · Outbox Pattern · RLS por produtor
 
+**Rede blockchain ativa para desenvolvimento e validação:** Stellar Testnet com USDB. Pubnet/USDC
+só será habilitada numa etapa explícita de preparação para produção.
+
 **Documentação de referência:**
+
 - Arquitetura vigente: [`MVP-REVISADO.md`](./MVP-REVISADO.md)
 - Visão do Produto: `docs/01-vision/product-vision.md`
-- Modelo de Dados: `docs/02-project/data-model.md` *(desatualizado)*
-- Integrações: `docs/02-project/integrations.md` *(desatualizado)*
+- Modelo de Dados: `docs/02-project/data-model.md` _(desatualizado)_
+- Integrações: `docs/02-project/integrations.md` _(desatualizado)_
 - ADRs: `docs/03-adrs/`
 
 ---
@@ -41,8 +45,9 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 4. a próxima SPEC permanece bloqueada até build, lint, typecheck e testes da etapa ativa passarem;
 5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
 
-**SPEC ativa:** [`SPEC-002 — Identidade, autenticação e wallet`](./SPEC-002-auth.md), aprovada para
-implementação em 29/09/2026.
+**SPEC ativa:** [`SPEC-003 — Onboarding do produtor`](./SPEC-003-producer.md), com gates 3A/3B
+implementados e validados localmente em 30/09/2026; resta o smoke na instância BlindPay development.
+O gate on-chain 3C depende da Q-01.
 
 O [`ADR-009`](../03-adrs/ADR-009-identity-producer-tenancy.md) fechou identidade, wallet, modelo de
 produtor e a Q-03 em 29/09/2026.
@@ -80,18 +85,18 @@ Infraestrutura: Postgres, Redis apenas para o BullMQ, três workers (`OutboxRela
 
 Derivada das decisões do `MVP-REVISADO.md`. Cada bloco é entregável e testável.
 
-| # | Bloco | Conteúdo | Depende de |
-|---|---|---|---|
-| 1 | Fundação | Monorepo, runtime da API/workers, Prisma, Outbox mínimo, Docker, configuração, liveness/readiness e testes | — |
-| 2 | Identidade, auth e wallet | Privy, access token, `User`, wallet Stellar 1:1 e bootstrap idempotente | 1 |
-| 3 | Produtor | `ProducerProfile` 1:1, RLS transacional, customer BlindPay + KYC, conta Stellar e trustline patrocinadas pelo Relayer | 2 |
-| 4 | Eventos | CRUD de eventos e tipos de ingresso, página pública | 3 |
-| 5 | Contrato do ingresso | Extensão do NFT auditado da OpenZeppelin: mint idempotente, check-in, vínculo com evento | 1 |
-| 6 | Compra | Checkout com wallet, payin quote, webhook, Outbox, `MintTicketWorker` | 4 + 5 |
-| 7 | Área do comprador | Meus ingressos, QR Code assinado, SSE na tela de espera | 6 |
-| 8 | Check-in online | Validação e registro on-chain | 6 |
-| 9 | Financeiro | Ledger, saldo, saque via payout BlindPay | 6 |
-| 10 | CI/CD e deploy | Pipeline reduzido, sem observabilidade | qualquer |
+| #   | Bloco                     | Conteúdo                                                                                                                                           | Depende de |
+| --- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | Fundação                  | Monorepo, runtime da API/workers, Prisma, Outbox mínimo, Docker, configuração, liveness/readiness e testes                                         | —          |
+| 2   | Identidade, auth e wallet | Privy, access token, `User`, wallet Stellar 1:1 e bootstrap idempotente                                                                            | 1          |
+| 3   | Produtor                  | `ProducerProfile` 1:1, RLS transacional, customer BlindPay + KYC; conta e trustline têm reservas patrocinadas pelo Access e taxa paga pelo Relayer | 2          |
+| 4   | Eventos                   | CRUD de eventos e tipos de ingresso, página pública                                                                                                | 3          |
+| 5   | Contrato do ingresso      | Extensão do NFT auditado da OpenZeppelin: mint idempotente, check-in, vínculo com evento                                                           | 1          |
+| 6   | Compra                    | Checkout com wallet, payin quote, webhook, Outbox, `MintTicketWorker`                                                                              | 4 + 5      |
+| 7   | Área do comprador         | Meus ingressos, QR Code assinado, SSE na tela de espera                                                                                            | 6          |
+| 8   | Check-in online           | Validação e registro on-chain                                                                                                                      | 6          |
+| 9   | Financeiro                | Ledger, saldo, saque via payout BlindPay                                                                                                           | 6          |
+| 10  | CI/CD e deploy            | Pipeline reduzido, sem observabilidade                                                                                                             | qualquer   |
 
 **Fase 2, após validação:** capacidade offline do credenciamento (service worker, IndexedDB,
 snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar via CCTP.
@@ -113,21 +118,21 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 
 ## Status das SPECs
 
-| SPEC | Situação |
-|---|---|
-| SPEC-001 foundation | **Implementada e validada em 29/09/2026** — Foundation v2 concluída |
-| SPEC-002 auth | **Ativa e aprovada para implementação** — reescrita e aprovada em 29/09/2026 conforme ADR-009 |
-| SPEC-003 producer | Reescrever sem `Organization`/`Membership`; BlindPay usa *customer*, não *receiver* — [versão anterior arquivada](../_archive/06-sdd/SPEC-003-organizations.md) |
-| SPEC-004 events | Válida, com resíduo de escrow no cancelamento |
-| SPEC-005 purchase | Reescrever: fluxo de payin quote → payin — [arquivada](../_archive/06-sdd/SPEC-005-purchase.md) |
-| SPEC-006 contracts | **Reescrever:** `EscrowContract` sai; `TicketContract` vira extensão da OZ. Contém bug de tipo (`Symbol` não comporta UUID) — [arquivada](../_archive/06-sdd/SPEC-006-contracts.md) |
-| SPEC-007 mint worker | Reescrever: sai Treasury própria e criação de wallet do caminho crítico — [arquivada](../_archive/06-sdd/SPEC-007-mint-worker.md) |
-| SPEC-008 ticket read | Reescrever sem CQRS — [arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md) |
-| SPEC-009 checkin | Dividir: online na fase 1, offline na fase 2 |
-| SPEC-010 finance | Reescrever: não há escrow — [arquivada](../_archive/06-sdd/SPEC-010-finance.md) |
-| SPEC-011 withdrawal | Reescrever: saque é payout da BlindPay — [arquivada](../_archive/06-sdd/SPEC-011-withdrawal.md) |
-| SPEC-012 dashboard | Reduzir: polling em vez de WebSocket |
-| SPEC-013 pipeline | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig |
+| SPEC                 | Situação                                                                                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| SPEC-001 foundation  | **Implementada e validada em 29/09/2026** — Foundation v2 concluída                                                                                                                                                |
+| SPEC-002 auth        | **Implementada e validada em 30/09/2026** — identidade e wallet user-owned concluídas conforme ADR-009                                                                                                             |
+| SPEC-003 producer    | **3A/3B implementados e validados localmente; smoke BlindPay pendente** — [nova versão](./SPEC-003-producer.md); 3C bloqueado pela Q-01. [Versão anterior arquivada](../_archive/06-sdd/SPEC-003-organizations.md) |
+| SPEC-004 events      | Válida, com resíduo de escrow no cancelamento                                                                                                                                                                      |
+| SPEC-005 purchase    | Reescrever: fluxo de payin quote → payin — [arquivada](../_archive/06-sdd/SPEC-005-purchase.md)                                                                                                                    |
+| SPEC-006 contracts   | **Reescrever:** `EscrowContract` sai; `TicketContract` vira extensão da OZ. Contém bug de tipo (`Symbol` não comporta UUID) — [arquivada](../_archive/06-sdd/SPEC-006-contracts.md)                                |
+| SPEC-007 mint worker | Reescrever: sai Treasury própria e criação de wallet do caminho crítico — [arquivada](../_archive/06-sdd/SPEC-007-mint-worker.md)                                                                                  |
+| SPEC-008 ticket read | Reescrever sem CQRS — [arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md)                                                                                                                                      |
+| SPEC-009 checkin     | Dividir: online na fase 1, offline na fase 2                                                                                                                                                                       |
+| SPEC-010 finance     | Reescrever: não há escrow — [arquivada](../_archive/06-sdd/SPEC-010-finance.md)                                                                                                                                    |
+| SPEC-011 withdrawal  | Reescrever: saque é payout da BlindPay — [arquivada](../_archive/06-sdd/SPEC-011-withdrawal.md)                                                                                                                    |
+| SPEC-012 dashboard   | Reduzir: polling em vez de WebSocket                                                                                                                                                                               |
+| SPEC-013 pipeline    | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig                                                                                                                                                            |
 
 As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Identidade e Q-03
 foram fechadas pelo ADR-009. Antes de reescrever os blocos 3, 5, 6 e 8, devem ser resolvidas as

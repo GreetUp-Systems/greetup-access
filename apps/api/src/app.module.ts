@@ -4,8 +4,10 @@ import { RedisModule } from "@access/redis";
 import { DynamicModule, Module } from "@nestjs/common";
 
 import { AuthModule } from "./auth/auth.module";
+import { BlindPayModule } from "./common/blindpay/blindpay.module";
 import { PrivyModule } from "./common/privy/privy.module";
 import { HealthModule } from "./health/health.module";
+import { ProducersModule } from "./producers/producers.module";
 
 @Module({})
 export class AppModule {
@@ -13,10 +15,12 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [
-        PrismaModule.forRoot(config.databaseUrl),
+        PrismaModule.forRoot(config.databaseUrl, { requireRestrictedRole: true }),
         RedisModule.forRoot(config.redisUrl),
+        BlindPayModule.forRoot(config),
         PrivyModule.forRoot(config),
         AuthModule,
+        ProducersModule,
         HealthModule.forRoot(config.healthCheckTimeoutMs),
       ],
     };
