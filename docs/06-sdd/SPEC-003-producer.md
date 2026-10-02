@@ -649,7 +649,7 @@ BlindPay e um RFI real.
 - [ ] Wallet externa `bw_...` aponta para o endereço verificado da SPEC-002.
 - [ ] Estado derivado chega a `ready` somente com todas as pré-condições reais.
 
-Revalidação automatizada da v1.4 em 03/10/2026: configuração Stellar sem KYC, trustlines USDB e
+Revalidação automatizada da v1.4 em 02/10/2026: configuração Stellar sem KYC, trustlines USDB e
 USDC de teste, conta já ativada no login, reprovisionamento de registro `ACTIVE` com trustline
 ausente e registro `bw_...` somente após o KYC.
 

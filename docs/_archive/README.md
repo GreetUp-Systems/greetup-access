@@ -28,6 +28,7 @@ bloco correspondente.
 | Documento | Motivo |
 |---|---|
 | [SPEC-003](./06-sdd/SPEC-003-organizations.md) — organizations | BlindPay usa *customer*, não *receiver* (D-09) |
+| [SPEC-004](./06-sdd/SPEC-004-events.md) — events | Tenancy por produtor (D-20), sem escrow no cancelamento (D-12) e política de reembolso como texto livre |
 | [SPEC-005](./06-sdd/SPEC-005-purchase.md) — purchase | Fluxo passa a ser payin quote → payin (D-08) |
 | [SPEC-006](./06-sdd/SPEC-006-contracts.md) — contracts | `EscrowContract` sai; `TicketContract` vira extensão da OZ (D-03, D-12). Contém bug de tipo: `Symbol` não comporta UUID |
 | [SPEC-007](./06-sdd/SPEC-007-mint-worker.md) — mint worker | Sai Treasury própria e criação de wallet do caminho crítico (D-02, D-06) |
