@@ -395,6 +395,8 @@ describe("producer profile and RLS integration", () => {
   beforeEach(async () => {
     await ownerPrisma.blindPayWebhookDelivery.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
+    await ownerPrisma.ticketType.deleteMany();
+    await ownerPrisma.event.deleteMany();
     await ownerPrisma.stellarAccountProvisioning.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
@@ -408,6 +410,8 @@ describe("producer profile and RLS integration", () => {
   afterAll(async () => {
     await ownerPrisma.blindPayWebhookDelivery.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
+    await ownerPrisma.ticketType.deleteMany();
+    await ownerPrisma.event.deleteMany();
     await ownerPrisma.stellarAccountProvisioning.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();

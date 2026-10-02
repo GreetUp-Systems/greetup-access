@@ -5,7 +5,7 @@ export type ProducerProfileRecord = Prisma.ProducerProfileGetPayload<{
   include: { blindPayCustomers: true; stellarProvisioning: true };
 }>;
 
-const producerContext = {
+export const producerContext = {
   blindPayCustomers: {
     where: { isCurrent: true },
     take: 1,

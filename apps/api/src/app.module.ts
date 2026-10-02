@@ -7,6 +7,7 @@ import { AuthModule } from "./auth/auth.module";
 import { BlindPayModule } from "./common/blindpay/blindpay.module";
 import { PrivyModule } from "./common/privy/privy.module";
 import { StellarModule } from "./common/stellar/stellar.module";
+import { EventsModule } from "./events/events.module";
 import { HealthModule } from "./health/health.module";
 import { ProducersModule } from "./producers/producers.module";
 
@@ -23,6 +24,7 @@ export class AppModule {
         StellarModule.forRoot(config),
         AuthModule,
         ProducersModule,
+        EventsModule,
         HealthModule.forRoot(config.healthCheckTimeoutMs),
       ],
     };
