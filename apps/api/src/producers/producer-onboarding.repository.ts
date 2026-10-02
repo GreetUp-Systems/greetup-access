@@ -2,6 +2,14 @@ import { Prisma, TenantContextService } from "@access/database";
 import { Injectable } from "@nestjs/common";
 
 export type BlindPayCustomerRecord = Prisma.BlindPayCustomerGetPayload<Record<string, never>>;
+type StoredKycStatus =
+  | "VERIFYING"
+  | "APPROVED"
+  | "REJECTED"
+  | "COMPLIANCE_REQUEST"
+  | "APPROVED_RFI";
+
+const operationalKycStatuses = new Set<StoredKycStatus>(["APPROVED", "APPROVED_RFI"]);
 
 export class CustomerAttemptAlreadyActiveError extends Error {
   constructor() {
@@ -76,6 +84,7 @@ export class ProducerOnboardingRepository {
     userId: string,
     attemptId: string,
     externalCustomerId: string,
+    kycStatus: StoredKycStatus,
   ): Promise<BlindPayCustomerRecord> {
     return this.tenantContext.withProducerContext(userId, async (transaction, producerId) => {
       await transaction.blindPayCustomer.updateMany({
@@ -83,10 +92,28 @@ export class ProducerOnboardingRepository {
         data: {
           externalCustomerId,
           creationStatus: "CREATED",
-          kycStatus: "VERIFYING",
+          kycStatus,
           failureCode: null,
         },
       });
+
+      if (operationalKycStatuses.has(kycStatus)) {
+        await transaction.outboxEvent.createMany({
+          data: [
+            {
+              deduplicationKey: `producer:${producerId}:kyc_approved:v1`,
+              aggregateType: "producer",
+              aggregateId: producerId,
+              eventType: "producer.kyc_approved",
+              payload: {
+                producerId,
+                blindPayCustomerRecordId: attemptId,
+              },
+            },
+          ],
+          skipDuplicates: true,
+        });
+      }
 
       return transaction.blindPayCustomer.findFirstOrThrow({
         where: { id: attemptId, producerId, isCurrent: true },

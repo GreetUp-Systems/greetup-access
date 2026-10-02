@@ -12,6 +12,7 @@ export interface BlindPayUploadedDocument {
 
 export interface BlindPayCreatedCustomer {
   id: string;
+  kycStatus: BlindPayKycStatusValue;
 }
 
 export interface BlindPayRfiField {

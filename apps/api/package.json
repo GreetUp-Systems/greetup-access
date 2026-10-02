@@ -9,6 +9,7 @@
     "dev": "dotenv -e ../../.env -- node --watch --require ts-node/register src/main.ts",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --max-warnings=0",
     "start": "dotenv -e ../../.env -- node dist/main.js",
+    "smoke:blindpay": "dotenv -e ../../.env -- node --require ts-node/register test/manual/blindpay-development-smoke.ts",
     "test": "jest --config jest.config.ts --runInBand",
     "test:integration": "node test/run-integration.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
