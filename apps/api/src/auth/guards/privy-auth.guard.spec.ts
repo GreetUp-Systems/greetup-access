@@ -36,7 +36,9 @@ describe("PrivyAuthGuard", () => {
     await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
 
     expect(privy.verifyAccessToken).toHaveBeenCalledWith("valid-token");
-    expect(request).toMatchObject({ authenticatedPrincipal: principal });
+    expect(request).toMatchObject({
+      authenticatedPrincipal: { ...principal, accessToken: "valid-token" },
+    });
   });
 
   it.each([undefined, "Basic token", "Bearer", "Bearer one two"])(

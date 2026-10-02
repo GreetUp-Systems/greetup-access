@@ -25,6 +25,13 @@ export interface ApiConfig extends InfrastructureConfig {
   blindPayWebhookSecret: string | undefined;
   blindPayApiTimeoutMs: number;
   blindPayAllowedRedirectOrigins: string[];
+  stellarNetwork: "testnet";
+  stellarRpcUrl: "https://soroban-testnet.stellar.org";
+  stellarHorizonUrl: "https://horizon-testnet.stellar.org";
+  stellarAssetCode: "USDB";
+  stellarAssetIssuer: string;
+  stellarSponsorPublicKey: string;
+  stellarSponsorSecretKey: string | undefined;
 }
 
 function parseEnvironment<TSchema extends z.ZodTypeAny>(
@@ -85,5 +92,12 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     blindPayWebhookSecret: parsed.BLINDPAY_WEBHOOK_SECRET || undefined,
     blindPayApiTimeoutMs: parsed.BLINDPAY_API_TIMEOUT_MS,
     blindPayAllowedRedirectOrigins,
+    stellarNetwork: parsed.STELLAR_NETWORK,
+    stellarRpcUrl: parsed.STELLAR_RPC_URL,
+    stellarHorizonUrl: parsed.STELLAR_HORIZON_URL,
+    stellarAssetCode: parsed.STELLAR_ASSET_CODE,
+    stellarAssetIssuer: parsed.STELLAR_ASSET_ISSUER,
+    stellarSponsorPublicKey: parsed.STELLAR_SPONSOR_PUBLIC_KEY,
+    stellarSponsorSecretKey: parsed.STELLAR_SPONSOR_SECRET_KEY,
   };
 }

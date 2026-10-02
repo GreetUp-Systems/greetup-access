@@ -4,7 +4,11 @@ import { type UserWithWallet, UsersRepository } from "../users/users.repository"
 import { ProducersRepository, type ProducerProfileRecord } from "./producers.repository";
 import { ProducersService } from "./producers.service";
 
-const principal = { privyUserId: "did:privy:producer", sessionId: "session" };
+const principal = {
+  privyUserId: "did:privy:producer",
+  sessionId: "session",
+  accessToken: "access-token",
+};
 const now = new Date("2026-09-30T00:00:00.000Z");
 const user: UserWithWallet = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -28,6 +32,7 @@ const producer: ProducerProfileRecord = {
   createdAt: now,
   updatedAt: now,
   blindPayCustomers: [],
+  stellarProvisioning: null,
 };
 
 function producerWithKyc(
@@ -116,6 +121,46 @@ describe("ProducersService", () => {
       });
     },
   );
+
+  it("derives wallet registration pending and ready from persisted provider state", async () => {
+    const activeProvisioning: NonNullable<ProducerProfileRecord["stellarProvisioning"]> = {
+      id: "00000000-0000-4000-8000-000000000005",
+      producerId: producer.id,
+      walletAccountId: user.wallet!.id,
+      network: "testnet",
+      assetCode: "USDB",
+      assetIssuer: `G${"C".repeat(55)}`,
+      status: "ACTIVE",
+      transactionHash: "a".repeat(64),
+      failureCode: null,
+      activatedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const approved = producerWithKyc("APPROVED");
+    producers.findByUserId.mockResolvedValue({
+      ...approved,
+      stellarProvisioning: activeProvisioning,
+    });
+
+    await expect(service.me(principal)).resolves.toMatchObject({
+      onboardingStatus: "wallet_registration_pending",
+      stellar: { status: "active" },
+    });
+
+    producers.findByUserId.mockResolvedValue({
+      ...approved,
+      blindPayCustomers: approved.blindPayCustomers.map((customer) => ({
+        ...customer,
+        externalBlockchainWalletId: "bw_test",
+      })),
+      stellarProvisioning: activeProvisioning,
+    });
+    await expect(service.me(principal)).resolves.toMatchObject({
+      onboardingStatus: "ready",
+      stellar: { status: "active" },
+    });
+  });
 
   it.each([
     null,

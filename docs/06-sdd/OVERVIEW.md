@@ -45,9 +45,11 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 4. a próxima SPEC permanece bloqueada até build, lint, typecheck e testes da etapa ativa passarem;
 5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
 
-**SPEC ativa:** [`SPEC-003 — Onboarding do produtor`](./SPEC-003-producer.md), com gates 3A/3B
-implementados e validados localmente em 30/09/2026; resta o smoke na instância BlindPay development.
-O gate on-chain 3C depende da Q-01.
+**SPEC ativa:** [`SPEC-003 — Onboarding do produtor`](./SPEC-003-producer.md). Os gates 3A/3B e a
+implementação automatizada de 3C estão validados localmente; restam os smokes reais BlindPay e
+Stellar/Privy/BlindPay. O gate 3C usa development/testnet conforme o
+[`ADR-010`](../03-adrs/ADR-010-stellar-development-signer.md). A decisão de custódia para produção
+permanece aberta na Q-01.
 
 O [`ADR-009`](../03-adrs/ADR-009-identity-producer-tenancy.md) fechou identidade, wallet, modelo de
 produtor e a Q-03 em 29/09/2026.
@@ -122,7 +124,7 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | SPEC-001 foundation  | **Implementada e validada em 29/09/2026** — Foundation v2 concluída                                                                                                                                                |
 | SPEC-002 auth        | **Implementada e validada em 30/09/2026** — identidade e wallet user-owned concluídas conforme ADR-009                                                                                                             |
-| SPEC-003 producer    | **3A/3B implementados e validados localmente; smoke BlindPay pendente** — [nova versão](./SPEC-003-producer.md); 3C bloqueado pela Q-01. [Versão anterior arquivada](../_archive/06-sdd/SPEC-003-organizations.md) |
+| SPEC-003 producer    | **3A/3B e implementação automatizada de 3C validados localmente; smokes reais pendentes** — [nova versão](./SPEC-003-producer.md); 3C restrito a development/testnet pelo ADR-010. [Versão anterior arquivada](../_archive/06-sdd/SPEC-003-organizations.md) |
 | SPEC-004 events      | Válida, com resíduo de escrow no cancelamento                                                                                                                                                                      |
 | SPEC-005 purchase    | Reescrever: fluxo de payin quote → payin — [arquivada](../_archive/06-sdd/SPEC-005-purchase.md)                                                                                                                    |
 | SPEC-006 contracts   | **Reescrever:** `EscrowContract` sai; `TicketContract` vira extensão da OZ. Contém bug de tipo (`Symbol` não comporta UUID) — [arquivada](../_archive/06-sdd/SPEC-006-contracts.md)                                |

@@ -16,6 +16,10 @@ import { type AuthenticatedPrincipal } from "../auth/auth.types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { ProducerOnboardingService } from "./producer-onboarding.service";
 import {
+  ProducerStellarActivationService,
+  type StellarActivationView,
+} from "./producer-stellar-activation.service";
+import {
   type CreatedCustomerView,
   type OpenRfiView,
   type TermsSessionView,
@@ -25,7 +29,18 @@ import {
 
 @Controller("producers/onboarding")
 export class ProducerOnboardingController {
-  constructor(private readonly onboardingService: ProducerOnboardingService) {}
+  constructor(
+    private readonly onboardingService: ProducerOnboardingService,
+    private readonly stellarActivation: ProducerStellarActivationService,
+  ) {}
+
+  @Post("stellar/activate")
+  @HttpCode(HttpStatus.OK)
+  activateStellar(
+    @CurrentUser() principal: AuthenticatedPrincipal,
+  ): Promise<StellarActivationView> {
+    return this.stellarActivation.activate(principal);
+  }
 
   @Post("tos")
   @HttpCode(HttpStatus.OK)

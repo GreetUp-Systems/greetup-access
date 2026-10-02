@@ -2,7 +2,11 @@ import { type PrivyGateway, PrivyProviderUnavailableError } from "../common/priv
 import { UsersRepository, type UserWithWallet } from "../users/users.repository";
 import { AuthService } from "./auth.service";
 
-const principal = { privyUserId: "did:privy:user-1", sessionId: "session-1" };
+const principal = {
+  privyUserId: "did:privy:user-1",
+  sessionId: "session-1",
+  accessToken: "access-token",
+};
 const now = new Date("2026-09-29T00:00:00.000Z");
 const stellarAddress = `G${"A".repeat(55)}`;
 type WalletAccount = NonNullable<UserWithWallet["wallet"]>;
@@ -47,6 +51,7 @@ describe("AuthService", () => {
       getIdentity: jest.fn(),
       findStellarWallet: jest.fn(),
       createStellarWallet: jest.fn(),
+      rawSignStellarHash: jest.fn(),
     };
     service = new AuthService(users as unknown as UsersRepository, privy);
   });

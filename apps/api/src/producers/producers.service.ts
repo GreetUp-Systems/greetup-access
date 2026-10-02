@@ -126,19 +126,27 @@ export class ProducersService {
       ProducerProfileView["compliance"]["status"] | undefined;
     const hasOpenRfi =
       customer?.kycStatus === "COMPLIANCE_REQUEST" || customer?.kycStatus === "APPROVED_RFI";
-    const onboardingStatus =
+    const provisioning = producer.stellarProvisioning;
+    const onboardingStatus: ProducerProfileView["onboardingStatus"] =
       customer === undefined
         ? "profile_created"
-        : operationalKycStatuses.has(customer.kycStatus ?? "")
-          ? "stellar_pending"
-          : "compliance_pending";
+        : !operationalKycStatuses.has(customer.kycStatus ?? "")
+          ? "compliance_pending"
+          : provisioning?.status !== "ACTIVE"
+            ? "stellar_pending"
+            : customer.externalBlockchainWalletId === null
+              ? "wallet_registration_pending"
+              : "ready";
+    const stellarStatus = provisioning?.status.toLowerCase() as
+      | ProducerProfileView["stellar"]["status"]
+      | undefined;
 
     return {
       id: producer.id,
       displayName: producer.displayName,
       onboardingStatus,
       compliance: { status: complianceStatus ?? null, hasOpenRfi },
-      stellar: { status: "not_started" },
+      stellar: { status: stellarStatus ?? "not_started" },
     };
   }
 }
