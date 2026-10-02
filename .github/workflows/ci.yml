@@ -185,7 +185,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect Dockerfile
+        id: docker-source
+        shell: bash
+        run: |
+          if [ -f "apps/${{ matrix.app }}/Dockerfile" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Docker build skipped because apps/${{ matrix.app }}/Dockerfile does not exist."
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.docker-source.outputs.enabled == 'true'
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to GHCR
+        if: steps.docker-source.outputs.enabled == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -193,6 +209,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
+        if: steps.docker-source.outputs.enabled == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -203,6 +220,7 @@ jobs:
             type=semver,pattern={{version}}
 
       - name: Build and push
+        if: steps.docker-source.outputs.enabled == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
