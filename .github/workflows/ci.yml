@@ -151,15 +151,22 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: validate
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Snyk (dependency vulnerabilities)
+        if: env.SNYK_TOKEN != ''
         uses: snyk/actions/node@master
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high
+          args: --all-projects --severity-threshold=high
+
+      - name: Report missing Snyk configuration
+        if: env.SNYK_TOKEN == ''
+        run: echo "::warning::SNYK_TOKEN is not configured; dependency scanning was skipped."
 
   # ─── Stage 5: Build (Docker images) ───────────────────────────────────────
   build:
@@ -217,26 +224,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect contract workspace
+        id: contract-source
+        shell: bash
+        run: |
+          if [ -f packages/contracts/Cargo.toml ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Soroban checks skipped because packages/contracts/Cargo.toml does not exist."
+          fi
+
       - name: Install Rust toolchain
+        if: steps.contract-source.outputs.enabled == 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
       - name: Cache Rust dependencies
+        if: steps.contract-source.outputs.enabled == 'true'
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: packages/contracts
 
       - name: Install stellar-cli
-        run: cargo install stellar-cli --features opt
+        if: steps.contract-source.outputs.enabled == 'true'
+        run: cargo install --locked stellar-cli
 
       - name: Run contract tests
+        if: steps.contract-source.outputs.enabled == 'true'
         run: cargo test --manifest-path packages/contracts/Cargo.toml --all-features
 
       - name: Build WASM (release)
+        if: steps.contract-source.outputs.enabled == 'true'
         run: stellar contract build --manifest-path packages/contracts/Cargo.toml
 
       - name: Check WASM size (max 64KB per contract)
+        if: steps.contract-source.outputs.enabled == 'true'
         run: |
           for wasm in packages/contracts/target/wasm32-unknown-unknown/release/*.wasm; do
             size=$(wc -c < "$wasm")
@@ -249,9 +273,11 @@ jobs:
           done
 
       - name: Compute WASM checksums
+        if: steps.contract-source.outputs.enabled == 'true'
         run: sha256sum packages/contracts/target/wasm32-unknown-unknown/release/*.wasm
 
       - name: Upload WASM artifacts
+        if: steps.contract-source.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: contracts-wasm-${{ github.sha }}
