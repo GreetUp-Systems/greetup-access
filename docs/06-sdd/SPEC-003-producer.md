@@ -373,7 +373,9 @@ Rota pública quanto ao Privy, mas autenticada pelos headers `svix-id`, `svix-ti
 1. capturar o body sem transformação;
 2. validar assinatura em tempo constante e tolerância de cinco minutos;
 3. deduplicar por `svix-id` e conferir o hash para detectar reuso divergente;
-4. aceitar `customer.update` nesta SPEC;
+4. aceitar `customer.new` e `customer.update` nesta SPEC; a criação também persiste o
+   `kyc_status` síncrono devolvido pelo provider, pois em Development o customer pode nascer
+   `approved` sem uma transição posterior;
 5. localizar o customer somente depois da validação;
 6. atualizar status e, na primeira entrada operacional, gravar Outbox na mesma transação;
 7. responder `2xx` também para entrega válida já processada.
@@ -607,6 +609,12 @@ CI.
 - [x] Aprovação operacional gera exatamente um `producer.kyc_approved` sanitizado.
 - [ ] Smoke test com a instância BlindPay development confirma ToS, customer, webhook e RFI reais.
 - [x] Build, lint, typecheck e suítes unitária/de integração passam na revisão final.
+
+Validação parcial em 2026-10-02: ToS, upload e customer individual foram executados contra a
+instância Development. O customer nasceu `approved` na resposta síncrona. A assinatura, os handlers
+de `customer.new`/`customer.update` e a deduplicação da Outbox foram validados pelo endpoint público
+com payload assinado, mas o checklist permanece aberto até observar uma entrega originada pela
+BlindPay e um RFI real.
 
 ### Gate 3C
 

@@ -16,6 +16,7 @@ import {
   BLINDPAY_ALLOWED_REDIRECT_ORIGINS,
   BLINDPAY_GATEWAY,
   type BlindPayGateway,
+  type BlindPayKycStatusValue,
   type BlindPayProviderError,
   type BlindPayRfi,
   type BlindPayRfiAnswers,
@@ -43,6 +44,13 @@ import { ProducersRepository, type ProducerProfileRecord } from "./producers.rep
 
 const acceptedUploadTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
 const maxUploadBytes = 10 * 1024 * 1024;
+const storedKycStatus = {
+  verifying: "VERIFYING",
+  approved: "APPROVED",
+  rejected: "REJECTED",
+  compliance_request: "COMPLIANCE_REQUEST",
+  approved_rfi: "APPROVED_RFI",
+} as const satisfies Record<BlindPayKycStatusValue, string>;
 
 @Injectable()
 export class ProducerOnboardingService {
@@ -183,7 +191,12 @@ export class ProducerOnboardingService {
 
     try {
       const created = await this.blindPay.createCustomer(providerInput, providerKey);
-      const stored = await this.onboarding.markCreated(user.id, attempt.id, created.id);
+      const stored = await this.onboarding.markCreated(
+        user.id,
+        attempt.id,
+        created.id,
+        storedKycStatus[created.kycStatus],
+      );
       return this.toCustomerView(stored);
     } catch (error) {
       if (this.isPermanentProviderError(error)) {

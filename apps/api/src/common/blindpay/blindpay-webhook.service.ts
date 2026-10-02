@@ -19,6 +19,7 @@ const kycStatusMap = {
   approved_rfi: "APPROVED_RFI",
 } as const;
 const operationalStatuses = new Set(["APPROVED", "APPROVED_RFI"]);
+const customerLifecycleEvents = new Set(["customer.new", "customer.update"]);
 
 interface WebhookResult {
   received: true;
@@ -65,7 +66,7 @@ export class BlindPayWebhookService {
         });
       }
 
-      if (eventType !== "customer.update") {
+      if (!customerLifecycleEvents.has(eventType)) {
         await this.markProcessed(transaction, verified.messageId);
         return;
       }

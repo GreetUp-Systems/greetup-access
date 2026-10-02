@@ -94,12 +94,18 @@ export class BlindPayHttpGateway implements BlindPayGateway {
     );
     const data = this.unwrap(response, "create_customer");
     const id = this.requiredString(data, "id", "create_customer");
+    const kycStatus = this.requiredString(data, "kyc_status", "create_customer");
 
-    if (!id.startsWith("re_")) {
+    if (
+      !id.startsWith("re_") ||
+      !(
+        ["verifying", "approved", "rejected", "compliance_request", "approved_rfi"] as string[]
+      ).includes(kycStatus)
+    ) {
       throw new BlindPayProviderError("create_customer_invalid_response", false);
     }
 
-    return { id };
+    return { id, kycStatus: kycStatus as BlindPayCreatedCustomer["kycStatus"] };
   }
 
   async getOpenRfi(customerId: string): Promise<BlindPayRfi | null> {

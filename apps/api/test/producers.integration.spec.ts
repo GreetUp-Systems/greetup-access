@@ -144,6 +144,7 @@ class FakeBlindPayGateway implements BlindPayGateway {
   }> = [];
   openRfi: BlindPayRfi | null = null;
   nextCustomerError: BlindPayProviderError | undefined;
+  nextCustomerKycStatus: BlindPayCreatedCustomer["kycStatus"] = "verifying";
   private customerSequence = 0;
 
   reset(): void {
@@ -153,6 +154,7 @@ class FakeBlindPayGateway implements BlindPayGateway {
     this.rfiSubmissions = [];
     this.openRfi = null;
     this.nextCustomerError = undefined;
+    this.nextCustomerKycStatus = "verifying";
     this.customerSequence = 0;
   }
 
@@ -183,7 +185,7 @@ class FakeBlindPayGateway implements BlindPayGateway {
       throw error;
     }
     this.customerSequence += 1;
-    return { id: `re_test_${this.customerSequence}` };
+    return { id: `re_test_${this.customerSequence}`, kycStatus: this.nextCustomerKycStatus };
   }
 
   async getOpenRfi(): Promise<BlindPayRfi | null> {
@@ -616,6 +618,25 @@ describe("producer profile and RLS integration", () => {
     expect(JSON.stringify(stored)).not.toContain(individualCustomer.idDocFrontFile);
   });
 
+  it("persists immediate provider approval and emits its outbox event atomically", async () => {
+    await createProducer();
+    blindPay.nextCustomerKycStatus = "approved";
+    const idempotencyKey = randomUUID();
+
+    const created = await createBlindPayCustomer(idempotencyKey);
+    const repeated = await createBlindPayCustomer(idempotencyKey);
+
+    expect(created.status).toBe(200);
+    expect(created.body).toMatchObject({ customerId: "re_test_1", status: "approved" });
+    expect(repeated.body).toEqual(created.body);
+    expect(blindPay.customerInputs).toHaveLength(1);
+    await expect(ownerPrisma.blindPayCustomer.findFirst()).resolves.toMatchObject({
+      creationStatus: "CREATED",
+      kycStatus: "APPROVED",
+    });
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(1);
+  });
+
   it("maps a business customer and its owners without persisting the KYB dossier", async () => {
     await createProducer();
 
@@ -819,6 +840,34 @@ describe("producer profile and RLS integration", () => {
       .expect(401);
 
     await expect(ownerPrisma.blindPayWebhookDelivery.count()).resolves.toBe(1);
+  });
+
+  it("processes customer.new as an initial KYC lifecycle event", async () => {
+    await createProducer();
+    expect((await createBlindPayCustomer()).status).toBe(200);
+
+    const payload = JSON.stringify({
+      webhook_event: "customer.new",
+      id: "re_test_1",
+      kyc_status: "approved",
+    });
+    const messageId = "msg_customer_created_approved";
+    const timestamp = Math.floor(Date.now() / 1_000);
+
+    await request(app.getHttpServer())
+      .post("/api/webhooks/blindpay")
+      .set("Content-Type", "application/json")
+      .set("svix-id", messageId)
+      .set("svix-timestamp", String(timestamp))
+      .set("svix-signature", `v1,${signWebhook(payload, messageId, timestamp)}`)
+      .send(payload)
+      .expect(200);
+
+    await expect(ownerPrisma.blindPayWebhookDelivery.count()).resolves.toBe(1);
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(1);
+    await expect(ownerPrisma.blindPayCustomer.findFirst()).resolves.toMatchObject({
+      kycStatus: "APPROVED",
+    });
   });
 
   it("keeps the webhook database role restricted to its technical tables", async () => {
