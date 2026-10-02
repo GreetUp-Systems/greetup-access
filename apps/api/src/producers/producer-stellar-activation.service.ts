@@ -22,6 +22,7 @@ import {
   PrivyProviderUnavailableError,
 } from "../common/privy/privy.types";
 import {
+  isStellarAccountProvisioned,
   STELLAR_GATEWAY,
   STELLAR_ACTIVATION_CONFIG,
   type PreparedStellarProvisioning,
@@ -35,10 +36,12 @@ import {
   ProducerStellarRepository,
   type StellarProvisioningRecord,
 } from "./producer-stellar.repository";
-import { ProducersRepository } from "./producers.repository";
+import { type ProducerProfileRecord, ProducersRepository } from "./producers.repository";
 
 const signingLeaseMs = 4 * 60 * 1_000;
 const operationalKycStatuses = new Set(["APPROVED", "APPROVED_RFI"]);
+
+type CurrentBlindPayCustomer = ProducerProfileRecord["blindPayCustomers"][number];
 
 export interface StellarActivationView {
   status: "signing" | "submitted" | "active";
@@ -55,35 +58,28 @@ export class ProducerStellarActivationService {
     @Inject(STELLAR_GATEWAY) private readonly stellar: StellarGateway,
     @Inject(BLINDPAY_GATEWAY) private readonly blindPay: BlindPayGateway,
     @Inject(STELLAR_ACTIVATION_CONFIG)
-    private readonly config: Pick<
-      ApiConfig,
-      "stellarNetwork" | "stellarAssetCode" | "stellarAssetIssuer"
-    >,
+    private readonly config: Pick<ApiConfig, "stellarNetwork">,
   ) {}
 
   async activate(principal: AuthenticatedPrincipal): Promise<StellarActivationView> {
     const { user, wallet, customer } = await this.requireContext(principal);
     await this.assertWalletOwnership(principal, wallet);
 
-    let provisioning = await this.repository.ensure(
-      user.id,
-      wallet.id,
-      this.config.stellarNetwork,
-      this.config.stellarAssetCode,
-      this.config.stellarAssetIssuer,
-    );
+    let provisioning = await this.repository.ensure(user.id, wallet.id, this.config.stellarNetwork);
 
     const initialState = await this.getAccountState(wallet.stellarAddress);
-    if (initialState.accountExists && initialState.trustlineExists) {
+    if (isStellarAccountProvisioned(initialState)) {
       return this.completeActivation(user.id, provisioning, customer, wallet.stellarAddress);
     }
 
-    provisioning = await this.reconcileSubmitted(user.id, provisioning, wallet.stellarAddress);
-    if (provisioning.status === "ACTIVE") {
-      return this.completeActivation(user.id, provisioning, customer, wallet.stellarAddress);
-    }
     if (provisioning.status === "SUBMITTED") {
-      return this.toView(provisioning);
+      provisioning = await this.reconcileSubmitted(user.id, provisioning, wallet.stellarAddress);
+      if (provisioning.status === "ACTIVE") {
+        return this.completeActivation(user.id, provisioning, customer, wallet.stellarAddress);
+      }
+      if (provisioning.status === "SUBMITTED") {
+        return this.toView(provisioning);
+      }
     }
     if (provisioning.status === "SIGNING" && !this.isStale(provisioning.updatedAt)) {
       return this.toView(provisioning);
@@ -109,7 +105,7 @@ export class ProducerStellarActivationService {
     try {
       prepared = await this.stellar.buildProvisioningTransaction(
         wallet.stellarAddress,
-        initialState.accountExists,
+        initialState,
       );
       const signature = await this.privy.rawSignStellarHash(
         wallet.privyWalletId,
@@ -117,7 +113,11 @@ export class ProducerStellarActivationService {
         principal.accessToken,
         this.hashKey(`privy:${prepared.transactionHash}`),
       );
-      provisioning = await this.repository.markSubmitted(user.id, claimed.id, prepared.transactionHash);
+      provisioning = await this.repository.markSubmitted(
+        user.id,
+        claimed.id,
+        prepared.transactionHash,
+      );
 
       try {
         await this.stellar.submitProvisioningTransaction(
@@ -140,7 +140,7 @@ export class ProducerStellarActivationService {
     }
 
     const confirmed = await this.getAccountState(wallet.stellarAddress);
-    if (!confirmed.accountExists || !confirmed.trustlineExists) {
+    if (!isStellarAccountProvisioned(confirmed)) {
       return this.toView(provisioning);
     }
 
@@ -159,7 +159,7 @@ export class ProducerStellarActivationService {
     const status = await this.getTransactionStatus(provisioning.transactionHash);
     if (status === "success") {
       const state = await this.getAccountState(address);
-      if (state.accountExists && state.trustlineExists) {
+      if (isStellarAccountProvisioned(state)) {
         return this.repository.markActive(userId, provisioning.id);
       }
       await this.repository.markFailed(userId, provisioning.id, "onchain_state_mismatch");
@@ -178,11 +178,7 @@ export class ProducerStellarActivationService {
   private async completeActivation(
     userId: string,
     provisioning: StellarProvisioningRecord,
-    customer: {
-      id: string;
-      externalCustomerId: string | null;
-      externalBlockchainWalletId: string | null;
-    },
+    customer: CurrentBlindPayCustomer | undefined,
     address: string,
   ): Promise<StellarActivationView> {
     const active =
@@ -190,7 +186,12 @@ export class ProducerStellarActivationService {
         ? provisioning
         : await this.repository.markActive(userId, provisioning.id);
 
-    if (customer.externalBlockchainWalletId !== null) {
+    // Stellar setup does not depend on KYC; only receiving (the bw_ wallet) does (D-23).
+    if (
+      customer === undefined ||
+      !this.isOperational(customer) ||
+      customer.externalBlockchainWalletId !== null
+    ) {
       return this.toView(active);
     }
     if (customer.externalCustomerId === null) {
@@ -243,18 +244,13 @@ export class ProducerStellarActivationService {
         message: "The authenticated account does not have a producer profile.",
       });
     }
-    const customer = producer.blindPayCustomers[0];
-    if (
-      customer === undefined ||
-      customer.creationStatus !== "CREATED" ||
-      !operationalKycStatuses.has(customer.kycStatus ?? "")
-    ) {
-      throw new ConflictException({
-        code: "blindpay_customer_not_operational",
-        message: "KYC approval is required before Stellar activation.",
-      });
-    }
-    return { user, wallet: user.wallet, customer };
+    return { user, wallet: user.wallet, customer: producer.blindPayCustomers[0] };
+  }
+
+  private isOperational(customer: CurrentBlindPayCustomer): boolean {
+    return (
+      customer.creationStatus === "CREATED" && operationalKycStatuses.has(customer.kycStatus ?? "")
+    );
   }
 
   private async assertWalletOwnership(

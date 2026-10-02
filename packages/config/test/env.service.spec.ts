@@ -24,6 +24,7 @@ const validEnvironment: NodeJS.ProcessEnv = {
   STELLAR_HORIZON_URL: "https://horizon-testnet.stellar.org",
   STELLAR_ASSET_CODE: "USDB",
   STELLAR_ASSET_ISSUER: "GCQSSIMOW5OCGULZATDXKU5MOJBOMFX6G65X6CXZDQ7AIB3SKFUZ67NX",
+  STELLAR_USDC_ASSET_ISSUER: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
   STELLAR_SPONSOR_PUBLIC_KEY: `G${"A".repeat(55)}`,
   STELLAR_SPONSOR_SECRET_KEY: `S${"A".repeat(55)}`,
 };
@@ -56,6 +57,7 @@ describe("environment configuration", () => {
       blindPayAllowedRedirectOrigins: ["http://localhost:3000", "https://app.example.com"],
       stellarNetwork: "testnet",
       stellarAssetCode: "USDB",
+      stellarUsdcAssetIssuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
     });
   });
 
@@ -132,6 +134,7 @@ describe("environment configuration", () => {
     "STELLAR_HORIZON_URL",
     "STELLAR_ASSET_CODE",
     "STELLAR_ASSET_ISSUER",
+    "STELLAR_USDC_ASSET_ISSUER",
     "STELLAR_SPONSOR_PUBLIC_KEY",
     "STELLAR_SPONSOR_SECRET_KEY",
   ])("requires %s for the API", (key) => {
@@ -141,13 +144,19 @@ describe("environment configuration", () => {
     expect(() => loadApiConfig(environment)).toThrow(key);
   });
 
-  it("rejects Pubnet, a different asset and a local production signer", () => {
+  it("rejects Pubnet, a different asset or issuer and a local production signer", () => {
     expect(() => loadApiConfig({ ...validEnvironment, STELLAR_NETWORK: "public" })).toThrow(
       "STELLAR_NETWORK",
     );
     expect(() => loadApiConfig({ ...validEnvironment, STELLAR_ASSET_CODE: "USDC" })).toThrow(
       "STELLAR_ASSET_CODE",
     );
+    expect(() =>
+      loadApiConfig({
+        ...validEnvironment,
+        STELLAR_USDC_ASSET_ISSUER: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      }),
+    ).toThrow("STELLAR_USDC_ASSET_ISSUER");
     expect(() => loadApiConfig({ ...validEnvironment, NODE_ENV: "production" })).toThrow(
       "STELLAR_SPONSOR_SECRET_KEY",
     );

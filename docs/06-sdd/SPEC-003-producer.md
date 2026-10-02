@@ -1,8 +1,7 @@
 # SPEC-003 — Onboarding do produtor
 
-> **Status:** gates 3A/3B validados localmente; 3C revisado em 02/10/2026 — configuração Stellar na
-> criação do perfil, sem depender do KYC, e trustline de USDC de teste — e com implementação a
-> ajustar; smokes reais BlindPay e Stellar/Privy/BlindPay pendentes
+> **Status:** gates 3A/3B e implementação automatizada de 3C (v1.4) validados localmente; smokes
+> reais BlindPay e Stellar/Privy/BlindPay pendentes
 >
 > **Versão:** 1.4
 >
@@ -650,8 +649,9 @@ BlindPay e um RFI real.
 - [ ] Wallet externa `bw_...` aponta para o endereço verificado da SPEC-002.
 - [ ] Estado derivado chega a `ready` somente com todas as pré-condições reais.
 
-A revisão 1.4 reabre o 3C: o código validado abaixo ainda exige KYC antes da configuração Stellar e
-cria só a trustline USDB.
+Revalidação automatizada da v1.4 em 03/10/2026: configuração Stellar sem KYC, trustlines USDB e
+USDC de teste, conta já ativada no login, reprovisionamento de registro `ACTIVE` com trustline
+ausente e registro `bw_...` somente após o KYC.
 
 Validação automatizada em 02/10/2026: composição e fontes das operações, assinaturas produtor/sponsor,
 fail-closed de configuração, reconciliação, idempotência, RLS, registro BlindPay após confirmação e
