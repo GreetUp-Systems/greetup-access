@@ -20,8 +20,10 @@ export class StellarModule {
 
             return new StellarHorizonGateway({
               horizonUrl: config.stellarHorizonUrl,
-              assetCode: config.stellarAssetCode,
-              assetIssuer: config.stellarAssetIssuer,
+              trustlines: [
+                { code: config.stellarAssetCode, issuer: config.stellarAssetIssuer },
+                { code: "USDC", issuer: config.stellarUsdcAssetIssuer },
+              ],
               sponsorPublicKey: config.stellarSponsorPublicKey,
               sponsorSecretKey: config.stellarSponsorSecretKey,
             });
@@ -31,8 +33,6 @@ export class StellarModule {
           provide: STELLAR_ACTIVATION_CONFIG,
           useValue: {
             stellarNetwork: config.stellarNetwork,
-            stellarAssetCode: config.stellarAssetCode,
-            stellarAssetIssuer: config.stellarAssetIssuer,
           },
         },
       ],

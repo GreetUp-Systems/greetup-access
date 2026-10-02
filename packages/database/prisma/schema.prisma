@@ -140,8 +140,6 @@ model StellarAccountProvisioning {
   producerId      String                    @unique @map("producer_id") @db.Uuid
   walletAccountId String                    @unique @map("wallet_account_id") @db.Uuid
   network         String                    @db.VarChar(32)
-  assetCode       String                    @map("asset_code") @db.VarChar(12)
-  assetIssuer     String                    @map("asset_issuer") @db.VarChar(56)
   status          StellarProvisioningStatus @default(PENDING)
   transactionHash String?                   @unique @map("transaction_hash") @db.VarChar(64)
   failureCode     String?                   @map("failure_code") @db.VarChar(80)

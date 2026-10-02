@@ -26,6 +26,7 @@ const optionalWebhookSecret = z.union([z.string().startsWith("whsec_"), z.litera
 const stellarPublicKey = z.string().regex(/^G[A-Z2-7]{55}$/);
 const stellarSecretKey = z.string().regex(/^S[A-Z2-7]{55}$/);
 const stellarTestnetUsdbIssuer = "GCQSSIMOW5OCGULZATDXKU5MOJBOMFX6G65X6CXZDQ7AIB3SKFUZ67NX";
+const stellarTestnetUsdcIssuer = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 
 export const apiEnvironmentSchema = infrastructureEnvironmentSchema
   .extend({
@@ -47,6 +48,7 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
     STELLAR_HORIZON_URL: z.literal("https://horizon-testnet.stellar.org"),
     STELLAR_ASSET_CODE: z.literal("USDB"),
     STELLAR_ASSET_ISSUER: z.literal(stellarTestnetUsdbIssuer),
+    STELLAR_USDC_ASSET_ISSUER: z.literal(stellarTestnetUsdcIssuer),
     STELLAR_SPONSOR_PUBLIC_KEY: stellarPublicKey,
     STELLAR_SPONSOR_SECRET_KEY: stellarSecretKey.optional(),
   })

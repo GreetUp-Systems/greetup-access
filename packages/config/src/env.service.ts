@@ -30,6 +30,7 @@ export interface ApiConfig extends InfrastructureConfig {
   stellarHorizonUrl: "https://horizon-testnet.stellar.org";
   stellarAssetCode: "USDB";
   stellarAssetIssuer: string;
+  stellarUsdcAssetIssuer: string;
   stellarSponsorPublicKey: string;
   stellarSponsorSecretKey: string | undefined;
 }
@@ -97,6 +98,7 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     stellarHorizonUrl: parsed.STELLAR_HORIZON_URL,
     stellarAssetCode: parsed.STELLAR_ASSET_CODE,
     stellarAssetIssuer: parsed.STELLAR_ASSET_ISSUER,
+    stellarUsdcAssetIssuer: parsed.STELLAR_USDC_ASSET_ISSUER,
     stellarSponsorPublicKey: parsed.STELLAR_SPONSOR_PUBLIC_KEY,
     stellarSponsorSecretKey: parsed.STELLAR_SPONSOR_SECRET_KEY,
   };

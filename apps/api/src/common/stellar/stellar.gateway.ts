@@ -17,6 +17,7 @@ import {
   type StellarGateway,
   StellarProviderError,
   type StellarTransactionStatus,
+  type StellarTrustline,
 } from "./stellar.types";
 
 const transactionTimeoutSeconds = 180;
@@ -25,8 +26,7 @@ const signaturePattern = /^0x[0-9a-fA-F]{128}$/;
 
 export interface StellarHorizonGatewayOptions {
   horizonUrl: string;
-  assetCode: "USDB";
-  assetIssuer: string;
+  trustlines: StellarTrustline[];
   sponsorPublicKey: string;
   sponsorSecretKey: string;
 }
@@ -34,9 +34,13 @@ export interface StellarHorizonGatewayOptions {
 export function buildSponsoredProvisioningTransaction(input: {
   sponsorAccount: Account;
   producerAddress: string;
-  asset: Asset;
+  assets: Asset[];
   accountExists: boolean;
 }): Transaction {
+  if (input.accountExists && input.assets.length === 0) {
+    throw new StellarProviderError("provisioning_not_required", false);
+  }
+
   let builder = new TransactionBuilder(input.sponsorAccount, {
     fee: BASE_FEE,
     networkPassphrase: Networks.TESTNET,
@@ -57,13 +61,16 @@ export function buildSponsoredProvisioningTransaction(input: {
     );
   }
 
-  return builder
-    .addOperation(
+  for (const asset of input.assets) {
+    builder = builder.addOperation(
       Operation.changeTrust({
-        asset: input.asset,
+        asset,
         source: input.producerAddress,
       }),
-    )
+    );
+  }
+
+  return builder
     .addOperation(Operation.endSponsoringFutureReserves({ source: input.producerAddress }))
     .setTimeout(transactionTimeoutSeconds)
     .build();
@@ -72,11 +79,12 @@ export function buildSponsoredProvisioningTransaction(input: {
 export class StellarHorizonGateway implements StellarGateway {
   private readonly server: Horizon.Server;
   private readonly sponsor: Keypair;
-  private readonly asset: Asset;
 
   constructor(private readonly options: StellarHorizonGatewayOptions) {
+    if (options.trustlines.length === 0) {
+      throw new Error("At least one Stellar trustline must be configured.");
+    }
     this.sponsor = this.readSponsor(options.sponsorPublicKey, options.sponsorSecretKey);
-    this.asset = new Asset(options.assetCode, options.assetIssuer);
     this.server = new Horizon.Server(options.horizonUrl);
   }
 
@@ -85,18 +93,21 @@ export class StellarHorizonGateway implements StellarGateway {
 
     try {
       const account = await this.server.loadAccount(address);
-      const trustlineExists = account.balances.some(
-        (balance) =>
-          balance.asset_type !== "native" &&
-          balance.asset_type !== "liquidity_pool_shares" &&
-          balance.asset_code === this.asset.getCode() &&
-          balance.asset_issuer === this.asset.getIssuer(),
+      const missingTrustlines = this.options.trustlines.filter(
+        (trustline) =>
+          !account.balances.some(
+            (balance) =>
+              balance.asset_type !== "native" &&
+              balance.asset_type !== "liquidity_pool_shares" &&
+              balance.asset_code === trustline.code &&
+              balance.asset_issuer === trustline.issuer,
+          ),
       );
 
-      return { accountExists: true, trustlineExists };
+      return { accountExists: true, missingTrustlines };
     } catch (error) {
       if (error instanceof NotFoundError) {
-        return { accountExists: false, trustlineExists: false };
+        return { accountExists: false, missingTrustlines: [...this.options.trustlines] };
       }
       throw this.mapError("inspect_account", error);
     }
@@ -104,21 +115,24 @@ export class StellarHorizonGateway implements StellarGateway {
 
   async buildProvisioningTransaction(
     producerAddress: string,
-    accountExists: boolean,
+    state: StellarAccountState,
   ): Promise<PreparedStellarProvisioning> {
     this.assertAddress(producerAddress, "build_provisioning");
+    const assets = state.missingTrustlines.map((trustline) => {
+      if (!this.isConfiguredTrustline(trustline)) {
+        throw new StellarProviderError("build_provisioning_unknown_asset", false);
+      }
+      return new Asset(trustline.code, trustline.issuer);
+    });
 
     try {
       const loadedSponsor = await this.server.loadAccount(this.options.sponsorPublicKey);
-      const sponsorAccount = new Account(
-        loadedSponsor.accountId(),
-        loadedSponsor.sequenceNumber(),
-      );
+      const sponsorAccount = new Account(loadedSponsor.accountId(), loadedSponsor.sequenceNumber());
       const transaction = buildSponsoredProvisioningTransaction({
         sponsorAccount,
         producerAddress,
-        asset: this.asset,
-        accountExists,
+        assets,
+        accountExists: state.accountExists,
       });
 
       return {
@@ -183,6 +197,12 @@ export class StellarHorizonGateway implements StellarGateway {
       }
       throw this.mapError("get_transaction", error);
     }
+  }
+
+  private isConfiguredTrustline(trustline: StellarTrustline): boolean {
+    return this.options.trustlines.some(
+      (configured) => configured.code === trustline.code && configured.issuer === trustline.issuer,
+    );
   }
 
   private readSponsor(publicKey: string, secretKey: string): Keypair {

@@ -128,18 +128,15 @@ export class ProducersService {
       customer?.kycStatus === "COMPLIANCE_REQUEST" || customer?.kycStatus === "APPROVED_RFI";
     const provisioning = producer.stellarProvisioning;
     const onboardingStatus: ProducerProfileView["onboardingStatus"] =
-      customer === undefined
-        ? "profile_created"
-        : !operationalKycStatuses.has(customer.kycStatus ?? "")
+      provisioning?.status !== "ACTIVE"
+        ? "stellar_pending"
+        : customer === undefined || !operationalKycStatuses.has(customer.kycStatus ?? "")
           ? "compliance_pending"
-          : provisioning?.status !== "ACTIVE"
-            ? "stellar_pending"
-            : customer.externalBlockchainWalletId === null
-              ? "wallet_registration_pending"
-              : "ready";
+          : customer.externalBlockchainWalletId === null
+            ? "wallet_registration_pending"
+            : "ready";
     const stellarStatus = provisioning?.status.toLowerCase() as
-      | ProducerProfileView["stellar"]["status"]
-      | undefined;
+      ProducerProfileView["stellar"]["status"] | undefined;
 
     return {
       id: producer.id,

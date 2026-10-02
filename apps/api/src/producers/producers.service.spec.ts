@@ -35,6 +35,19 @@ const producer: ProducerProfileRecord = {
   stellarProvisioning: null,
 };
 
+const activeProvisioning: NonNullable<ProducerProfileRecord["stellarProvisioning"]> = {
+  id: "00000000-0000-4000-8000-000000000005",
+  producerId: producer.id,
+  walletAccountId: user.wallet!.id,
+  network: "testnet",
+  status: "ACTIVE",
+  transactionHash: "a".repeat(64),
+  failureCode: null,
+  activatedAt: now,
+  createdAt: now,
+  updatedAt: now,
+};
+
 function producerWithKyc(
   kycStatus: ProducerProfileRecord["blindPayCustomers"][number]["kycStatus"],
 ): ProducerProfileRecord {
@@ -82,7 +95,7 @@ describe("ProducersService", () => {
     ).resolves.toEqual({
       id: producer.id,
       displayName: producer.displayName,
-      onboardingStatus: "profile_created",
+      onboardingStatus: "stellar_pending",
       compliance: { status: null, hasOpenRfi: false },
       stellar: { status: "not_started" },
     });
@@ -107,36 +120,44 @@ describe("ProducersService", () => {
     ["VERIFYING", "compliance_pending", false],
     ["REJECTED", "compliance_pending", false],
     ["COMPLIANCE_REQUEST", "compliance_pending", true],
-    ["APPROVED", "stellar_pending", false],
-    ["APPROVED_RFI", "stellar_pending", true],
+    ["APPROVED", "wallet_registration_pending", false],
+    ["APPROVED_RFI", "wallet_registration_pending", true],
   ] as const)(
-    "derives onboarding for KYC status %s",
+    "derives onboarding for KYC status %s once Stellar is active",
     async (kycStatus, onboardingStatus, hasOpenRfi) => {
-      producers.findByUserId.mockResolvedValue(producerWithKyc(kycStatus));
+      producers.findByUserId.mockResolvedValue({
+        ...producerWithKyc(kycStatus),
+        stellarProvisioning: activeProvisioning,
+      });
 
       await expect(service.me(principal)).resolves.toMatchObject({
         onboardingStatus,
         compliance: { status: kycStatus.toLowerCase(), hasOpenRfi },
-        stellar: { status: "not_started" },
+        stellar: { status: "active" },
       });
     },
   );
 
+  it("reports the Stellar setup before compliance, since both tracks are independent", async () => {
+    producers.findByUserId.mockResolvedValue(producerWithKyc("APPROVED"));
+    await expect(service.me(principal)).resolves.toMatchObject({
+      onboardingStatus: "stellar_pending",
+      compliance: { status: "approved" },
+      stellar: { status: "not_started" },
+    });
+
+    producers.findByUserId.mockResolvedValue({
+      ...producer,
+      stellarProvisioning: activeProvisioning,
+    });
+    await expect(service.me(principal)).resolves.toMatchObject({
+      onboardingStatus: "compliance_pending",
+      compliance: { status: null },
+      stellar: { status: "active" },
+    });
+  });
+
   it("derives wallet registration pending and ready from persisted provider state", async () => {
-    const activeProvisioning: NonNullable<ProducerProfileRecord["stellarProvisioning"]> = {
-      id: "00000000-0000-4000-8000-000000000005",
-      producerId: producer.id,
-      walletAccountId: user.wallet!.id,
-      network: "testnet",
-      assetCode: "USDB",
-      assetIssuer: `G${"C".repeat(55)}`,
-      status: "ACTIVE",
-      transactionHash: "a".repeat(64),
-      failureCode: null,
-      activatedAt: now,
-      createdAt: now,
-      updatedAt: now,
-    };
     const approved = producerWithKyc("APPROVED");
     producers.findByUserId.mockResolvedValue({
       ...approved,

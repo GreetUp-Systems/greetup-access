@@ -19,22 +19,15 @@ export class ProducerStellarRepository {
     userId: string,
     walletAccountId: string,
     network: string,
-    assetCode: string,
-    assetIssuer: string,
   ): Promise<StellarProvisioningRecord> {
     return this.tenantContext.withProducerContext(userId, async (transaction, producerId) => {
       const provisioning = await transaction.stellarAccountProvisioning.upsert({
         where: { producerId },
-        create: { producerId, walletAccountId, network, assetCode, assetIssuer },
+        create: { producerId, walletAccountId, network },
         update: {},
       });
 
-      if (
-        provisioning.walletAccountId !== walletAccountId ||
-        provisioning.network !== network ||
-        provisioning.assetCode !== assetCode ||
-        provisioning.assetIssuer !== assetIssuer
-      ) {
+      if (provisioning.walletAccountId !== walletAccountId || provisioning.network !== network) {
         throw new StellarProvisioningConfigurationError();
       }
 
@@ -59,7 +52,8 @@ export class ProducerStellarRepository {
           id: provisioningId,
           producerId,
           OR: [
-            { status: { in: ["PENDING", "FAILED"] } },
+            // ACTIVE is only claimed when the ledger is missing a configured trustline.
+            { status: { in: ["PENDING", "FAILED", "ACTIVE"] } },
             { status: "SIGNING", updatedAt: { lt: staleBefore } },
           ],
         },

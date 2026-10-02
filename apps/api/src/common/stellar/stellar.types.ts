@@ -1,6 +1,15 @@
+export interface StellarTrustline {
+  code: string;
+  issuer: string;
+}
+
 export interface StellarAccountState {
   accountExists: boolean;
-  trustlineExists: boolean;
+  missingTrustlines: StellarTrustline[];
+}
+
+export function isStellarAccountProvisioned(state: StellarAccountState): boolean {
+  return state.accountExists && state.missingTrustlines.length === 0;
 }
 
 export interface PreparedStellarProvisioning {
@@ -14,7 +23,7 @@ export interface StellarGateway {
   getAccountState(address: string): Promise<StellarAccountState>;
   buildProvisioningTransaction(
     producerAddress: string,
-    accountExists: boolean,
+    state: StellarAccountState,
   ): Promise<PreparedStellarProvisioning>;
   submitProvisioningTransaction(
     prepared: PreparedStellarProvisioning,

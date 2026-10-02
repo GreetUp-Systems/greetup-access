@@ -9,6 +9,7 @@ export const stellarTestConfig = {
   stellarHorizonUrl: "https://horizon-testnet.stellar.org",
   stellarAssetCode: "USDB",
   stellarAssetIssuer: "GCQSSIMOW5OCGULZATDXKU5MOJBOMFX6G65X6CXZDQ7AIB3SKFUZ67NX",
+  stellarUsdcAssetIssuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
   stellarSponsorPublicKey: sponsor.publicKey(),
   stellarSponsorSecretKey: sponsor.secret(),
 } satisfies Pick<
@@ -18,6 +19,7 @@ export const stellarTestConfig = {
   | "stellarHorizonUrl"
   | "stellarAssetCode"
   | "stellarAssetIssuer"
+  | "stellarUsdcAssetIssuer"
   | "stellarSponsorPublicKey"
   | "stellarSponsorSecretKey"
 >;
