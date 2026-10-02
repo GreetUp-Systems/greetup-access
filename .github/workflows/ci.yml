@@ -71,7 +71,7 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-${{ hashFiles('**/turbo.json') }}-
 
       - name: Typecheck
-        run: pnpm turbo typecheck
+        run: pnpm typecheck
 
       - name: Lint
         run: pnpm turbo lint
