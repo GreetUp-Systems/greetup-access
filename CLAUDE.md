@@ -35,7 +35,7 @@ Preferir perguntar a assumir. Um assumir errado em fluxo financeiro é caro. Uma
 
 Antes de implementar qualquer SPEC, leia nesta ordem:
 
-1. `docs/06-sdd/MVP-REVISADO.md` — **fonte de verdade da arquitetura**: decisões D-01 a D-19, dívidas conscientes, notas de implementação e questões em aberto (§9)
+1. `docs/06-sdd/MVP-REVISADO.md` — **fonte de verdade da arquitetura**: decisões D-01 a D-24, dívidas conscientes, notas de implementação e questões em aberto (§9)
 2. `docs/06-sdd/OVERVIEW.md` — blocos de implementação, dependências e status de cada SPEC
 3. A SPEC específica que você vai implementar, em `docs/06-sdd/SPEC-XXX-*.md`
 4. Os ADRs referenciados na spec, em `docs/03-adrs/` — para entender o porquê das decisões, não só o quê
@@ -93,7 +93,7 @@ Estas regras valem independentemente do que uma spec disser. Se uma spec parecer
 2. **Toda escrita que gera evento de domínio usa `prisma.$transaction` + `OutboxService.publish()` dentro da mesma transação.** Nunca publicar evento fora da transação que gerou o estado.
 3. **Todo consumer de fila (worker) é idempotente.** Verificar estado atual antes de processar. Um job pode ser executado mais de uma vez — o resultado final deve ser o mesmo.
 4. **Nunca armazenar dado pessoal on-chain.** Nome, email, CPF, telefone, dados bancários — sempre off-chain (PostgreSQL). On-chain só IDs, endereços de wallet, estados e hashes.
-5. **Nunca expor chave privada em código, log, variável de ambiente commitada ou resposta de API.** Fora do ambiente local, secrets vêm do gestor de secrets. Gas é pago pelo OpenZeppelin Relayer. A custódia da chave de assinatura da plataforma é questão em aberto (Q-01) — não implemente signing no servidor antes dessa decisão.
+5. **Nunca expor chave privada em código, log, variável de ambiente commitada ou resposta de API.** Fora do ambiente local, secrets vêm das variáveis de ambiente da plataforma de hospedagem, nunca de arquivo versionado. A conta Stellar do Access assina e patrocina com o mesmo modelo em todos os ambientes (D-24, ADR-010), e o OpenZeppelin Relayer segue como alvo para gas em produção (D-02). Habilitar Pubnet/USDC é uma etapa explícita — nunca liberar production por inferência.
 6. **Todo endpoint que recebe webhook valida assinatura HMAC antes de processar qualquer coisa.** Sem exceção, mesmo em ambiente de desenvolvimento.
 7. **O Access nunca recebe nem movimenta recurso de terceiro (RN-009, D-09).** Todo dinheiro passa pela BlindPay: payin entrega direto na wallet do produtor, saque é payout da BlindPay, taxa do Access é partner fee. Nunca criar conta, wallet ou fluxo que receba em nome do produtor — é a regra anti-nesting da BlindPay.
 8. **Nenhum `console.log` de debug commitado.** Use o logger estruturado (Pino) com nível apropriado.
@@ -162,6 +162,15 @@ Se algo bloquear no meio da implementação, reporte imediatamente — não cont
 | Commits | Conventional Commits | `feat: adiciona MintTicketJob` |
 
 TypeScript sempre em modo strict. Nunca usar `any` — se o tipo é genuinamente desconhecido, usar `unknown` e fazer narrowing explícito.
+
+### Fluxo de Git
+
+1. **Implementação começa numa branch nova**, criada a partir da `main` atualizada e nomeada com os prefixos da tabela acima. Ao final, commitar e abrir PR para a `main` (`gh pr create`).
+2. **Docs e specs vão direto na `main`, sem PR**, nesta fase de desenvolvimento — commit e push após a mudança aprovada. Commits sempre em Conventional Commits.
+3. **Autoria é sempre do Matheus.** Commits usam a identidade git configurada localmente — nunca alterar `user.name`/`user.email` nem passar `--author`.
+4. **O Claude nunca aparece como autor ou coautor.** Nada de `Co-Authored-By`, "Generated with Claude Code" ou qualquer menção de autoria do Claude em mensagens de commit ou descrições de PR.
+
+O repositório já reforça a regra 4 em duas camadas: `.claude/settings.json` desliga a atribuição automática, e `.githooks/commit-msg` remove trailers residuais — este último só funciona com `git config core.hooksPath .githooks` ativo no clone.
 
 ---
 

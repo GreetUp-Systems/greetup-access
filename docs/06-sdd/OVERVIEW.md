@@ -4,7 +4,7 @@
 >
 > A arquitetura foi revisada em 20/08/2026, com identidade atualizada em 29/09/2026, e boa parte
 > das SPEC-003 a SPEC-013 continua vencida.
-> O `MVP-REVISADO.md` é a **fonte de verdade** da arquitetura: vinte e duas decisões, com o porquê
+> O `MVP-REVISADO.md` é a **fonte de verdade** da arquitetura: vinte e quatro decisões, com o porquê
 > de cada uma, e a tabela do que foi superado.
 >
 > **Não implemente a partir de uma SPEC sem antes conferir aquela tabela.** Várias descrevem
@@ -48,8 +48,8 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 **SPEC ativa:** [`SPEC-003 — Onboarding do produtor`](./SPEC-003-producer.md). Os gates 3A/3B e a
 implementação automatizada de 3C estão validados localmente; restam os smokes reais BlindPay e
 Stellar/Privy/BlindPay. O gate 3C usa development/testnet conforme o
-[`ADR-010`](../03-adrs/ADR-010-stellar-development-signer.md). A decisão de custódia para produção
-permanece aberta na Q-01.
+[`ADR-010`](../03-adrs/ADR-010-stellar-development-signer.md). Production usa o mesmo modelo de
+signer (D-24) e fica liberada só na etapa explícita de habilitação de Pubnet/USDC.
 
 O [`ADR-009`](../03-adrs/ADR-009-identity-producer-tenancy.md) fechou identidade, wallet, modelo de
 produtor e a Q-03 em 29/09/2026.
@@ -137,5 +137,5 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | SPEC-013 pipeline    | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig                                                                                                                                                            |
 
 As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Identidade e Q-03
-foram fechadas pelo ADR-009. Antes de reescrever os blocos 3, 5, 6 e 8, devem ser resolvidas as
-demais questões aplicáveis do §9 do `MVP-REVISADO.md`.
+foram fechadas pelo ADR-009; Q-01 e Q-02 foram fechadas em 02/10/2026 pelas D-24 e D-23. Não há
+questões de arquitetura em aberto no §9 do `MVP-REVISADO.md`.

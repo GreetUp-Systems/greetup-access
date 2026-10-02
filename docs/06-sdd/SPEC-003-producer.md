@@ -3,7 +3,7 @@
 > **Status:** gates 3A/3B e implementação automatizada de 3C validados localmente; smokes reais
 > BlindPay e Stellar/Privy/BlindPay pendentes
 >
-> **Versão:** 1.2
+> **Versão:** 1.3
 >
 > **Atualizada em:** 02/10/2026
 >
@@ -16,7 +16,7 @@
 ## 1. Objetivo
 
 Transformar um `User` autenticado em produtor, isolar seus dados por RLS e conduzir seu onboarding
-regulatório na BlindPay. Depois da decisão Q-01, a mesma SPEC também ativa sua conta na Stellar,
+regulatório na BlindPay. No gate 3C, a mesma SPEC também ativa sua conta na Stellar,
 cria a trustline do ativo e registra a wallet externa na BlindPay.
 
 Ao final das etapas liberadas, a API deve conseguir:
@@ -28,8 +28,9 @@ Ao final das etapas liberadas, a API deve conseguir:
 5. emitir `producer.kyc_approved` uma única vez na primeira aprovação operacional;
 6. ativar na Testnet a conta Stellar do produtor e cadastrar sua wallet externa `bw_...`.
 
-Esta SPEC é dividida em três gates. O ADR-010 autoriza em 3C somente o signer local de
-development/testnet; não autoriza custódia de chave no backend em produção.
+Esta SPEC é dividida em três gates. Em 3C, o signer do ADR-010 opera somente em development/testnet;
+production segue o mesmo modelo (D-24), mas só é liberada na etapa explícita de habilitação de
+Pubnet/USDC.
 
 ## 2. Correções arquiteturais confirmadas
 
@@ -110,7 +111,7 @@ Inclui em development/testnet, conforme o ADR-010:
 - registro da wallet externa `bw_...` na BlindPay.
 
 **Gate:** 3C pode ser implementado somente em development/testnet. Produção permanece bloqueada
-até a decisão de custódia, rotação e recuperação do signer na Q-01.
+até a etapa explícita de habilitação de Pubnet/USDC, que usa o mesmo modelo de signer (D-24).
 
 ### Fora do escopo
 
@@ -503,10 +504,10 @@ As operações clássicas de conta, trustline e submissão usam Horizon. O endpo
 fixado na Testnet para as próximas integrações Soroban, sem ser usado para inferir Pubnet.
 
 A chave secreta do sponsor é aceita somente no `.env` local de development/test e nunca é
-versionada. Ela é proibida em production. Network, passphrase implícita, ativo, issuer e
+versionada. Nesta SPEC ela é rejeitada em production. Network, passphrase implícita, ativo, issuer e
 correspondência entre public e secret são validados no startup. Nesta SPEC, qualquer configuração
-diferente de Stellar Testnet + USDB falha fechada; Pubnet + USDC exige uma etapa explícita com
-custódia gerenciada e Relayer.
+diferente de Stellar Testnet + USDB falha fechada; Pubnet + USDC exige uma etapa explícita, que passa
+a ler a secret das variáveis de ambiente da plataforma de hospedagem (D-24).
 
 ## 13. Segurança e minimização de dados
 
@@ -640,10 +641,9 @@ providers reais permanecem abertos até o smoke manual.
 
 ## 18. Decisões adiadas
 
-- **Q-01:** tecnologia e operação dos signers em produção. Development/testnet foi resolvido pelo
-  ADR-010; produção continua exigindo Relayer e custódia gerenciada (por exemplo, Turnkey ou GCP
-  KMS), com rotação e recuperação definidas antes de Pubnet.
-- **Q-02:** momento de ativação da conta Stellar de compradores que não são produtores.
+- habilitação de Pubnet/USDC em production, com o signer da D-24;
+- ativação da conta Stellar de compradores que não são produtores, decidida na D-23 e especificada
+  junto com a SPEC de compra.
 - conta bancária e payout do produtor;
 - renovação de uma nova versão dos termos da BlindPay;
 - KYC enhanced, países além do piloto e políticas de retenção exigidas juridicamente;

@@ -403,7 +403,8 @@ E executar o smoke test Privy descrito no §11 sem registrar credenciais.
 - campos, estados e onboarding do `ProducerProfile`;
 - customer, KYC/KYB e blockchain wallet da BlindPay;
 - criação patrocinada da conta Stellar e trustline do produtor;
-- momento de ativação on-chain da conta do comprador — Q-02;
+- ativação on-chain da conta do comprador, decidida na D-23 — o bootstrap passa a receber a origem
+  do login (espontâneo ou checkout) quando a SPEC de compra for escrita;
 - políticas e signers adicionais da wallet;
 - implementação de RLS por `producer_id`;
 - frontend de OTP e checkout;

@@ -26,9 +26,9 @@ normal. Esse modo:
 - continua exigindo a assinatura Ed25519 da wallet user-owned do produtor via Privy;
 - não aplica fee bump: como fonte da transação, o sponsor paga a taxa clássica diretamente.
 
-Em `production`, `STELLAR_SPONSOR_SECRET_KEY` é proibida e o processo falha fechado. A custódia
-gerenciada, rotação, recuperação e integração com OpenZeppelin Relayer serão decididas antes da
-habilitação de Pubnet/USDC.
+Em `production`, `STELLAR_SPONSOR_SECRET_KEY` continua rejeitada e o processo falha fechado até a
+etapa explícita de habilitação de Pubnet/USDC. Essa etapa adota o mesmo modelo deste ADR (D-24 do
+`MVP-REVISADO.md`), com a secret vinda das variáveis de ambiente da plataforma de hospedagem.
 
 ## Consequências
 
@@ -42,4 +42,10 @@ habilitação de Pubnet/USDC.
 
 - reiniciar ou rotacionar a conta exige atualização manual do `.env` local;
 - não há fee bump no modo de desenvolvimento;
-- a decisão de custódia de produção permanece aberta e não pode ser inferida deste ADR.
+- em produção, a segurança da chave depende do controle de acesso às variáveis de ambiente da
+  plataforma de hospedagem.
+
+## Atualização — 02/10/2026
+
+A Q-01 foi resolvida pela D-24: production usa o mesmo modelo de signer deste ADR. O que falta para
+production é a etapa de habilitação de Pubnet/USDC, não uma decisão de custódia.
