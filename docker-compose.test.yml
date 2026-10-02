@@ -6,27 +6,31 @@ name: access-platform-test
 services:
   postgres-test:
     image: postgres:16-alpine
+    container_name: access_postgres_test
     environment:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
       POSTGRES_DB: access_test
     ports:
-      - '5433:5432'
+      - "5433:5432"
+    volumes:
+      - ./docker/postgres/test-init:/docker-entrypoint-initdb.d:ro
     tmpfs:
-      - /var/lib/postgresql/data  # in-memory para velocidade
+      - /var/lib/postgresql/data # in-memory para velocidade
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U test -d access_test']
+      test: ["CMD-SHELL", "pg_isready -U test -d access_test"]
       interval: 2s
       timeout: 3s
       retries: 10
 
   redis-test:
     image: redis:7-alpine
+    container_name: access_redis_test
     ports:
-      - '6380:6379'
+      - "6380:6379"
     command: redis-server --save "" --maxmemory-policy noeviction
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD", "redis-cli", "ping"]
       interval: 2s
       timeout: 3s
       retries: 5

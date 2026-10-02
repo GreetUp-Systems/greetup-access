@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import { type ApiConfig } from "@access/config";
-import { PrismaService } from "@access/database";
+import { PrismaClient } from "@access/database";
 import { type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
@@ -19,7 +19,7 @@ import {
 const baseConfig: ApiConfig = {
   nodeEnv: "test",
   apiPort: 0,
-  databaseUrl: "postgresql://test:test@localhost:5433/access_test",
+  databaseUrl: "postgresql://access_runtime:test_runtime@localhost:5433/access_test",
   databaseDirectUrl: "postgresql://test:test@localhost:5433/access_test",
   redisUrl: "redis://localhost:6380",
   healthCheckTimeoutMs: 250,
@@ -27,6 +27,14 @@ const baseConfig: ApiConfig = {
   privyAppSecret: "test-app-secret",
   privyJwtVerificationKey: "test-verification-key",
   privyApiTimeoutMs: 500,
+  databaseBlindPayWebhookUrl:
+    "postgresql://access_blindpay_webhook_login:test_webhook@localhost:5433/access_test",
+  blindPayApiKey: "blindpay-test-key",
+  blindPayInstanceId: "in_test",
+  blindPayBaseUrl: "https://api.blindpay.com/v1",
+  blindPayWebhookSecret: "whsec_dGVzdA==",
+  blindPayApiTimeoutMs: 500,
+  blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
 };
 
 const testUserId = "did:privy:test-user";
@@ -102,7 +110,7 @@ class FakePrivyGateway implements PrivyGateway {
 
 describe("identity bootstrap integration", () => {
   let app: INestApplication;
-  let prisma: PrismaService;
+  let ownerPrisma: PrismaClient;
   const privy = new FakePrivyGateway();
 
   beforeAll(async () => {
@@ -115,17 +123,30 @@ describe("identity bootstrap integration", () => {
     app = module.createNestApplication();
     configureApplication(app);
     await app.init();
-    prisma = app.get(PrismaService);
+    ownerPrisma = new PrismaClient({
+      datasources: { db: { url: baseConfig.databaseDirectUrl } },
+    });
   });
 
   beforeEach(async () => {
-    await prisma.walletAccount.deleteMany();
-    await prisma.user.deleteMany();
+    await ownerPrisma.blindPayWebhookDelivery.deleteMany();
+    await ownerPrisma.outboxEvent.deleteMany();
+    await ownerPrisma.blindPayCustomer.deleteMany();
+    await ownerPrisma.producerProfile.deleteMany();
+    await ownerPrisma.walletAccount.deleteMany();
+    await ownerPrisma.user.deleteMany();
     privy.reset();
   });
 
   afterAll(async () => {
+    await ownerPrisma.blindPayWebhookDelivery.deleteMany();
+    await ownerPrisma.outboxEvent.deleteMany();
+    await ownerPrisma.blindPayCustomer.deleteMany();
+    await ownerPrisma.producerProfile.deleteMany();
+    await ownerPrisma.walletAccount.deleteMany();
+    await ownerPrisma.user.deleteMany();
     await app.close();
+    await ownerPrisma.$disconnect();
   });
 
   it("rejects a private route without a token", async () => {
@@ -175,8 +196,8 @@ describe("identity bootstrap integration", () => {
       .expect(200);
 
     expect(repeated.body).toEqual(first.body);
-    await expect(prisma.user.count()).resolves.toBe(1);
-    await expect(prisma.walletAccount.count()).resolves.toBe(1);
+    await expect(ownerPrisma.user.count()).resolves.toBe(1);
+    await expect(ownerPrisma.walletAccount.count()).resolves.toBe(1);
     expect(privy.createCalls).toBe(1);
   });
 
@@ -190,31 +211,31 @@ describe("identity bootstrap integration", () => {
 
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
     expect(responses[0]?.body).toEqual(responses[1]?.body);
-    await expect(prisma.user.count()).resolves.toBe(1);
-    await expect(prisma.walletAccount.count()).resolves.toBe(1);
+    await expect(ownerPrisma.user.count()).resolves.toBe(1);
+    await expect(ownerPrisma.walletAccount.count()).resolves.toBe(1);
     expect(privy.createCalls).toBe(1);
   });
 
   it("enforces every identity and wallet uniqueness constraint", async () => {
-    const firstUser = await prisma.user.create({
+    const firstUser = await ownerPrisma.user.create({
       data: { privyUserId: "did:privy:unique-1", email: "unique-1@example.com" },
     });
-    const secondUser = await prisma.user.create({
+    const secondUser = await ownerPrisma.user.create({
       data: { privyUserId: "did:privy:unique-2", email: "unique-2@example.com" },
     });
 
     await expect(
-      prisma.user.create({
+      ownerPrisma.user.create({
         data: { privyUserId: firstUser.privyUserId, email: "other@example.com" },
       }),
     ).rejects.toMatchObject({ code: "P2002" });
     await expect(
-      prisma.user.create({
+      ownerPrisma.user.create({
         data: { privyUserId: "did:privy:unique-3", email: firstUser.email },
       }),
     ).rejects.toMatchObject({ code: "P2002" });
 
-    await prisma.walletAccount.create({
+    await ownerPrisma.walletAccount.create({
       data: {
         userId: firstUser.id,
         privyWalletId: "unique-wallet-1",
@@ -222,7 +243,7 @@ describe("identity bootstrap integration", () => {
       },
     });
     await expect(
-      prisma.walletAccount.create({
+      ownerPrisma.walletAccount.create({
         data: {
           userId: firstUser.id,
           privyWalletId: "unique-wallet-2",
@@ -231,7 +252,7 @@ describe("identity bootstrap integration", () => {
       }),
     ).rejects.toMatchObject({ code: "P2002" });
     await expect(
-      prisma.walletAccount.create({
+      ownerPrisma.walletAccount.create({
         data: {
           userId: secondUser.id,
           privyWalletId: "unique-wallet-1",
@@ -240,7 +261,7 @@ describe("identity bootstrap integration", () => {
       }),
     ).rejects.toMatchObject({ code: "P2002" });
     await expect(
-      prisma.walletAccount.create({
+      ownerPrisma.walletAccount.create({
         data: {
           userId: secondUser.id,
           privyWalletId: "unique-wallet-3",

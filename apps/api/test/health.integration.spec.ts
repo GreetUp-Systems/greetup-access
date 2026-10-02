@@ -11,7 +11,7 @@ import { configureApplication } from "../src/app.setup";
 const baseConfig: ApiConfig = {
   nodeEnv: "test",
   apiPort: 0,
-  databaseUrl: "postgresql://test:test@localhost:5433/access_test",
+  databaseUrl: "postgresql://access_runtime:test_runtime@localhost:5433/access_test",
   databaseDirectUrl: "postgresql://test:test@localhost:5433/access_test",
   redisUrl: "redis://localhost:6380",
   healthCheckTimeoutMs: 250,
@@ -19,6 +19,13 @@ const baseConfig: ApiConfig = {
   privyAppSecret: "test-app-secret",
   privyJwtVerificationKey: "test-verification-key",
   privyApiTimeoutMs: 500,
+  databaseBlindPayWebhookUrl: undefined,
+  blindPayApiKey: "blindpay-test-key",
+  blindPayInstanceId: "in_test",
+  blindPayBaseUrl: "https://api.blindpay.com/v1",
+  blindPayWebhookSecret: undefined,
+  blindPayApiTimeoutMs: 500,
+  blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
 };
 
 async function createApp(config: ApiConfig): Promise<INestApplication> {
@@ -49,6 +56,10 @@ describe("health endpoints", () => {
       status: "alive",
       timestamp: expect.any(String),
     });
+  });
+
+  it("does not expose the BlindPay webhook while it is disabled", async () => {
+    await request(app.getHttpServer()).post("/api/webhooks/blindpay").send({}).expect(404);
   });
 
   it("returns readiness when PostgreSQL and Redis answer", async () => {

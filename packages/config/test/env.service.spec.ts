@@ -11,6 +11,14 @@ const validEnvironment: NodeJS.ProcessEnv = {
   PRIVY_APP_SECRET: "test-app-secret",
   PRIVY_JWT_VERIFICATION_KEY: "test-verification-key",
   PRIVY_API_TIMEOUT_MS: "5000",
+  DATABASE_URL_BLINDPAY_WEBHOOK:
+    "postgresql://access_blindpay_webhook_login:test@localhost:5433/access_test",
+  BLINDPAY_API_KEY: "blindpay-test-key",
+  BLINDPAY_INSTANCE_ID: "in_test",
+  BLINDPAY_BASE_URL: "https://api.blindpay.com/v1/",
+  BLINDPAY_WEBHOOK_SECRET: "whsec_dGVzdA==",
+  BLINDPAY_API_TIMEOUT_MS: "5000",
+  BLINDPAY_ALLOWED_REDIRECT_ORIGINS: "http://localhost:3000, https://app.example.com/path",
 };
 
 describe("environment configuration", () => {
@@ -36,7 +44,34 @@ describe("environment configuration", () => {
       apiPort: 3001,
       healthCheckTimeoutMs: 500,
       privyApiTimeoutMs: 5000,
+      blindPayApiTimeoutMs: 5000,
+      blindPayBaseUrl: "https://api.blindpay.com/v1",
+      blindPayAllowedRedirectOrigins: ["http://localhost:3000", "https://app.example.com"],
     });
+  });
+
+  it("allows the BlindPay webhook to remain disabled in development", () => {
+    const environment: NodeJS.ProcessEnv = { ...validEnvironment, NODE_ENV: "development" };
+    delete environment.DATABASE_URL_BLINDPAY_WEBHOOK;
+    delete environment.BLINDPAY_WEBHOOK_SECRET;
+
+    expect(loadApiConfig(environment)).toMatchObject({
+      databaseBlindPayWebhookUrl: undefined,
+      blindPayWebhookSecret: undefined,
+    });
+  });
+
+  it("requires both webhook settings when either one is configured", () => {
+    const withoutSecret: NodeJS.ProcessEnv = { ...validEnvironment, NODE_ENV: "development" };
+    delete withoutSecret.BLINDPAY_WEBHOOK_SECRET;
+    expect(() => loadApiConfig(withoutSecret)).toThrow("BLINDPAY_WEBHOOK_SECRET");
+
+    const withoutDatabase: NodeJS.ProcessEnv = {
+      ...validEnvironment,
+      NODE_ENV: "development",
+    };
+    delete withoutDatabase.DATABASE_URL_BLINDPAY_WEBHOOK;
+    expect(() => loadApiConfig(withoutDatabase)).toThrow("DATABASE_URL_BLINDPAY_WEBHOOK");
   });
 
   it("reports missing variable names without exposing another variable value", () => {
@@ -60,6 +95,8 @@ describe("environment configuration", () => {
     ["HEALTH_CHECK_TIMEOUT_MS", "not-a-number"],
     ["PRIVY_API_TIMEOUT_MS", "99"],
     ["PRIVY_API_TIMEOUT_MS", "not-a-number"],
+    ["BLINDPAY_API_TIMEOUT_MS", "99"],
+    ["BLINDPAY_API_TIMEOUT_MS", "not-a-number"],
   ])("rejects invalid %s", (key, value) => {
     expect(() => loadApiConfig({ ...validEnvironment, [key]: value })).toThrow(key);
   });
@@ -73,4 +110,18 @@ describe("environment configuration", () => {
       expect(() => loadApiConfig(environment)).toThrow(key);
     },
   );
+
+  it.each([
+    "DATABASE_URL_BLINDPAY_WEBHOOK",
+    "BLINDPAY_API_KEY",
+    "BLINDPAY_INSTANCE_ID",
+    "BLINDPAY_BASE_URL",
+    "BLINDPAY_WEBHOOK_SECRET",
+    "BLINDPAY_ALLOWED_REDIRECT_ORIGINS",
+  ])("requires %s for the API", (key) => {
+    const environment = { ...validEnvironment };
+    delete environment[key];
+
+    expect(() => loadApiConfig(environment)).toThrow(key);
+  });
 });
