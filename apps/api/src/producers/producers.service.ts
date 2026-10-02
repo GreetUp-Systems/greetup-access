@@ -8,10 +8,9 @@ import {
 
 import { type AuthenticatedPrincipal } from "../auth/auth.types";
 import { UsersRepository } from "../users/users.repository";
+import { deriveOnboardingStatus } from "./producer-onboarding-status";
 import { ProducersRepository, type ProducerProfileRecord } from "./producers.repository";
 import { type ProducerProfileView } from "./producers.types";
-
-const operationalKycStatuses = new Set(["APPROVED", "APPROVED_RFI"]);
 
 @Injectable()
 export class ProducersService {
@@ -126,16 +125,8 @@ export class ProducersService {
       ProducerProfileView["compliance"]["status"] | undefined;
     const hasOpenRfi =
       customer?.kycStatus === "COMPLIANCE_REQUEST" || customer?.kycStatus === "APPROVED_RFI";
-    const provisioning = producer.stellarProvisioning;
-    const onboardingStatus: ProducerProfileView["onboardingStatus"] =
-      provisioning?.status !== "ACTIVE"
-        ? "stellar_pending"
-        : customer === undefined || !operationalKycStatuses.has(customer.kycStatus ?? "")
-          ? "compliance_pending"
-          : customer.externalBlockchainWalletId === null
-            ? "wallet_registration_pending"
-            : "ready";
-    const stellarStatus = provisioning?.status.toLowerCase() as
+    const onboardingStatus = deriveOnboardingStatus(producer);
+    const stellarStatus = producer.stellarProvisioning?.status.toLowerCase() as
       ProducerProfileView["stellar"]["status"] | undefined;
 
     return {
