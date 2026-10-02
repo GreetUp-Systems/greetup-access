@@ -41,8 +41,9 @@ Comprador                                   Produtor
 
 **O que destrava o MVP:** o ingresso não espera o dinheiro chegar. Basta a confirmação do Pix.
 
-**Ambiente vigente de desenvolvimento e validação:** Stellar Testnet com USDB. As referências a
-USDC abaixo descrevem o destino de produção; elas não autorizam uso de Pubnet nesta fase.
+**Ambiente vigente de desenvolvimento e validação:** Stellar Testnet. A BlindPay opera com USDB, sua
+stablecoin de teste, e o produtor também recebe trustline de USDC de teste. As referências à BlindPay
+com USDC abaixo descrevem produção; elas não autorizam uso de Pubnet nesta fase.
 
 ---
 
@@ -59,7 +60,7 @@ USDC abaixo descrevem o destino de produção; elas não autorizam uso de Pubnet
 | **D-05** | Transferência exige **assinatura do comprador e da plataforma** (auth-entry signing)                                                         | Propriedade real com regra aplicável. Funciona com conta clássica `G…`, que é o formato do Privy.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | **D-06** | Wallet do comprador criada **depois do OTP e antes do pagamento**                                                                            | O endereço já existe quando o pagamento confirma e permanece recuperável pelo mesmo email. Sem janela de falha entre "pagou" e "tem ingresso".                                                                                                                                                                                                                                                                                                                                                                                                         |
 | **D-07** | **Recuperação de acesso é responsabilidade do Privy** — email e OTP no MVP                                                                   | Consequência de D-01.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| **D-23** | **Conta Stellar ativada por intenção, sempre com reserva patrocinada.** Produtor: após o KYC operacional. Login espontâneo: ao entrar na plataforma. OTP dentro do checkout: só após o pagamento confirmado | A wallet Privy é só um endereço até a ativação, e cada ativação trava ~1 XLM na conta patrocinadora. Ativar quem demonstrou intenção — entrou na plataforma por vontade própria ou pagou — evita patrocinar checkout abandonado. O destinatário de uma transferência precisa ter conta ativa (D-04); quem nunca comprou ativa a sua entrando na plataforma. Risco aceito no MVP: login espontâneo não prova usuário real, e bots também travam reserva. |
+| **D-23** | **Conta Stellar ativada por intenção, sempre com reserva patrocinada.** Login espontâneo: ao entrar na plataforma. Produtor: na criação do perfil, a configuração inicial completa — conta e trustlines. OTP dentro do checkout: só após o pagamento confirmado | A wallet Privy é só um endereço até a ativação, e cada ativação trava ~1 XLM na conta patrocinadora. Ativar quem demonstrou intenção — entrou na plataforma por vontade própria, criou perfil de produtor ou pagou — evita patrocinar checkout abandonado. A configuração Stellar do produtor não depende do KYC; o KYC libera apenas o recebimento, pelo cadastro da wallet `bw_...` na BlindPay. O destinatário de uma transferência precisa ter conta ativa (D-04); quem nunca comprou ativa a sua entrando na plataforma. Risco aceito no MVP: login espontâneo não prova usuário real, e bots também travam reserva. |
 | **D-24** | **Signer da plataforma: o mesmo modelo em todos os ambientes**                                                                               | Uma conta Stellar do Access assina e patrocina, como no ADR-010. Em produção, a secret vem das variáveis de ambiente da plataforma de hospedagem, nunca de arquivo versionado. Liberar production continua exigindo a etapa explícita de habilitação de Pubnet/USDC.                                                                                                                                                                                      |
 
 ### Trilho financeiro
@@ -95,14 +96,16 @@ USDC abaixo descrevem o destino de produção; elas não autorizam uso de Pubnet
 
 1. Produtor confirma o email por OTP, materializa seu `User` e cria a wallet Privy Stellar
 2. Criar seu `ProducerProfile` 1:1
-3. Criar o customer na BlindPay (`POST /v1/instances/{instance_id}/customers`) com `tos_id`, `type`,
+3. Configuração inicial da conta (D-23): ativar a conta Stellar, se o login ainda não a ativou, e
+   criar as trustlines de USDB (ativo da BlindPay na Testnet) e de USDC — na Pubnet as duas
+   coincidem em USDC —, com reservas (~2 XLM por produtor na Testnet) e taxa patrocinadas pela
+   conta do Access; development usa o signer local do ADR-010
+4. Criar o customer na BlindPay (`POST /v1/instances/{instance_id}/customers`) com `tos_id`, `type`,
    `kyc_type`, `email` e dados pessoais/endereço
-4. KYC aprovado → produtor apto a seguir para a ativação financeira
-5. Criar a conta Stellar e a trustline de USDB na Testnet — USDC somente em produção —, com
-   reservas e taxa patrocinadas pela conta do Access; development usa o signer local do ADR-010
-6. Registrar a blockchain wallet dele (`bw_...`) apontando para o endereço Stellar
-7. Produtor pronto para criar eventos
-8. Cadastrar a conta bancária de saque
+5. KYC aprovado → registrar a blockchain wallet dele (`bw_...`) apontando para o endereço Stellar;
+   só a partir daqui ele pode receber
+6. Produtor pronto para criar eventos
+7. Cadastrar a conta bancária de saque
 
 ### 4.2 Compra do ingresso
 
@@ -230,5 +233,5 @@ Nenhuma questão em aberto no momento.
 | #        | Data       | Resolução                                                                                                                                                                                                                                                                |
 | -------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Q-01** | 02/10/2026 | Resolvida por D-24: signers da plataforma seguem o modelo do ADR-010 em todos os ambientes, com a secret nas variáveis de ambiente da plataforma de hospedagem em produção.                                                                                              |
-| **Q-02** | 02/10/2026 | Resolvida por D-23: a conta Stellar do comprador é ativada no login espontâneo ou, se a entrada foi pelo checkout, após o pagamento confirmado. O bootstrap da SPEC-002 passa a receber a origem do login quando a SPEC de compra for escrita.                            |
+| **Q-02** | 02/10/2026 | Resolvida por D-23: a conta Stellar é ativada no login espontâneo, na criação do perfil de produtor ou, se a entrada foi pelo checkout, após o pagamento confirmado. O bootstrap da SPEC-002 passa a receber a origem do login quando a SPEC de compra for escrita.                            |
 | **Q-03** | 29/09/2026 | Resolvida por D-20 a D-22 e pelo ADR-009: email + OTP antes do Pix, sem guest account; cada pessoa possui seu próprio `User` e wallet; se a mesma pessoa comprar e produzir, reutiliza essa wallet; produtor como perfil 1:1, sem `Organization` ou `Membership` no MVP. |

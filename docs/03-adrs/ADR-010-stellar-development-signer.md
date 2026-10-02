@@ -8,7 +8,8 @@
 
 ## Contexto
 
-O gate 3C precisa validar na Stellar Testnet a criação patrocinada da conta e da trustline USDB.
+O gate 3C precisa validar na Stellar Testnet a criação patrocinada da conta e das trustlines USDB e
+USDC.
 Operar um OpenZeppelin Relayer self-hosted antes dessa validação adicionaria infraestrutura sem
 alterar as invariantes da transação interna: a wallet do produtor continua autorizando apenas suas
 operações e a conta patrocinadora continua autorizando apenas as operações do Access.
@@ -19,7 +20,7 @@ Em `development` e `test`, o backend pode carregar uma conta patrocinadora dedic
 Testnet por `STELLAR_SPONSOR_SECRET_KEY`, assinar a transação clássica internamente e pagar sua taxa
 normal. Esse modo:
 
-- aceita exclusivamente `STELLAR_NETWORK=testnet` e o ativo USDB da BlindPay;
+- aceita exclusivamente `STELLAR_NETWORK=testnet`, o ativo USDB da BlindPay e o USDC de teste;
 - exige que a secret corresponda a `STELLAR_SPONSOR_PUBLIC_KEY`;
 - mantém a secret somente no `.env` local, que não é versionado;
 - nunca persiste ou registra secret, JWT, assinatura ou XDR assinado;

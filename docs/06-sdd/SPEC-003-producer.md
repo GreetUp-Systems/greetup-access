@@ -1,9 +1,10 @@
 # SPEC-003 — Onboarding do produtor
 
-> **Status:** gates 3A/3B e implementação automatizada de 3C validados localmente; smokes reais
-> BlindPay e Stellar/Privy/BlindPay pendentes
+> **Status:** gates 3A/3B validados localmente; 3C revisado em 02/10/2026 — configuração Stellar na
+> criação do perfil, sem depender do KYC, e trustline de USDC de teste — e com implementação a
+> ajustar; smokes reais BlindPay e Stellar/Privy/BlindPay pendentes
 >
-> **Versão:** 1.3
+> **Versão:** 1.4
 >
 > **Atualizada em:** 02/10/2026
 >
@@ -16,8 +17,9 @@
 ## 1. Objetivo
 
 Transformar um `User` autenticado em produtor, isolar seus dados por RLS e conduzir seu onboarding
-regulatório na BlindPay. No gate 3C, a mesma SPEC também ativa sua conta na Stellar,
-cria a trustline do ativo e registra a wallet externa na BlindPay.
+regulatório na BlindPay. No gate 3C, a mesma SPEC faz a configuração inicial da conta Stellar do
+produtor — ativação e trustlines — logo após a criação do perfil, sem depender do KYC, e registra a
+wallet externa na BlindPay quando o KYC estiver aprovado (D-23).
 
 Ao final das etapas liberadas, a API deve conseguir:
 
@@ -26,7 +28,8 @@ Ao final das etapas liberadas, a API deve conseguir:
 3. gerar a jornada de aceite dos termos e enviar KYC/KYB à BlindPay sem persistir o dossiê;
 4. refletir `customer.update`, RFIs e o estado operacional do customer de forma idempotente;
 5. emitir `producer.kyc_approved` uma única vez na primeira aprovação operacional;
-6. ativar na Testnet a conta Stellar do produtor e cadastrar sua wallet externa `bw_...`.
+6. ativar na Testnet a conta Stellar do produtor ao criar o perfil e, após o KYC, cadastrar sua
+   wallet externa `bw_...`.
 
 Esta SPEC é dividida em três gates. Em 3C, o signer do ADR-010 opera somente em development/testnet;
 production segue o mesmo modelo (D-24), mas só é liberada na etapa explícita de habilitação de
@@ -35,13 +38,13 @@ Pubnet/USDC.
 ## 2. Correções arquiteturais confirmadas
 
 - **Baseline desta SPEC:** desenvolvimento, testes de integração, smoke tests e validação de negócio
-  usam exclusivamente Stellar Testnet com USDB. Pubnet/USDC não faz parte da entrega nem da
-  validação desta etapa.
+  usam exclusivamente Stellar Testnet, com trustlines de USDB (ativo da BlindPay) e de USDC de
+  teste. Pubnet não faz parte da entrega nem da validação desta etapa.
 - A wallet Privy criada na SPEC-002 ainda pode ser somente um endereço; ela não necessariamente
   existe no ledger Stellar.
 - `fee bump` paga a taxa da transação, mas não substitui as assinaturas exigidas pela transação
   interna.
-- A reserva da conta e da trustline é patrocinada por uma conta Stellar do Access. Em development,
+- A reserva da conta e das trustlines é patrocinada por uma conta Stellar do Access. Em development,
   essa conta também paga a taxa clássica e assina localmente conforme o ADR-010.
 - O fluxo de ativação exige autorização da conta patrocinadora e da wallet do produtor, porque as
   operações possuem fontes diferentes.
@@ -50,7 +53,7 @@ Pubnet/USDC.
 - Na BlindPay, o produtor é um _customer_. Uma rejeição de KYC não é corrigida no mesmo customer:
   uma nova tentativa deve criar outro `re_...`.
 - USDC na rede pública permanece como configuração futura de produção e não deve ser exercitada
-  implicitamente por nenhum ambiente desta SPEC.
+  implicitamente por nenhum ambiente desta SPEC. Na Testnet, o USDC usado é o de teste.
 
 Referências técnicas vigentes:
 
@@ -104,7 +107,7 @@ Inclui:
 Inclui em development/testnet, conforme o ADR-010:
 
 - conta Stellar com reserva patrocinada pelo Access;
-- trustline do USDB na Stellar Testnet;
+- trustlines de USDB e de USDC de teste na Stellar Testnet;
 - assinatura do produtor via Privy;
 - assinatura local da conta patrocinadora e submissão direta à Testnet;
 - reconciliação on-chain para retries e resultados ambíguos;
@@ -140,7 +143,9 @@ até a etapa explícita de habilitação de Pubnet/USDC, que usa o mesmo modelo 
 7. `producer.kyc_approved` ocorre apenas na primeira transição não operacional → operacional de
    cada produtor.
 8. O endereço Stellar vem de `WalletAccount`, nunca do body do cliente.
-9. A wallet `bw_...` só é cadastrada depois de a conta e a trustline estarem confirmadas on-chain.
+9. A configuração Stellar do produtor não depende do KYC. A wallet `bw_...` só é cadastrada depois
+   de a conta e as trustlines estarem confirmadas on-chain **e** de o customer atual estar
+   operacional.
 10. Toda mutação externa usa chave de idempotência estável para a mesma intenção e payload.
 
 ### Estado derivado de onboarding
@@ -149,13 +154,13 @@ Não criar um enum redundante `ProducerStatus`. A API deriva a situação:
 
 | Estado                        | Condição                                                          |
 | ----------------------------- | ----------------------------------------------------------------- |
-| `profile_created`             | perfil existe, sem customer atual                                 |
-| `compliance_pending`          | customer atual não está operacional                               |
-| `stellar_pending`             | customer operacional, provisioning ainda não ativo                |
-| `wallet_registration_pending` | conta/trustline ativas, sem `bw_...`                              |
+| `stellar_pending`             | perfil existe, conta/trustlines ainda não ativas                  |
+| `compliance_pending`          | Stellar ativa, customer atual ausente ou não operacional          |
+| `wallet_registration_pending` | Stellar ativa + customer operacional, sem `bw_...`                |
 | `ready`                       | customer operacional + Stellar ativa + wallet BlindPay registrada |
 
-Antes da entrega de 3C, um produtor aprovado permanece legitimamente em `stellar_pending`.
+A configuração Stellar e o KYC correm em trilhas independentes; o estado derivado reporta a primeira
+pendência na ordem da tabela.
 
 ## 6. Modelo de dados
 
@@ -241,8 +246,6 @@ model StellarAccountProvisioning {
   producerId      String                    @unique @map("producer_id") @db.Uuid
   walletAccountId String                    @unique @map("wallet_account_id") @db.Uuid
   network         String                    @db.VarChar(32)
-  assetCode       String                    @map("asset_code") @db.VarChar(12)
-  assetIssuer     String                    @map("asset_issuer") @db.VarChar(56)
   status          StellarProvisioningStatus @default(PENDING)
   transactionHash String?                   @unique @map("transaction_hash") @db.VarChar(64)
   failureCode     String?                   @map("failure_code") @db.VarChar(80)
@@ -266,7 +269,9 @@ confirmada pelo provider. Isso permite persistir a intenção antes da chamada e
 mesma chave e distinguir falha definitiva de indisponibilidade temporária sem guardar o dossiê.
 
 `StellarAccountProvisioning` e suas relações pertencem à migration própria do gate 3C. Essa
-migration mantém o mesmo isolamento por `producer_id` das tabelas entregues em 3A/3B.
+migration mantém o mesmo isolamento por `producer_id` das tabelas entregues em 3A/3B. O registro não
+guarda os ativos: as trustlines esperadas vêm da configuração e são conferidas on-chain a cada
+reconciliação.
 
 `BlindPayWebhookDelivery` guarda somente metadados para deduplicação e auditoria. O body original,
 headers de assinatura e dados pessoais não são persistidos.
@@ -387,9 +392,11 @@ ou payload incompatível não libera o produtor e gera alerta sanitizado.
 
 ### `POST /api/producers/onboarding/stellar/activate` — gate 3C
 
-Operação explícita, autenticada e repetível. Não aceita endereço, rede ou ativo no body. Retorna o
-estado atual (`signing`, `submitted` ou `active`) e reconcilia a rede antes de repetir uma submissão
-cujo resultado seja incerto.
+Operação explícita, autenticada e repetível. Não aceita endereço, rede ou ativo no body. Executa o
+que estiver pendente: a configuração Stellar, chamada logo após a criação do perfil, e o registro
+`bw_...`, quando o customer atual estiver operacional — o cliente chama de novo após a aprovação do
+KYC. Retorna o estado atual (`signing`, `submitted` ou `active`) e reconcilia a rede antes de repetir
+uma submissão cujo resultado seja incerto.
 
 ## 9. Boundary da BlindPay
 
@@ -423,15 +430,17 @@ Regras:
 
 ## 10. Fluxo Stellar e Privy — gate 3C development
 
-Pré-condições: customer atual operacional, wallet da SPEC-002 íntegra e signer local do ADR-010
-configurado.
+Pré-condições: `ProducerProfile` existente, wallet da SPEC-002 íntegra e signer local do ADR-010
+configurado. O KYC não é pré-condição da configuração Stellar (D-23).
 
-1. consultar a Testnet via Horizon e encerrar como `active` se conta e trustline já estiverem
-   corretas;
+1. consultar a Testnet via Horizon e seguir para o passo 8 se a conta e todas as trustlines
+   configuradas já estiverem corretas;
 2. construir transação clássica com:
    - `beginSponsoringFutureReserves`, fonte Access;
-   - `createAccount` com `startingBalance = 0`, fonte Access;
-   - `changeTrust` para o ativo configurado, fonte produtor;
+   - `createAccount` com `startingBalance = 0`, fonte Access — omitida se a conta já foi ativada
+     no login espontâneo (D-23);
+   - um `changeTrust` para cada ativo configurado ainda sem trustline (USDB e USDC), fonte
+     produtor;
    - `endSponsoringFutureReserves`, fonte produtor;
 3. calcular o hash da transação interna;
 4. solicitar a assinatura Ed25519 da wallet user-owned via Privy `raw_sign`, autorizada pelo JWT do
@@ -439,9 +448,10 @@ configurado.
 5. assinar localmente com a conta patrocinadora dedicada à Testnet;
 6. submeter diretamente, com taxa paga pelo sponsor, e persistir somente hash/estado/código
    sanitizado;
-7. confirmar conta e trustline via Horizon;
-8. registrar o endereço como wallet externa do customer na BlindPay;
-9. derivar o produtor como `ready`.
+7. confirmar conta e trustlines via Horizon;
+8. se o customer atual estiver operacional, registrar o endereço como wallet externa na BlindPay;
+   caso contrário, encerrar com o produtor em `compliance_pending`;
+9. derivar o produtor como `ready` quando as duas trilhas estiverem concluídas.
 
 Não persistir XDR assinado, assinatura, JWT ou chave privada. Timeout após submissão exige consulta
 por hash/estado antes de montar outra transação.
@@ -496,9 +506,13 @@ STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
 STELLAR_ASSET_CODE=USDB
 STELLAR_ASSET_ISSUER=
+STELLAR_USDC_ASSET_ISSUER=
 STELLAR_SPONSOR_PUBLIC_KEY=
 STELLAR_SPONSOR_SECRET_KEY=
 ```
+
+`STELLAR_ASSET_*` é o ativo de liquidação da BlindPay (USDB na Testnet); `STELLAR_USDC_ASSET_ISSUER`
+é o emissor do USDC de teste. Na Pubnet os dois coincidem em USDC e resultam numa única trustline.
 
 As operações clássicas de conta, trustline e submissão usam Horizon. O endpoint RPC permanece
 fixado na Testnet para as próximas integrações Soroban, sem ser usado para inferir Pubnet.
@@ -506,7 +520,7 @@ fixado na Testnet para as próximas integrações Soroban, sem ser usado para in
 A chave secreta do sponsor é aceita somente no `.env` local de development/test e nunca é
 versionada. Nesta SPEC ela é rejeitada em production. Network, passphrase implícita, ativo, issuer e
 correspondência entre public e secret são validados no startup. Nesta SPEC, qualquer configuração
-diferente de Stellar Testnet + USDB falha fechada; Pubnet + USDC exige uma etapa explícita, que passa
+diferente de Stellar Testnet + USDB + USDC de teste falha fechada; Pubnet + USDC exige uma etapa explícita, que passa
 a ler a secret das variáveis de ambiente da plataforma de hospedagem (D-24).
 
 ## 13. Segurança e minimização de dados
@@ -560,14 +574,16 @@ Com PostgreSQL real e fakes apenas para BlindPay:
 
 ### Integração 3C
 
-- composição e fontes das quatro operações Stellar estão corretas;
+- composição e fontes das operações Stellar estão corretas, com e sem `createAccount`;
+- as duas trustlines são criadas, e uma trustline já existente não é recriada;
 - assinatura Privy usa a autorização do usuário atual e rejeita owner divergente;
 - assinatura local do sponsor paga a taxa clássica somente em development/test;
 - retry antes/depois da submissão não cria operação econômica duplicada;
 - conta/trustline existentes são reconciliadas;
 - BlindPay só recebe registro da wallet após confirmação on-chain;
-- configuração aceita USDB/Testnet e rejeita combinações de rede, passphrase, código ou issuer
-  incompatíveis, inclusive Pubnet;
+- configuração aceita Testnet com USDB e USDC de teste e rejeita combinações de rede, passphrase,
+  código ou issuer incompatíveis, inclusive Pubnet;
+- configuração Stellar ocorre sem customer operacional, e `bw_...` só após o KYC;
 
 ### Smoke tests manuais
 
@@ -627,12 +643,15 @@ BlindPay e um RFI real.
 ### Gate 3C
 
 - [x] Signer de development/testnet está decidido e documentado no ADR-010.
-- [ ] Conta e trustline são patrocinadas sem exigir XLM do produtor.
+- [ ] Conta e trustlines USDB/USDC são patrocinadas sem exigir XLM do produtor.
 - [ ] Produtor e sponsor autorizam somente o que lhes cabe.
 - [x] Signer local paga a taxa e submete somente em development/test; production falha fechada.
 - [x] Retry/reconciliação não duplica o provisionamento nos testes automatizados.
 - [ ] Wallet externa `bw_...` aponta para o endereço verificado da SPEC-002.
 - [ ] Estado derivado chega a `ready` somente com todas as pré-condições reais.
+
+A revisão 1.4 reabre o 3C: o código validado abaixo ainda exige KYC antes da configuração Stellar e
+cria só a trustline USDB.
 
 Validação automatizada em 02/10/2026: composição e fontes das operações, assinaturas produtor/sponsor,
 fail-closed de configuração, reconciliação, idempotência, RLS, registro BlindPay após confirmação e
