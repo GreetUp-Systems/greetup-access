@@ -1,8 +1,8 @@
 # SPEC-004 — Eventos e tipos de ingresso
 
-> **Status:** aprovada; implementação não iniciada
+> **Status:** implementação automatizada validada localmente
 >
-> **Versão:** 2.0
+> **Versão:** 2.1
 >
 > **Atualizada em:** 02/10/2026
 >
@@ -173,16 +173,26 @@ remoção implícita.
 As duas tabelas usam `ENABLE` e `FORCE ROW LEVEL SECURITY`, com grants somente para
 `access_app_runtime`. A role do webhook BlindPay não recebe acesso.
 
-| Tabela         | Policy                            | Comando  | Regra                                                                         |
-| -------------- | --------------------------------- | -------- | ----------------------------------------------------------------------------- |
-| `events`       | `events_producer_isolation`       | `ALL`    | `producer_id = app.current_producer_id` em `USING` e `WITH CHECK`             |
-| `events`       | `events_public_read`              | `SELECT` | `status IN ('published', 'cancelled')`                                        |
-| `ticket_types` | `ticket_types_producer_isolation` | `ALL`    | `producer_id = app.current_producer_id` em `USING` e `WITH CHECK`             |
-| `ticket_types` | `ticket_types_public_read`        | `SELECT` | existe evento com o mesmo `event_id` e `status IN ('published', 'cancelled')` |
+| Tabela              | Policy                            | Comando  | Regra                                                                |
+| ------------------- | --------------------------------- | -------- | -------------------------------------------------------------------- |
+| `events`            | `events_producer_isolation`       | `ALL`    | `producer_id = app.current_producer_id` em `USING` e `WITH CHECK`    |
+| `events`            | `events_public_read`              | `SELECT` | sem usuário no contexto e `status IN ('published', 'cancelled')`     |
+| `ticket_types`      | `ticket_types_producer_isolation` | `ALL`    | `producer_id = app.current_producer_id` em `USING` e `WITH CHECK`    |
+| `ticket_types`      | `ticket_types_public_read`        | `SELECT` | sem usuário no contexto e evento do tipo publicado ou cancelado      |
+| `producer_profiles` | `producer_profiles_public_read`   | `SELECT` | sem usuário no contexto e produtor com evento publicado ou cancelado |
 
-A leitura pública roda sem contexto de produtor; só as policies `*_public_read` se aplicam.
+"Sem usuário no contexto" é `app.current_user_id` ausente. Com isso, as policies públicas valem só
+para a leitura pública, que roda sem contexto, e nunca dentro de uma transação autenticada: um
+produtor não enxerga o evento publicado de outro nem omitindo o filtro. A policy de
+`producer_profiles` existe para a rota pública exibir o `displayName`; a API seleciona apenas esse
+campo. É a única exceção à regra da SPEC-003 de que ausência de contexto não retorna linhas.
+
 Escritas continuam exigindo `withProducerContext`. Uma policy de leitura pública nunca concede
 `INSERT`, `UPDATE` ou `DELETE`.
+
+Sob RLS, o Postgres não informa qual chave única foi violada, e o Prisma devolve `P2002` sem
+`target`. Em `events`, a única chave única alcançável por escrita da aplicação é o slug (o `id` é
+UUID gerado), então `P2002` sem alvo vindo de `Event` é tratado como colisão de slug.
 
 Toda transição de estado e toda edição que dependa de soma de quantidades bloqueia a linha do evento
 (`SELECT ... FOR UPDATE`) dentro da transação, para que publicação, edição de tipos e cancelamento
@@ -218,8 +228,9 @@ Visão privada do evento com seus tipos. Evento de outro produtor responde `404`
 
 ### `PATCH /api/events/:id`
 
-Edita os campos da seção 5 conforme o estado. Campos não permitidos no estado atual retornam
-`409 event_field_locked`; evento cancelado retorna `409 event_cancelled`.
+Edita os campos da seção 5 conforme o estado. Evento cancelado retorna `409 event_cancelled`;
+capacidade abaixo da soma das quantidades de um evento publicado, `422
+ticket_quantity_exceeds_capacity`; data no passado, `422 event_starts_in_past`.
 
 ### `DELETE /api/events/:id`
 
@@ -286,10 +297,14 @@ Schemas zod, como em `producer-onboarding.schemas.ts`:
 
 - `name`: 1 a 120 caracteres após `trim`;
 - `description`: até 5.000; `location`: até 200; `refundPolicy`: até 2.000;
-- `startsAt`: ISO 8601 com offset; na criação e na publicação, precisa estar no futuro;
+- `startsAt`: ISO 8601 com offset; na criação, na edição e na publicação, precisa estar no futuro;
 - `capacity`, `quantity`: inteiros ≥ 1;
 - `priceCents`: inteiro ≥ 1;
-- campos desconhecidos são rejeitados.
+- campos desconhecidos são rejeitados;
+- corpo inválido retorna `400 invalid_event` ou `400 invalid_ticket_type`, com a lista de campos;
+- `:id` e `:ticketTypeId` que não sejam UUID retornam `400`; evento ou tipo inexistente, de outro
+  produtor ou sem perfil de produtor retornam `404` (`event_not_found`, `ticket_type_not_found`,
+  `producer_not_found`).
 
 A exibição em horário de Brasília é responsabilidade do frontend; a API trabalha em UTC.
 
@@ -321,8 +336,9 @@ O payload não contém nome do evento, local nem dados do produtor.
 
 ## 11. Estado `ready`
 
-A publicação usa a mesma derivação de `onboardingStatus` da SPEC-003. A função de derivação sai de
-`ProducersService` para um helper compartilhado, consumido pelos dois serviços, sem duplicar regra.
+A publicação usa a mesma derivação de `onboardingStatus` da SPEC-003. A função de derivação saiu de
+`ProducersService` para `apps/api/src/producers/producer-onboarding-status.ts`, consumida pelos dois
+serviços sem duplicar regra. A leitura do produtor ocorre na mesma transação que trava o evento.
 
 ## 12. Estrutura de arquivos
 
@@ -372,12 +388,15 @@ Com PostgreSQL real e a role de runtime:
 
 ## 14. Definição de pronto
 
-- [ ] Produtor cria rascunho sem estar `ready` e só publica quando `ready`.
-- [ ] Regras de edição por estado da seção 5 cobertas por testes.
-- [ ] RLS isola produtores com a role real de runtime, e a leitura pública expõe só publicados e
+- [x] Produtor cria rascunho sem estar `ready` e só publica quando `ready`.
+- [x] Regras de edição por estado da seção 5 cobertas por testes.
+- [x] RLS isola produtores com a role real de runtime, e a leitura pública expõe só publicados e
       cancelados.
-- [ ] Cancelamento grava `event.cancelled` exatamente uma vez, na mesma transação.
-- [ ] Slug único, estável após publicação.
-- [ ] Nenhum dado interno ou de outro produtor na rota pública.
-- [ ] Build, lint, typecheck, unitários e integração passam.
-- [ ] Nenhuma antecipação dos blocos 5, 6 ou do frontend.
+- [x] Cancelamento grava `event.cancelled` exatamente uma vez, na mesma transação.
+- [x] Slug único, estável após publicação.
+- [x] Nenhum dado interno ou de outro produtor na rota pública.
+- [x] Build, lint, typecheck, unitários e integração passam.
+- [x] Nenhuma antecipação dos blocos 5, 6 ou do frontend.
+
+Validação automatizada em 02/10/2026: 10 cenários de integração com PostgreSQL real e role de
+runtime, estáveis em execuções repetidas, e os testes unitários de eventos e slug.

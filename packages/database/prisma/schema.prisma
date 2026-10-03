@@ -82,9 +82,10 @@ model ProducerProfile {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user                User                        @relation(fields: [userId], references: [id], onDelete: Restrict)
   blindPayCustomers   BlindPayCustomer[]
   stellarProvisioning StellarAccountProvisioning?
+  events              Event[]
 
   @@map("producer_profiles")
 }
@@ -151,4 +152,51 @@ model StellarAccountProvisioning {
   wallet   WalletAccount   @relation(fields: [walletAccountId], references: [id], onDelete: Restrict)
 
   @@map("stellar_account_provisionings")
+}
+
+enum EventStatus {
+  DRAFT     @map("draft")
+  PUBLISHED @map("published")
+  CANCELLED @map("cancelled")
+}
+
+model Event {
+  id           String      @id @default(uuid()) @db.Uuid
+  producerId   String      @map("producer_id") @db.Uuid
+  slug         String      @unique @db.VarChar(100)
+  name         String      @db.VarChar(120)
+  description  String?     @db.VarChar(5000)
+  location     String?     @db.VarChar(200)
+  startsAt     DateTime    @map("starts_at") @db.Timestamptz(3)
+  capacity     Int
+  refundPolicy String?     @map("refund_policy") @db.VarChar(2000)
+  status       EventStatus @default(DRAFT)
+  publishedAt  DateTime?   @map("published_at")
+  cancelledAt  DateTime?   @map("cancelled_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  producer    ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Restrict)
+  ticketTypes TicketType[]
+
+  @@unique([id, producerId])
+  @@index([producerId, createdAt])
+  @@map("events")
+}
+
+model TicketType {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @map("event_id") @db.Uuid
+  producerId  String   @map("producer_id") @db.Uuid
+  name        String   @db.VarChar(80)
+  description String?  @db.VarChar(500)
+  priceCents  Int      @map("price_cents")
+  quantity    Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  event Event @relation(fields: [eventId, producerId], references: [id, producerId], onDelete: Restrict)
+
+  @@index([eventId])
+  @@map("ticket_types")
 }
