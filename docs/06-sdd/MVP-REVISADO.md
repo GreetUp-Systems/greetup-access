@@ -126,8 +126,9 @@ Com o pagamento confirmado, a conta Stellar do comprador é ativada com reserva 
 não estiver ativa (D-23). A ordem entre ativação e mint é definida na SPEC de compra, junto com a
 confirmação de que o mint exige ou não a conta ativa.
 
-**Quem paga a taxa** é decidido por `cover_fees` na quote: `false` deduz da stablecoin que o
-produtor recebe; `true` soma ao valor em Real que o comprador paga. Decisão de produto pendente.
+**Quem paga a taxa:** o comprador (`cover_fees: true`), decidido em 03/10/2026. Ele vê uma única
+linha "Taxa de serviço"; o Access guarda a composição (taxa da BlindPay, partner fee e câmbio) a
+partir da quote. O comprador não informa CPF: a quote Pix é criada sem `payer_rules` (SPEC-005).
 
 ### 4.3 Saque
 
@@ -188,8 +189,11 @@ Não são decisões nem pendências — são coisas que mordem se ninguém soube
   `Symbol`, mas são UUID no Prisma. `Symbol` aceita no máximo 32 caracteres e só `a-zA-Z0-9_`;
   UUID tem 36 com hífens. Não compila. Usar `BytesN<16>`.
 - **Payin criado não pode ser cancelado.** Se o comprador não paga, fica `processing` até a
-  BlindPay limpar. O registro de compra precisa de um estado para isso.
-- **Quote expira em 5 minutos.** Definir o comportamento de reexpedição quando o comprador demora.
+  BlindPay limpar. Por isso a reserva de estoque dura enquanto o payin puder ser pago: nunca existe
+  Pix pagável sem ingresso garantido (SPEC-005 §8). O prazo da limpeza ainda não está documentado.
+- **Quote expira em 5 minutos.** O checkout cria quote e payin na mesma requisição, então a janela
+  não alcança o comprador.
+- **Payin mínimo de R$ 10.** Uma compra precisa somar pelo menos esse valor.
 - **Receita chega no dia 1º do mês seguinte.** Partner fees acumulam pelo mês calendário, já
   líquidas da fatura da BlindPay. É fluxo de caixa, não produto.
 - **Arquivamento de dado na Stellar.** Ingresso vendido muito antes do evento pode sair do

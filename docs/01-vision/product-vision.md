@@ -323,7 +323,6 @@ mês seguinte, já líquidas da fatura da BlindPay.
 |---|---|---|
 | Fee exato do BlindPay por transação Pix | BlindPay / Matheus | Antes da Fase 2 |
 | Taxa do Access por ingresso (define modelo de negócio) | Matheus | Antes da Fase 2 |
-| Quem absorve a taxa — `cover_fees` na quote | Matheus | Antes da Fase 2 |
 | Regras e prazos de reembolso, com apoio jurídico | Jurídico / Matheus | Antes da Fase 4 |
 | Auditoria externa da extensão do contrato | Matheus | Antes da Fase 5 |
 | Licença SPSAV necessária ou BlindPay cobre compliance? | Jurídico / Matheus | Antes do go-live |
