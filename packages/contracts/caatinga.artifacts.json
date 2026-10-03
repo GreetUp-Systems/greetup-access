@@ -1,0 +1,33 @@
+{
+  "project": "access",
+  "networks": {
+    "testnet": {
+      "contracts": {
+        "ticket": {
+          "contractId": "CBCO3MQGVHKJ5WRAEGWYI3E3TF4T6L5PNCXSK4MPGVDITIRNRZDPODNT",
+          "wasmHash": "2d40e5f6ec1976e2e52d6a856e5047ad1643589ed213b21d3365bece08b9d46c",
+          "deployedAt": "2026-10-03T21:42:42.454Z",
+          "sourcePath": "./contracts/ticket",
+          "wasmPath": "./target/wasm32v1-none/release/ticket_contract.wasm",
+          "dependencies": [],
+          "resolvedDeployArgs": {
+            "owner": "GDRXLYB3PZHAPVH3NRO5BQCVHNH5XKYCWMMRRJ53IQ5QFFO7JGDA3HRE",
+            "base_uri": "https://access.invalid/tickets/"
+          },
+          "metadata": {
+            "gitCommit": "617a82724e33e294fe368bc9a3b4f610b8d05840",
+            "rustcVersion": "rustc 1.99.0 (b940084d7 2026-09-28)",
+            "caatingaVersion": "3.12.0",
+            "network": "testnet",
+            "timestamp": "2026-10-03T21:42:42.452Z",
+            "checksum": "2d40e5f6ec1976e2e52d6a856e5047ad1643589ed213b21d3365bece08b9d46c"
+          }
+        }
+      },
+      "dependencyGraph": {
+        "ticket": []
+      }
+    }
+  },
+  "version": 2
+}

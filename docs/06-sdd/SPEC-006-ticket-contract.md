@@ -1,6 +1,6 @@
 # SPEC-006 — Contrato do ingresso
 
-> **Status:** aprovada; implementação não iniciada
+> **Status:** implementada; implantada na Testnet em 03/10/2026
 >
 > **Versão:** 1.0
 >
@@ -239,11 +239,31 @@ plataforma e pelo Privy.
 
 ## 12. Definição de pronto
 
-- [ ] Contrato compila para `wasm32v1-none` dentro do limite de 64 KB.
-- [ ] Todos os testes unitários da seção 11 passam.
-- [ ] Nenhum dado pessoal nos tipos on-chain.
-- [ ] Aprovações, `transfer_from` e renúncia de dono desativados.
-- [ ] Contrato implantado na Testnet pelo Caatinga, com `caatinga.artifacts.json` versionado.
-- [ ] Smoke na Testnet executado.
-- [ ] CI compila e testa o contrato; `contracts-deploy.yml` removido.
-- [ ] Nada antecipado do bloco 6.
+- [x] Contrato compila para `wasm32v1-none` dentro do limite de 64 KB.
+- [x] Todos os testes unitários da seção 11 passam.
+- [x] Nenhum dado pessoal nos tipos on-chain.
+- [x] Aprovações, `transfer_from` e renúncia de dono desativados.
+- [x] Contrato implantado na Testnet pelo Caatinga, com `caatinga.artifacts.json` versionado.
+- [x] Smoke na Testnet executado.
+- [x] CI compila e testa o contrato; `contracts-deploy.yml` removido.
+- [x] Nada antecipado do bloco 6.
+
+Validação em 03/10/2026:
+
+- 14 testes unitários passando em Linux, com `clippy -D warnings` e `rustfmt` limpos;
+- WASM de 17,8 KB gerado pelo `ctg build`;
+- contrato `CBCO3MQGVHKJ5WRAEGWYI3E3TF4T6L5PNCXSK4MPGVDITIRNRZDPODNT` implantado na Testnet pelo
+  Caatinga 3.12.0, com dono igual à conta da plataforma;
+- smoke na Testnet: capacidade cadastrada, mint para conta inexistente no ledger, repetição do mint
+  devolvendo o mesmo token, `owner_of`, `event`, `ticket`, check-in e segundo check-in recusado com
+  `#1005`.
+
+Notas de ambiente:
+
+- no Windows, os testes Rust rodam em container Linux (`pnpm contract:test:docker`): as crates da
+  OpenZeppelin se declaram `cdylib` e, montadas como DLL, passam do limite de 65.535 exports do
+  formato PE. O build do WASM não é afetado;
+- o Stellar CLI carrega o `.env` da raiz; por isso `STELLAR_NETWORK_PASSPHRASE` está no
+  `.env.example`, entre aspas;
+- o `Cargo.lock` de `packages/contracts` é versionado: sem ele, o `soroban-env-host` 26.1.3 resolve
+  `ed25519-dalek` 3.0.0 e os testes não compilam.
