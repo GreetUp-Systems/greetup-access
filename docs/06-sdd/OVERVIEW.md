@@ -4,7 +4,7 @@
 >
 > A arquitetura foi revisada em 20/08/2026, com identidade atualizada em 29/09/2026, e boa parte
 > das SPEC-003 a SPEC-013 continua vencida.
-> O `MVP-REVISADO.md` é a **fonte de verdade** da arquitetura: vinte e quatro decisões, com o porquê
+> O `MVP-REVISADO.md` é a **fonte de verdade** da arquitetura: vinte e cinco decisões, com o porquê
 > de cada uma, e a tabela do que foi superado.
 >
 > **Não implemente a partir de uma SPEC sem antes conferir aquela tabela.** Várias descrevem
@@ -46,11 +46,11 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 4. a próxima SPEC permanece bloqueada até build, lint, typecheck e testes da etapa ativa passarem;
 5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
 
-**SPEC ativa:** [`SPEC-003 — Onboarding do produtor`](./SPEC-003-producer.md). Os gates 3A/3B e a
-implementação automatizada de 3C (v1.4: configuração Stellar na criação do perfil e trustline de USDC
-de teste) estão validados localmente; restam os smokes reais BlindPay e Stellar/Privy/BlindPay. O gate 3C usa development/testnet conforme o
-[`ADR-010`](../03-adrs/ADR-010-stellar-development-signer.md). Production usa o mesmo modelo de
-signer (D-24) e fica liberada só na etapa explícita de habilitação de Pubnet/USDC.
+**SPEC ativa:** [`SPEC-006 — Contrato do ingresso`](./SPEC-006-ticket-contract.md) (bloco 5),
+compilada e implantada com o Caatinga (D-25). A SPEC-004 está concluída. A SPEC-003 tem a
+implementação automatizada validada e aguarda os smokes reais BlindPay e Stellar/Privy/BlindPay.
+Production usa o mesmo modelo de signer (D-24) e fica liberada só na etapa explícita de habilitação
+de Pubnet/USDC.
 
 O [`ADR-009`](../03-adrs/ADR-009-identity-producer-tenancy.md) fechou identidade, wallet, modelo de
 produtor e a Q-03 em 29/09/2026.
@@ -128,7 +128,7 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | SPEC-003 producer    | **3A/3B e implementação automatizada de 3C (v1.4) validados localmente; smokes reais pendentes** — [nova versão](./SPEC-003-producer.md); 3C restrito a development/testnet pelo ADR-010. [Versão anterior arquivada](../_archive/06-sdd/SPEC-003-organizations.md) |
 | SPEC-004 events      | **Implementação automatizada validada localmente em 02/10/2026** — [nova versão](./SPEC-004-events.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-004-events.md) |
 | SPEC-005 purchase    | Reescrever: fluxo de payin quote → payin — [arquivada](../_archive/06-sdd/SPEC-005-purchase.md)                                                                                                                    |
-| SPEC-006 contracts   | **Reescrever:** `EscrowContract` sai; `TicketContract` vira extensão da OZ. Contém bug de tipo (`Symbol` não comporta UUID) — [arquivada](../_archive/06-sdd/SPEC-006-contracts.md)                                |
+| SPEC-006 contracts   | **Reescrita e aprovada em 03/10/2026** — [nova versão](./SPEC-006-ticket-contract.md); implementação não iniciada. [Versão anterior arquivada](../_archive/06-sdd/SPEC-006-contracts.md) |
 | SPEC-007 mint worker | Reescrever: sai Treasury própria e criação de wallet do caminho crítico — [arquivada](../_archive/06-sdd/SPEC-007-mint-worker.md)                                                                                  |
 | SPEC-008 ticket read | Reescrever sem CQRS — [arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md)                                                                                                                                      |
 | SPEC-009 checkin     | Dividir: online na fase 1, offline na fase 2                                                                                                                                                                       |

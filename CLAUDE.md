@@ -35,7 +35,7 @@ Preferir perguntar a assumir. Um assumir errado em fluxo financeiro é caro. Uma
 
 Antes de implementar qualquer SPEC, leia nesta ordem:
 
-1. `docs/06-sdd/MVP-REVISADO.md` — **fonte de verdade da arquitetura**: decisões D-01 a D-24, dívidas conscientes, notas de implementação e questões em aberto (§9)
+1. `docs/06-sdd/MVP-REVISADO.md` — **fonte de verdade da arquitetura**: decisões D-01 a D-25, dívidas conscientes, notas de implementação e questões em aberto (§9)
 2. `docs/06-sdd/OVERVIEW.md` — blocos de implementação, dependências e status de cada SPEC
 3. A SPEC específica que você vai implementar, em `docs/06-sdd/SPEC-XXX-*.md`
 4. Os ADRs referenciados na spec, em `docs/03-adrs/` — para entender o porquê das decisões, não só o quê
@@ -200,10 +200,11 @@ pnpm turbo typecheck
 pnpm turbo lint
 pnpm turbo format -- --check
 
-# Contratos Soroban
+# Contratos Soroban (Caatinga, D-25)
 cd packages/contracts
 cargo test
-stellar contract build --release
+npx ctg build ticket
+npx ctg deploy ticket --network testnet --source <identidade> --no-generate
 
 # Banco de dados
 pnpm db:generate                  # gera Prisma Client após mudança de schema
