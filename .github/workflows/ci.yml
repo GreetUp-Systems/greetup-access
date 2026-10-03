@@ -235,52 +235,46 @@ jobs:
             BUILD_SHA=${{ github.sha }}
 
   # ─── Stage 6: Contracts (Soroban) ─────────────────────────────────────────
+  # Built and deployed with Caatinga (D-25); CI only builds and tests (SPEC-006 §10).
   contracts:
     name: Soroban Contracts (build + test)
     runs-on: ubuntu-latest
     needs: secret-scan
+    defaults:
+      run:
+        working-directory: packages/contracts
     steps:
       - uses: actions/checkout@v4
 
-      - name: Detect contract workspace
-        id: contract-source
-        shell: bash
-        run: |
-          if [ -f packages/contracts/Cargo.toml ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Soroban checks skipped because packages/contracts/Cargo.toml does not exist."
-          fi
-
       - name: Install Rust toolchain
-        if: steps.contract-source.outputs.enabled == 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32v1-none
+          components: clippy, rustfmt
 
       - name: Cache Rust dependencies
-        if: steps.contract-source.outputs.enabled == 'true'
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: packages/contracts
 
       - name: Install stellar-cli
-        if: steps.contract-source.outputs.enabled == 'true'
-        run: cargo install --locked stellar-cli
+        uses: stellar/stellar-cli@v28.1.0
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Lint
+        run: cargo clippy --locked --all-targets -- -D warnings
 
       - name: Run contract tests
-        if: steps.contract-source.outputs.enabled == 'true'
-        run: cargo test --manifest-path packages/contracts/Cargo.toml --all-features
+        run: cargo test --locked
 
       - name: Build WASM (release)
-        if: steps.contract-source.outputs.enabled == 'true'
-        run: stellar contract build --manifest-path packages/contracts/Cargo.toml
+        run: stellar contract build --locked
 
       - name: Check WASM size (max 64KB per contract)
-        if: steps.contract-source.outputs.enabled == 'true'
         run: |
-          for wasm in packages/contracts/target/wasm32-unknown-unknown/release/*.wasm; do
+          for wasm in target/wasm32v1-none/release/*.wasm; do
             size=$(wc -c < "$wasm")
             name=$(basename "$wasm")
             echo "$name: ${size} bytes"
@@ -291,13 +285,11 @@ jobs:
           done
 
       - name: Compute WASM checksums
-        if: steps.contract-source.outputs.enabled == 'true'
-        run: sha256sum packages/contracts/target/wasm32-unknown-unknown/release/*.wasm
+        run: sha256sum target/wasm32v1-none/release/*.wasm
 
       - name: Upload WASM artifacts
-        if: steps.contract-source.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: contracts-wasm-${{ github.sha }}
-          path: packages/contracts/target/wasm32-unknown-unknown/release/*.wasm
+          path: packages/contracts/target/wasm32v1-none/release/*.wasm
           retention-days: 30

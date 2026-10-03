@@ -1,0 +1,17 @@
+{
+  "name": "@access/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Soroban contracts of Access, built and deployed with Caatinga (D-25).",
+  "scripts": {
+    "contract:doctor": "ctg doctor --network testnet",
+    "contract:build": "ctg build ticket",
+    "contract:test": "cargo test --locked",
+    "contract:test:docker": "node scripts/test-in-docker.mjs",
+    "contract:status": "ctg status --network testnet"
+  },
+  "devDependencies": {
+    "@caatinga/cli": "^3.12.0",
+    "@caatinga/core": "^3.12.0"
+  }
+}

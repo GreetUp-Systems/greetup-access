@@ -200,11 +200,12 @@ pnpm turbo typecheck
 pnpm turbo lint
 pnpm turbo format -- --check
 
-# Contratos Soroban (Caatinga, D-25)
-cd packages/contracts
-cargo test
-npx ctg build ticket
-npx ctg deploy ticket --network testnet --source <identidade> --no-generate
+# Contratos Soroban (Caatinga, D-25) — a partir de packages/contracts
+cargo test --locked                       # Linux/macOS e CI
+pnpm contract:test:docker                 # Windows: as crates da OpenZeppelin passam do limite de exports de DLL
+pnpm exec ctg build ticket
+pnpm exec ctg deploy ticket --network testnet --source <identidade> --no-generate
+pnpm exec ctg upgrade ticket --network testnet --source <identidade>
 
 # Banco de dados
 pnpm db:generate                  # gera Prisma Client após mudança de schema
