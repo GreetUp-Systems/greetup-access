@@ -3,6 +3,7 @@ import { PrismaModule } from "@access/database";
 import { RedisModule } from "@access/redis";
 import { DynamicModule, Module } from "@nestjs/common";
 
+import { NotificationsModule } from "./notifications/notifications.module";
 import { OutboxModule } from "./outbox/outbox.module";
 import { TicketsModule } from "./tickets/tickets.module";
 
@@ -17,8 +18,9 @@ export class WorkersModule {
           restrictedRole: "access_worker",
         }),
         RedisModule.forRoot(config.redisUrl),
-        OutboxModule.forRoot(config.redisUrl),
+        OutboxModule.forRoot(config),
         TicketsModule.forRoot(config),
+        NotificationsModule.forRoot(config),
       ],
     };
   }

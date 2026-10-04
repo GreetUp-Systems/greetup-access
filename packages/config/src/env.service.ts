@@ -24,6 +24,14 @@ export interface WorkerConfig {
   stellarSponsorPublicKey: string;
   stellarSponsorSecretKey: string | undefined;
   stellarTicketContractId: string;
+  /** Undefined when e-mail is off (development only). */
+  email: WorkerEmailConfig | undefined;
+}
+
+export interface WorkerEmailConfig {
+  resendApiKey: string;
+  from: string;
+  appPublicUrl: string;
 }
 
 export interface ApiConfig extends InfrastructureConfig {
@@ -137,5 +145,13 @@ export function loadWorkerConfig(environment: NodeJS.ProcessEnv = process.env): 
     stellarSponsorPublicKey: parsed.STELLAR_SPONSOR_PUBLIC_KEY,
     stellarSponsorSecretKey: parsed.STELLAR_SPONSOR_SECRET_KEY,
     stellarTicketContractId: parsed.STELLAR_TICKET_CONTRACT_ID,
+    email:
+      parsed.RESEND_API_KEY && parsed.EMAIL_FROM && parsed.APP_PUBLIC_URL
+        ? {
+            resendApiKey: parsed.RESEND_API_KEY,
+            from: parsed.EMAIL_FROM,
+            appPublicUrl: parsed.APP_PUBLIC_URL.replace(/\/$/, ""),
+          }
+        : undefined,
   };
 }

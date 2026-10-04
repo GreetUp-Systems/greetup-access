@@ -5,9 +5,16 @@ import { randomUUID } from "node:crypto";
 import { PrismaClient, PrismaService } from "@access/database";
 import { Queue } from "bullmq";
 
+import { buildOutboxRoutes } from "../src/outbox/outbox-routes";
 import { OutboxRelayService } from "../src/outbox/outbox-relay.service";
 import { BullMqPublisher } from "../src/queues/bullmq-publisher";
-import { MINT_TICKET_JOB, type QueuePublisher, TICKETS_QUEUE } from "../src/queues/queues";
+import {
+  MINT_TICKET_JOB,
+  NOTIFICATIONS_QUEUE,
+  type QueuePublisher,
+  SEND_TICKETS_READY_JOB,
+  TICKETS_QUEUE,
+} from "../src/queues/queues";
 
 const ownerDatabaseUrl = "postgresql://test:test@localhost:5433/access_test";
 const workerDatabaseUrl = "postgresql://access_worker_login:test_worker@localhost:5433/access_test";
@@ -18,7 +25,9 @@ describe("OutboxRelay integration", () => {
   const workerPrisma = new PrismaService(workerDatabaseUrl, true, "access_worker");
   const publisher = new BullMqPublisher(redisUrl);
   const ticketsQueue = new Queue(TICKETS_QUEUE, { connection: { url: redisUrl } });
-  const relay = new OutboxRelayService(workerPrisma, publisher);
+  const notificationsQueue = new Queue(NOTIFICATIONS_QUEUE, { connection: { url: redisUrl } });
+  const routes = buildOutboxRoutes({ notifications: false });
+  const relay = new OutboxRelayService(workerPrisma, publisher, routes);
 
   beforeAll(async () => {
     await workerPrisma.onModuleInit();
@@ -27,12 +36,15 @@ describe("OutboxRelay integration", () => {
   beforeEach(async () => {
     await ownerPrisma.outboxEvent.deleteMany();
     await ticketsQueue.obliterate({ force: true });
+    await notificationsQueue.obliterate({ force: true });
   });
 
   afterAll(async () => {
     await ownerPrisma.outboxEvent.deleteMany();
     await ticketsQueue.obliterate({ force: true });
+    await notificationsQueue.obliterate({ force: true });
     await ticketsQueue.close();
+    await notificationsQueue.close();
     await publisher.onModuleDestroy();
     await workerPrisma.$disconnect();
     await ownerPrisma.$disconnect();
@@ -69,6 +81,26 @@ describe("OutboxRelay integration", () => {
     ).resolves.toMatchObject({ status: "PENDING" });
   });
 
+  it("routes ticket.issued to the notifications queue only while e-mail is on", async () => {
+    const ticketId = randomUUID();
+    const issued = await outboxEvent("ticket.issued", { ticketId, purchaseId: randomUUID() });
+
+    await expect(relay.relayOnce()).resolves.toBe(0);
+    await expect(
+      ownerPrisma.outboxEvent.findUniqueOrThrow({ where: { id: issued.id } }),
+    ).resolves.toMatchObject({ status: "PENDING" });
+
+    const notifyingRelay = new OutboxRelayService(
+      workerPrisma,
+      publisher,
+      buildOutboxRoutes({ notifications: true }),
+    );
+    await expect(notifyingRelay.relayOnce()).resolves.toBe(1);
+    const job = await notificationsQueue.getJob(issued.id);
+    expect(job?.name).toBe(SEND_TICKETS_READY_JOB);
+    expect(job?.data).toEqual({ ticketId, outboxEventId: issued.id });
+  });
+
   it("publishes each event once under concurrent relays and harmless republication", async () => {
     const events = await Promise.all(
       Array.from({ length: 5 }, () =>
@@ -92,7 +124,7 @@ describe("OutboxRelay integration", () => {
     const failingPublisher: QueuePublisher = {
       publish: () => Promise.reject(new Error("redis down")),
     };
-    const failingRelay = new OutboxRelayService(workerPrisma, failingPublisher);
+    const failingRelay = new OutboxRelayService(workerPrisma, failingPublisher, routes);
     const event = await outboxEvent("payment.confirmed", { purchaseId: randomUUID() });
     const broken = await outboxEvent("payment.confirmed", { unexpected: true });
 
@@ -110,8 +142,11 @@ describe("OutboxRelay integration", () => {
   });
 
   it("runs on a restricted role that cannot touch tenant data", async () => {
-    // Purchases, tickets and events are readable for minting (6C); identity data is not.
-    await expect(workerPrisma.user.count()).rejects.toThrow(/permission denied/);
+    // Purchases, tickets and events are readable for minting (6C); of the identity data only the
+    // recipient's id and e-mail are, for the NotifyWorker (SPEC-008 7B).
+    await expect(workerPrisma.user.findFirst({ select: { privyUserId: true } })).rejects.toThrow(
+      /permission denied/,
+    );
     await expect(workerPrisma.producerProfile.count()).rejects.toThrow(/permission denied/);
     await expect(workerPrisma.blindPayCustomer.count()).rejects.toThrow(/permission denied/);
 

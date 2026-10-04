@@ -1,8 +1,8 @@
 # SPEC-008 — Área do comprador
 
-> **Status:** 7A implementada; 7B pendente
+> **Status:** 7A e 7B implementadas; e-mail real pendente do smoke pelo front
 >
-> **Versão:** 1.1
+> **Versão:** 1.2
 >
 > **Atualizada em:** 04/10/2026
 >
@@ -220,8 +220,9 @@ A tabela guarda só metadados; o corpo do e-mail não é persistido.
 
 - `email_notifications` com `ENABLE`/`FORCE ROW LEVEL SECURITY`; só `access_worker` tem acesso
   (`SELECT`, `INSERT`, `UPDATE`); a API não lê a tabela.
-- `access_worker` ganha leitura de `users` restrita às colunas `id` e `email`, e de `ticket_types`
-  (nome), por policies técnicas.
+- `access_worker` ganha leitura de `users` restrita às colunas `id` e `email` (grant por coluna:
+  `users` é tabela de identidade, sem RLS) e de `ticket_types` restrita a `id` e `name`, com policy
+  técnica.
 - runtime da API: policies de leitura em `events` e `ticket_types` para quem é dono de um ingresso
   deles, no contexto de usuário.
 - nenhuma role ganha `BYPASSRLS`.
@@ -268,8 +269,8 @@ E-mail real pelo Resend no smoke ponta a ponta da compra (SPEC-005 §15).
 ## 13. Definição de pronto
 
 - [x] 7A: meus ingressos, QR assinado e SSE, com testes.
-- [ ] 7B: `NotifyWorker` com um e-mail por compra, idempotente, com testes.
-- [ ] Build, lint, typecheck, unitários e integração passam.
+- [x] 7B: `NotifyWorker` com um e-mail por compra, idempotente, com testes.
+- [x] Build, lint, typecheck, unitários e integração passam.
 - [ ] E-mail real entregue no smoke ponta a ponta.
 
 ## 14. Fora do escopo

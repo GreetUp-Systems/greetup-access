@@ -77,6 +77,40 @@ describe("environment configuration", () => {
     );
   });
 
+  it("enables worker e-mail only with all three settings, and always in production", () => {
+    const environment = {
+      NODE_ENV: "development",
+      DATABASE_URL_WORKER: "postgresql://access_worker_login:test@localhost:5433/access_test",
+      REDIS_URL: "redis://localhost:6380",
+      STELLAR_NETWORK: "testnet",
+      STELLAR_RPC_URL: "https://soroban-testnet.stellar.org",
+      STELLAR_SPONSOR_PUBLIC_KEY: validEnvironment.STELLAR_SPONSOR_PUBLIC_KEY,
+      STELLAR_SPONSOR_SECRET_KEY: validEnvironment.STELLAR_SPONSOR_SECRET_KEY,
+      STELLAR_TICKET_CONTRACT_ID: `C${"A".repeat(55)}`,
+    };
+    const email = {
+      RESEND_API_KEY: "re_test",
+      EMAIL_FROM: "Access <ingressos@example.com>",
+      APP_PUBLIC_URL: "https://app.example.com/",
+    };
+
+    expect(loadWorkerConfig({ ...environment, RESEND_API_KEY: "" }).email).toBeUndefined();
+    expect(loadWorkerConfig({ ...environment, ...email }).email).toEqual({
+      resendApiKey: "re_test",
+      from: "Access <ingressos@example.com>",
+      appPublicUrl: "https://app.example.com",
+    });
+    expect(() => loadWorkerConfig({ ...environment, RESEND_API_KEY: "re_test" })).toThrow(
+      "EMAIL_FROM",
+    );
+    expect(() => loadWorkerConfig({ ...environment, ...email, APP_PUBLIC_URL: "ftp://x" })).toThrow(
+      "APP_PUBLIC_URL",
+    );
+    expect(() =>
+      loadWorkerConfig({ ...environment, NODE_ENV: "production", STELLAR_SPONSOR_SECRET_KEY: "" }),
+    ).toThrow("RESEND_API_KEY");
+  });
+
   it("requires a ticket QR secret of at least 32 bytes and the ticket contract", () => {
     expect(loadApiConfig(validEnvironment)).toMatchObject({
       ticketQrSecret: validEnvironment.TICKET_QR_SECRET,

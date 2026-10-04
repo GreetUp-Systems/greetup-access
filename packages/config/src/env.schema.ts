@@ -98,6 +98,19 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
     }
   });
 
+const optionalResendApiKey = z.union([z.string().startsWith("re_"), z.literal("")]).optional();
+const optionalEmailFrom = z.union([z.string().includes("@"), z.literal("")]).optional();
+const optionalPublicUrl = z
+  .union([
+    z
+      .string()
+      .url()
+      .refine((value) => ["http:", "https:"].includes(new URL(value).protocol)),
+    z.literal(""),
+  ])
+  .optional();
+const emailVariables = ["RESEND_API_KEY", "EMAIL_FROM", "APP_PUBLIC_URL"] as const;
+
 // Worker processes connect with their own restricted role and mint as the platform account
 // (SPEC-005 §13–14). The local signer follows the same fail-closed rules as the API (ADR-010).
 export const workerEnvironmentSchema = z
@@ -110,8 +123,27 @@ export const workerEnvironmentSchema = z
     STELLAR_SPONSOR_PUBLIC_KEY: stellarPublicKey,
     STELLAR_SPONSOR_SECRET_KEY: stellarSecretKey.optional(),
     STELLAR_TICKET_CONTRACT_ID: stellarContractId,
+    RESEND_API_KEY: optionalResendApiKey,
+    EMAIL_FROM: optionalEmailFrom,
+    APP_PUBLIC_URL: optionalPublicUrl,
   })
   .superRefine((environment, context) => {
+    // E-mail is all or nothing; left empty it is off and ticket.issued waits in the Outbox
+    // (SPEC-008 §8). Production always sends.
+    const configured = emailVariables.filter((name) => Boolean(environment[name]));
+    const emailRequired = environment.NODE_ENV === "production" || configured.length > 0;
+    if (emailRequired) {
+      for (const name of emailVariables) {
+        if (!environment[name]) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [name],
+            message: "is required when e-mail is enabled",
+          });
+        }
+      }
+    }
+
     if (environment.NODE_ENV === "production" && environment.STELLAR_SPONSOR_SECRET_KEY) {
       context.addIssue({
         code: z.ZodIssueCode.custom,

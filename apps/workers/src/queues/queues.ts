@@ -7,6 +7,14 @@ export interface MintTicketJobData {
   outboxEventId: string;
 }
 
+export const NOTIFICATIONS_QUEUE = "notifications";
+export const SEND_TICKETS_READY_JOB = "SendTicketsReadyJob";
+
+export interface SendTicketsReadyJobData {
+  ticketId: string;
+  outboxEventId: string;
+}
+
 export interface QueuePublisher {
   /** Publishing twice with the same jobId must not create a second job. */
   publish(queue: string, jobName: string, data: object, jobId: string): Promise<void>;

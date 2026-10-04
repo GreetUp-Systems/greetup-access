@@ -139,6 +139,7 @@ describe("identity bootstrap integration", () => {
 
   beforeEach(async () => {
     await ownerPrisma.blindPayWebhookDelivery.deleteMany();
+    await ownerPrisma.emailNotification.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
@@ -150,6 +151,7 @@ describe("identity bootstrap integration", () => {
 
   afterAll(async () => {
     await ownerPrisma.blindPayWebhookDelivery.deleteMany();
+    await ownerPrisma.emailNotification.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
