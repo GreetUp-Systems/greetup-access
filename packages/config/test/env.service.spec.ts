@@ -29,6 +29,7 @@ const validEnvironment: NodeJS.ProcessEnv = {
   STELLAR_SPONSOR_SECRET_KEY: `S${"A".repeat(55)}`,
   STELLAR_TICKET_CONTRACT_ID: `C${"A".repeat(55)}`,
   TICKET_QR_SECRET: "q".repeat(43),
+  API_CORS_ORIGINS: "http://localhost:3000",
 };
 
 describe("environment configuration", () => {
@@ -109,6 +110,26 @@ describe("environment configuration", () => {
     expect(() =>
       loadWorkerConfig({ ...environment, NODE_ENV: "production", STELLAR_SPONSOR_SECRET_KEY: "" }),
     ).toThrow("RESEND_API_KEY");
+  });
+
+  it("reads the CORS origins, required outside development", () => {
+    expect(
+      loadApiConfig({
+        ...validEnvironment,
+        API_CORS_ORIGINS: "http://localhost:3000/, https://app.example.com",
+      }).corsOrigins,
+    ).toEqual(["http://localhost:3000", "https://app.example.com"]);
+    expect(() => loadApiConfig({ ...validEnvironment, API_CORS_ORIGINS: "" })).toThrow(
+      "API_CORS_ORIGINS",
+    );
+    expect(
+      loadApiConfig({
+        ...validEnvironment,
+        NODE_ENV: "development",
+        API_CORS_ORIGINS: "",
+        STELLAR_SPONSOR_SECRET_KEY: validEnvironment.STELLAR_SPONSOR_SECRET_KEY,
+      }).corsOrigins,
+    ).toEqual([]);
   });
 
   it("requires a ticket QR secret of at least 32 bytes and the ticket contract", () => {

@@ -1,6 +1,6 @@
 # SPEC-014 — App web · Compra
 
-> **Status:** aprovada; implementação não iniciada
+> **Status:** 9A implementada; 9B a 9D pendentes
 >
 > **Versão:** 1.0
 >
@@ -172,7 +172,7 @@ NEXT_PUBLIC_PRIVY_APP_ID=
 
 ## 13. Definição de pronto
 
-- [ ] 9A: dois passos, página pública ampliada, código do ingresso e CORS, com testes.
+- [x] 9A: dois passos, página pública ampliada, código do ingresso e CORS, com testes.
 - [ ] Telas do §6 desenhadas no Figma (feito em 04/10/2026) e revisadas pelo Matheus.
 - [ ] 9B: login, identificação e base do app, com conferência visual.
 - [ ] 9C: compra de ponta a ponta com a API simulada e conferência visual.

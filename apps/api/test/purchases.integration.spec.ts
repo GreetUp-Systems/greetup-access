@@ -52,6 +52,7 @@ const config: ApiConfig = {
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
   blindPayPartnerFeeId: undefined,
+  corsOrigins: [],
   ...stellarTestConfig,
   ...ticketsTestConfig,
 };
@@ -110,11 +111,13 @@ class FakeBlindPayGateway implements BlindPayGateway {
   quoteInputs: BlindPayPayinQuoteInput[] = [];
   payinInputs: Array<{ quoteId: string; idempotencyKey: string }> = [];
   nextQuoteError: BlindPayProviderError | undefined;
+  feeCents = 500;
 
   reset(): void {
     this.quoteInputs = [];
     this.payinInputs = [];
     this.nextQuoteError = undefined;
+    this.feeCents = 500;
   }
 
   async createPayinQuote(input: BlindPayPayinQuoteInput): Promise<BlindPayPayinQuote> {
@@ -127,7 +130,7 @@ class FakeBlindPayGateway implements BlindPayGateway {
     return {
       id: `qu_${randomUUID()}`,
       expiresAt: new Date(Date.now() + 5 * 60_000),
-      senderAmount: input.requestAmountCents + 500,
+      senderAmount: input.requestAmountCents + this.feeCents,
       receiverAmount: Math.round(input.requestAmountCents / 5.5),
       commercialQuotation: 5.42,
       blindpayQuotation: 5.5,
@@ -281,11 +284,17 @@ describe("purchases integration", () => {
     return ticketType.body.id as string;
   }
 
+  // Step 1 (SPEC-005 v1.5): reserve and quote.
   function buy(user: TestUser, ticketTypeId: string, quantity: number, key = randomUUID()) {
     return api(user).post("/api/purchases", { ticketTypeId, quantity }, key);
   }
 
-  it("creates a Pix to the producer wallet and shows it only to the buyer", async () => {
+  // Step 2: create the Pix for the total the buyer saw.
+  function pay(user: TestUser, purchaseId: string, expectedTotalCents: number) {
+    return api(user).post(`/api/purchases/${purchaseId}/pix`, { expectedTotalCents });
+  }
+
+  it("quotes first, then creates the Pix to the producer wallet, shown only to the buyer", async () => {
     await readyProducer();
     const ticketTypeId = await publishedTicketType(10);
     await bootstrap(users.buyerA);
@@ -294,14 +303,26 @@ describe("purchases integration", () => {
     const created = await buy(users.buyerA, ticketTypeId, 2).expect(201);
 
     expect(created.body).toMatchObject({
-      status: "awaiting_payment",
+      status: "initiated",
       quantity: 2,
       subtotalCents: 16_000,
       serviceFeeCents: 500,
       totalCents: 16_500,
-      pixCode: expect.stringMatching(/^pix-qu_/),
+      pixCode: null,
       tickets: [],
     });
+    expect(blindPay.payinInputs).toHaveLength(0);
+
+    await pay(users.buyerB, created.body.id, 16_500).expect(404);
+    const paid = await pay(users.buyerA, created.body.id, 16_500).expect(200);
+    expect(paid.body).toMatchObject({
+      status: "awaiting_payment",
+      totalCents: 16_500,
+      pixCode: expect.stringMatching(/^pix-qu_/),
+    });
+    const repeated = await pay(users.buyerA, created.body.id, 16_500).expect(200);
+    expect(repeated.body.pixCode).toBe(paid.body.pixCode);
+    expect(blindPay.payinInputs).toHaveLength(1);
     expect(blindPay.quoteInputs).toEqual([
       {
         blockchainWalletId: "bw_checkout",
@@ -324,7 +345,7 @@ describe("purchases integration", () => {
     const repeated = await buy(users.buyerA, ticketTypeId, 2, key).expect(201);
     expect(repeated.body).toEqual(first.body);
     expect(blindPay.quoteInputs).toHaveLength(1);
-    expect(blindPay.payinInputs).toHaveLength(1);
+    expect(blindPay.payinInputs).toHaveLength(0);
 
     const reused = await buy(users.buyerA, ticketTypeId, 3, key).expect(409);
     expect(reused.body).toMatchObject({ code: "idempotency_key_reused" });
@@ -348,7 +369,7 @@ describe("purchases integration", () => {
     ]);
 
     const reserved = await ownerPrisma.purchase.aggregate({
-      where: { ticketTypeId, status: "AWAITING_PAYMENT" },
+      where: { ticketTypeId, status: "INITIATED" },
       _sum: { quantity: true },
     });
     expect(reserved._sum.quantity).toBeLessThanOrEqual(3);
@@ -356,7 +377,7 @@ describe("purchases integration", () => {
       expect(result.status).toBe(409);
       expect(result.body).toMatchObject({ code: "ticket_type_sold_out" });
     }
-    expect(blindPay.payinInputs).toHaveLength(
+    expect(blindPay.quoteInputs).toHaveLength(
       results.filter((candidate) => candidate.status === 201).length,
     );
   });
@@ -368,6 +389,7 @@ describe("purchases integration", () => {
     await bootstrap(users.buyerB);
 
     const awaiting = await buy(users.buyerA, ticketTypeId, 2).expect(201);
+    await pay(users.buyerA, awaiting.body.id, awaiting.body.totalCents).expect(200);
     await ownerPrisma.purchase.update({
       where: { id: awaiting.body.id },
       data: { createdAt: new Date(Date.now() - 3 * 86_400_000) },
@@ -381,6 +403,69 @@ describe("purchases integration", () => {
       data: { status: "INITIATED" },
     });
     await buy(users.buyerB, ticketTypeId, 2).expect(201);
+  });
+
+  it("requotes an expired quote and refuses to charge a total the buyer has not seen", async () => {
+    await readyProducer();
+    const ticketTypeId = await publishedTicketType(10);
+    await bootstrap(users.buyerA);
+    const created = await buy(users.buyerA, ticketTypeId, 2).expect(201);
+    await ownerPrisma.purchase.update({
+      where: { id: created.body.id },
+      data: { quoteExpiresAt: new Date() },
+    });
+    blindPay.feeCents = 700;
+
+    const changed = await pay(users.buyerA, created.body.id, 16_500).expect(409);
+    expect(changed.body).toMatchObject({
+      code: "purchase_total_changed",
+      purchase: { status: "initiated", serviceFeeCents: 700, totalCents: 16_700 },
+    });
+    expect(blindPay.payinInputs).toHaveLength(0);
+
+    await pay(users.buyerA, created.body.id, 16_700)
+      .expect(200)
+      .expect(({ body }) => expect(body).toMatchObject({ status: "awaiting_payment" }));
+    expect(blindPay.quoteInputs).toHaveLength(2);
+  });
+
+  it("shows the public availability net of reservations", async () => {
+    await readyProducer();
+    const ticketTypeId = await publishedTicketType(10);
+    await bootstrap(users.buyerA);
+    await buy(users.buyerA, ticketTypeId, 3).expect(201);
+
+    const type = await ownerPrisma.ticketType.findUniqueOrThrow({
+      where: { id: ticketTypeId },
+      include: { event: true },
+    });
+    const page = await request(app.getHttpServer())
+      .get(`/api/public/events/${type.event.slug}`)
+      .expect(200);
+    expect(page.body.ticketTypes).toEqual([
+      expect.objectContaining({ id: ticketTypeId, available: 7 }),
+    ]);
+  });
+
+  it("expires a reservation that waited too long before the Pix", async () => {
+    await readyProducer();
+    const ticketTypeId = await publishedTicketType(10);
+    await bootstrap(users.buyerA);
+    const created = await buy(users.buyerA, ticketTypeId, 2).expect(201);
+    await ownerPrisma.purchase.update({
+      where: { id: created.body.id },
+      data: { createdAt: new Date(Date.now() - 11 * 60_000) },
+    });
+
+    await pay(users.buyerA, created.body.id, 16_500)
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe("purchase_expired"));
+    await expect(
+      ownerPrisma.purchase.findUniqueOrThrow({ where: { id: created.body.id } }),
+    ).resolves.toMatchObject({ status: "PAYMENT_FAILED", failureCode: "reservation_expired" });
+    await pay(users.buyerA, created.body.id, 16_500)
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe("purchase_not_payable"));
   });
 
   it("fails the purchase and frees the stock when BlindPay rejects it", async () => {
@@ -518,6 +603,7 @@ describe("purchases integration", () => {
       const ticketTypeId = await publishedTicketType(5);
       await bootstrap(users.buyerA);
       const created = await buy(users.buyerA, ticketTypeId, quantity).expect(201);
+      await pay(users.buyerA, created.body.id, created.body.totalCents).expect(200);
       const stored = await ownerPrisma.purchase.findUniqueOrThrow({
         where: { id: created.body.id },
       });

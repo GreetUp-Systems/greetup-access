@@ -29,6 +29,7 @@ const baseConfig: ApiConfig = {
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
   blindPayPartnerFeeId: undefined,
+  corsOrigins: [],
   ...stellarTestConfig,
   ...ticketsTestConfig,
 };
@@ -38,10 +39,44 @@ async function createApp(config: ApiConfig): Promise<INestApplication> {
     imports: [AppModule.forRoot(config)],
   }).compile();
   const app = module.createNestApplication();
-  configureApplication(app);
+  configureApplication(app, { corsOrigins: config.corsOrigins });
   await app.init();
   return app;
 }
+
+describe("CORS for the web app", () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    app = await createApp({ ...baseConfig, corsOrigins: ["http://localhost:3000"] });
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it("lets the web app send the Bearer token and the Idempotency-Key", async () => {
+    const preflight = await request(app.getHttpServer())
+      .options("/api/purchases")
+      .set("Origin", "http://localhost:3000")
+      .set("Access-Control-Request-Method", "POST")
+      .set("Access-Control-Request-Headers", "authorization,content-type,idempotency-key")
+      .expect(204);
+
+    expect(preflight.headers["access-control-allow-origin"]).toBe("http://localhost:3000");
+    expect(preflight.headers["access-control-allow-headers"]).toMatch(/Idempotency-Key/i);
+    expect(preflight.headers["access-control-allow-credentials"]).toBeUndefined();
+  });
+
+  it("does not allow another origin", async () => {
+    const response = await request(app.getHttpServer())
+      .get("/api/health/live")
+      .set("Origin", "https://evil.example.com")
+      .expect(200);
+
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
+  });
+});
 
 describe("health endpoints", () => {
   let app: INestApplication;

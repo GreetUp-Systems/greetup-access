@@ -54,7 +54,9 @@ function event(overrides: Partial<EventRecord> = {}): EventRecord {
     slug: "festival-access",
     name: "Festival Access",
     description: null,
-    location: null,
+    venueName: null,
+    address: null,
+    endsAt: null,
     startsAt: future,
     capacity: 300,
     refundPolicy: null,
@@ -119,7 +121,10 @@ function slugConflict(
 describe("EventsService", () => {
   let users: jest.Mocked<Pick<UsersRepository, "findByPrivyUserId">>;
   let repository: jest.Mocked<
-    Pick<EventsRepository, "create" | "list" | "find" | "withLockedEvent" | "findPublicBySlug">
+    Pick<
+      EventsRepository,
+      "create" | "list" | "find" | "withLockedEvent" | "findPublicBySlug" | "publicAvailability"
+    >
   >;
   let scope: jest.Mocked<Omit<LockedEventScope, "event">> & { event: EventRecord };
   let service: EventsService;
@@ -158,6 +163,7 @@ describe("EventsService", () => {
       find: jest.fn().mockResolvedValue(event()),
       withLockedEvent: jest.fn(),
       findPublicBySlug: jest.fn(),
+      publicAvailability: jest.fn().mockResolvedValue(new Map()),
     };
     service = new EventsService(
       users as unknown as UsersRepository,
@@ -309,6 +315,42 @@ describe("EventsService", () => {
     });
   });
 
+  describe("end time", () => {
+    const later = (hours: number) => new Date(future.getTime() + hours * 3_600_000).toISOString();
+
+    it("accepts an end after the start and refuses one at or before it", async () => {
+      await expect(
+        service.create(principal, {
+          name: "Festival",
+          startsAt: future.toISOString(),
+          endsAt: later(5),
+          venueName: "Casa Access",
+          address: "Rua Exemplo, 100 · São Paulo",
+          capacity: 100,
+        }),
+      ).resolves.toMatchObject({ endsAt: later(5), venueName: "Casa Access" });
+
+      await expect(
+        service.create(principal, {
+          name: "Festival",
+          startsAt: future.toISOString(),
+          endsAt: future.toISOString(),
+          capacity: 100,
+        }),
+      ).rejects.toMatchObject({ response: { code: "event_ends_before_start" } });
+    });
+
+    it("checks the end against the stored start when only one of them changes", async () => {
+      lock(event({ endsAt: new Date(later(2)) }));
+
+      await expect(
+        service.update(principal, eventId, { startsAt: later(3) }),
+      ).rejects.toMatchObject({ response: { code: "event_ends_before_start" } });
+      await expect(service.update(principal, eventId, { endsAt: null })).resolves.toBeDefined();
+      expect(scope.updateEvent).toHaveBeenCalledWith(expect.objectContaining({ endsAt: null }));
+    });
+  });
+
   describe("update", () => {
     it("regenerates the slug when a draft is renamed", async () => {
       await service.update(principal, eventId, { name: "Novo Nome" });
@@ -448,6 +490,7 @@ describe("EventsService", () => {
         ...event({ status: "PUBLISHED", refundPolicy: "Reembolso até 7 dias antes." }),
         producer: { displayName: "Festival Access" },
       });
+      repository.publicAvailability.mockResolvedValue(new Map([[ticketType().id, 120]]));
 
       const view = await service.findPublic("festival-access");
 
@@ -455,12 +498,22 @@ describe("EventsService", () => {
         slug: "festival-access",
         name: "Festival Access",
         description: null,
-        location: null,
+        venueName: null,
+        address: null,
+        endsAt: null,
         startsAt: future.toISOString(),
         status: "published",
         refundPolicy: "Reembolso até 7 dias antes.",
         producer: { displayName: "Festival Access" },
-        ticketTypes: [{ id: ticketType().id, name: "Pista", description: null, priceCents: 8_000 }],
+        ticketTypes: [
+          {
+            id: ticketType().id,
+            name: "Pista",
+            description: null,
+            priceCents: 8_000,
+            available: 120,
+          },
+        ],
       });
     });
   });

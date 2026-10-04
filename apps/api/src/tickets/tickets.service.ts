@@ -12,6 +12,11 @@ import {
   type TicketView,
 } from "./tickets.types";
 
+/** AX- plus the token id with at least 4 digits: unique on the contract (SPEC-008 v1.3). */
+export function ticketCode(tokenId: number): string {
+  return `AX-${String(tokenId).padStart(4, "0")}`;
+}
+
 @Injectable()
 export class TicketsService {
   constructor(
@@ -48,11 +53,16 @@ export class TicketsService {
     return {
       id: ticket.id,
       status: issued ? "issued" : "pending_mint",
+      code: issued ? ticketCode(ticket.tokenId!) : null,
       event: {
         id: ticket.event.id,
         slug: ticket.event.slug,
         name: ticket.event.name,
+        status: ticket.event.status.toLowerCase() as TicketView["event"]["status"],
         startsAt: ticket.event.startsAt.toISOString(),
+        endsAt: ticket.event.endsAt?.toISOString() ?? null,
+        venueName: ticket.event.venueName,
+        address: ticket.event.address,
       },
       ticketType: { id: ticket.ticketType.id, name: ticket.ticketType.name },
       purchaseId: ticket.purchaseId,

@@ -16,7 +16,18 @@ export interface TicketOnchainView {
 export interface TicketView {
   id: string;
   status: "pending_mint" | "issued";
-  event: { id: string; slug: string; name: string; startsAt: string };
+  /** Readable code, AX- plus the token id (SPEC-008 v1.3); null until issued. */
+  code: string | null;
+  event: {
+    id: string;
+    slug: string;
+    name: string;
+    status: "draft" | "published" | "cancelled";
+    startsAt: string;
+    endsAt: string | null;
+    venueName: string | null;
+    address: string | null;
+  };
   ticketType: { id: string; name: string };
   purchaseId: string;
   issuedAt: string | null;

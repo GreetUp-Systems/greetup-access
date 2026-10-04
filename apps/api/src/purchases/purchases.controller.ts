@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
+  HttpStatus,
   type MessageEvent,
   Param,
   ParseUUIDPipe,
@@ -39,6 +41,16 @@ export class PurchasesController {
     @Param("id", new ParseUUIDPipe({ version: "4" })) purchaseId: string,
   ): Promise<PurchaseView> {
     return this.purchasesService.get(principal, purchaseId);
+  }
+
+  @Post(":id/pix")
+  @HttpCode(HttpStatus.OK)
+  generatePix(
+    @CurrentUser() principal: AuthenticatedPrincipal,
+    @Param("id", new ParseUUIDPipe({ version: "4" })) purchaseId: string,
+    @Body() body: unknown,
+  ): Promise<PurchaseView> {
+    return this.purchasesService.generatePix(principal, purchaseId, body);
   }
 
   @Sse(":id/stream")
