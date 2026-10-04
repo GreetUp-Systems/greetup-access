@@ -446,6 +446,10 @@ Compra real com a `bw_...` de um produtor `ready`, Pix completando sozinho, mint
 confirmação de que a quote Pix sem `payer_rules` é aceita, leitura de `sender_amount` com
 `cover_fees: true` e decodificação da validade do `pix_code`. Depende do smoke da SPEC-003.
 
+Adiado em 04/10/2026 para o front: a ativação da conta do comprador assina com o JWT do usuário, o
+mesmo caminho recusado pela Privy no smoke 3C (SPEC-003 §17). O fluxo será validado pela interface,
+etapa a etapa.
+
 ## 16. Definição de pronto
 
 - [x] 6A: pedido, reserva, quote e payin com testes de concorrência.

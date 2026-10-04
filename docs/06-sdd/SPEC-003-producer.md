@@ -670,6 +670,14 @@ fail-closed de configuração, reconciliação, idempotência, RLS, registro Bli
 estado derivado `ready` passaram com gateways externos controlados. Os itens dependentes dos três
 providers reais permanecem abertos até o smoke manual.
 
+Tentativa de smoke em 04/10/2026, adiada por decisão: o login e o bootstrap com token real da Privy
+funcionaram, mas a assinatura da wallet do usuário no servidor (`authorization_context.user_jwts`)
+foi recusada pela Privy em `/v1/wallets/authenticate` com `400 Invalid JWT token provided`, tanto
+para test account quanto para usuário real, com os dois tokens emitidos pela API REST de login. O
+app está em `user-controlled-server-wallets-only`, sem JWT customizado. Falta testar com token
+emitido pelo SDK no navegador: os itens do gate 3C serão validados pelo front, fluxo a fluxo. Se o
+token do navegador também for recusado, a alternativa é signer delegado, com ADR.
+
 ## 18. Decisões adiadas
 
 - habilitação de Pubnet/USDC em production, com o signer da D-24;
