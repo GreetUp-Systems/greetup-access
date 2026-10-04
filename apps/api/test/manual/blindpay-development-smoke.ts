@@ -142,7 +142,7 @@ async function run(): Promise<void> {
 
   const callbackOrigin = selectCallbackOrigin(config.blindPayAllowedRedirectOrigins);
   const callback = await createTermsCallback(callbackOrigin);
-  const runtimePrisma = new PrismaService(config.databaseUrl, true);
+  const runtimePrisma = new PrismaService(config.databaseUrl, true, "access_app_runtime");
   const ownerPrisma = new PrismaClient({
     datasources: { db: { url: config.databaseDirectUrl } },
   });

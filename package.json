@@ -17,7 +17,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "test": "turbo run test",
-    "test:integration": "turbo run test:integration",
+    "test:integration": "turbo run test:integration --concurrency=1",
     "lint": "turbo run lint",
     "format": "turbo run format",
     "typecheck": "pnpm db:generate && turbo run typecheck",

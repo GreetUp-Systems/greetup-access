@@ -192,7 +192,7 @@ pnpm turbo dev --filter=api       # apenas a API
 pnpm turbo test                   # unitários, todos os apps
 pnpm turbo test --filter=api      # unitários de um app específico
 docker compose -f docker-compose.test.yml up -d
-pnpm turbo test:integration
+pnpm test:integration             # turbo com --concurrency=1: as suítes compartilham banco e Redis
 docker compose -f docker-compose.test.yml down
 
 # Qualidade

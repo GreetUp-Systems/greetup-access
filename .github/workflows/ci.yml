@@ -127,7 +127,8 @@ jobs:
           DATABASE_URL_DIRECT: postgresql://test:test@localhost:5433/access_test
 
       - name: Integration tests
-        run: pnpm turbo test:integration
+        # Suites share one database and Redis; run them one package at a time.
+        run: pnpm turbo test:integration --concurrency=1
         env:
           DATABASE_URL: postgresql://access_runtime:test_runtime@localhost:5433/access_test
           DATABASE_URL_DIRECT: postgresql://test:test@localhost:5433/access_test
