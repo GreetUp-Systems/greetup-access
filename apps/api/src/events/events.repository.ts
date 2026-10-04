@@ -71,6 +71,7 @@ export interface LockedEventScope {
   createTicketType(input: NewTicketType): Promise<TicketTypeRecord>;
   updateTicketType(ticketTypeId: string, changes: TicketTypeChanges): Promise<TicketTypeRecord>;
   deleteTicketType(ticketTypeId: string): Promise<void>;
+  lockCommittedQuantity(ticketTypeId: string): Promise<number>;
   deleteDraftEvent(): Promise<void>;
   recordCancellation(): Promise<void>;
   reload(): Promise<EventRecord>;
@@ -173,6 +174,15 @@ export class EventsRepository {
           where: { id: ticketTypeId, eventId },
           data: withoutUndefined(changes),
         }),
+      lockCommittedQuantity: async (ticketTypeId) => {
+        const [row] = await transaction.$queryRaw<Array<{ committed: number }>>`
+          SELECT "committed_ticket_quantity"("id") AS "committed"
+          FROM "ticket_types"
+          WHERE "id" = ${ticketTypeId}::uuid AND "event_id" = ${eventId}::uuid
+          FOR UPDATE
+        `;
+        return row?.committed ?? 0;
+      },
       deleteTicketType: async (ticketTypeId) => {
         await transaction.ticketType.delete({ where: { id: ticketTypeId, eventId } });
       },

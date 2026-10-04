@@ -219,12 +219,20 @@ export class EventsService {
     const ticketType = await this.locked(userId, eventId, async (scope) => {
       this.assertNotCancelled(scope.event);
       const current = this.requireTicketType(scope, ticketTypeId);
-      // Quantity sold only exists from block 6 on; until then the floor is the schema minimum.
-      if (scope.event.status === "PUBLISHED" && input.quantity !== undefined) {
-        this.assertWithinCapacity(
-          this.totalQuantity(scope.event) - current.quantity + input.quantity,
-          scope.event.capacity,
-        );
+      if (input.quantity !== undefined) {
+        // Reserved and sold tickets are the floor (SPEC-005 §8); the row lock keeps checkout out.
+        if (input.quantity < (await scope.lockCommittedQuantity(ticketTypeId))) {
+          throw new ConflictException({
+            code: "ticket_quantity_below_committed",
+            message: "The quantity cannot go below the tickets already reserved or sold.",
+          });
+        }
+        if (scope.event.status === "PUBLISHED") {
+          this.assertWithinCapacity(
+            this.totalQuantity(scope.event) - current.quantity + input.quantity,
+            scope.event.capacity,
+          );
+        }
       }
       return scope.updateTicketType(ticketTypeId, input);
     });

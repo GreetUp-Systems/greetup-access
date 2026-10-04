@@ -47,6 +47,31 @@ export interface BlindPayRfi {
 
 export type BlindPayRfiAnswers = Record<string, string | string[]>;
 
+export interface BlindPayPayinQuoteInput {
+  blockchainWalletId: string;
+  requestAmountCents: number;
+  token: string;
+  partnerFeeId: string | undefined;
+}
+
+/** Amounts in minor units: BRL cents on the sender side, stablecoin units on the receiver side. */
+export interface BlindPayPayinQuote {
+  id: string;
+  expiresAt: Date;
+  senderAmount: number;
+  receiverAmount: number;
+  commercialQuotation: number;
+  blindpayQuotation: number;
+  flatFee: number;
+  partnerFeeAmount: number;
+}
+
+export interface BlindPayPayin {
+  id: string;
+  status: string;
+  pixCode: string;
+}
+
 export interface BlindPayGateway {
   createTermsOfServiceUrl(input: {
     idempotencyKey: string;
@@ -66,6 +91,11 @@ export interface BlindPayGateway {
     input: { customerId: string; address: string; name: string },
     idempotencyKey: string,
   ): Promise<BlindPayBlockchainWallet>;
+  createPayinQuote(
+    input: BlindPayPayinQuoteInput,
+    idempotencyKey: string,
+  ): Promise<BlindPayPayinQuote>;
+  createPayin(quoteId: string, idempotencyKey: string): Promise<BlindPayPayin>;
 }
 
 export class BlindPayProviderError extends Error {

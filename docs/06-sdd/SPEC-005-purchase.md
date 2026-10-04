@@ -1,8 +1,8 @@
 # SPEC-005 — Compra do ingresso
 
-> **Status:** aprovada; implementação não iniciada
+> **Status:** 6A implementada; 6B, 6C e 6D pendentes
 >
-> **Versão:** 1.0
+> **Versão:** 1.1
 >
 > **Atualizada em:** 03/10/2026
 >
@@ -152,6 +152,7 @@ model Purchase {
   commercialRate     Decimal?       @map("commercial_rate") @db.Decimal(20, 10)
   blindpayRate       Decimal?       @map("blindpay_rate") @db.Decimal(20, 10)
   externalQuoteId    String?        @unique @map("external_quote_id")
+  quoteExpiresAt     DateTime?      @map("quote_expires_at")         // reuso na retomada
   externalPayinId    String?        @unique @map("external_payin_id")
   pixCode            String?        @map("pix_code")
   idempotencyKey     String         @map("idempotency_key") @db.VarChar(128)
@@ -237,9 +238,16 @@ fica abaixo do reservado e vendido, que é o piso que a SPEC-004 deixou para est
 }
 ```
 
-Falha na quote ou no payin leva a compra a `payment_failed` com `failureCode` sanitizado e libera a
-reserva. Erros retryable da BlindPay viram `503`; regra de negócio (mínimo, limite do produtor) vira
-`422` com código próprio.
+Falha definitiva na quote ou no payin leva a compra a `payment_failed` com `failureCode` sanitizado e
+libera a reserva (`422 payment_rejected`). Erro retryable da BlindPay deixa a compra `initiated` e
+responde `503 payment_provider_unavailable`: repetir com a mesma `Idempotency-Key` retoma o pedido,
+reaproveitando a quote enquanto restarem mais de 30 segundos de validade. Uma retomada depois dos 10
+minutos da reserva marca a compra `payment_failed` (`reservation_expired`) sem criar Pix. Uma quote
+cujo `sender_amount` fique abaixo do subtotal é recusada.
+
+Outros erros: `404 ticket_type_not_available`, `409 producer_not_ready_for_sales`,
+`409 event_not_on_sale`, `409 ticket_type_sold_out`, `409 idempotency_key_reused`,
+`422 purchase_below_minimum`, `400 invalid_purchase` e `400 invalid_idempotency_key`.
 
 `GET /api/purchases/:id` devolve a mesma visão para o comprador dono; compra de outro usuário
 responde `404`.
@@ -337,6 +345,26 @@ com a mesma reconciliação on-chain da SPEC-003.
   Outbox `ticket.issued`;
 - nenhuma role da aplicação recebe `BYPASSRLS`.
 
+### Leituras cruzadas do checkout
+
+O comprador autenticado precisa de dados de outros tenants: a `bw_...` e a prontidão do produtor, a
+linha do tipo de ingresso para travar e as reservas dos demais compradores. Em vez de abrir tabelas,
+duas funções `SECURITY DEFINER` fazem exatamente isso:
+
+- `checkout_listing(ticket_type_id)`: destino de pagamento e dados de prontidão de um tipo de evento
+  publicado;
+- `reserve_purchase(ticket_type_id, quantity, idempotency_key)`: trava o tipo, resolve a chave de
+  idempotência, valida evento à venda e mínimo, soma o comprometido e grava a compra `initiated`. O
+  comprador vem sempre de `app.current_user_id`, nunca de argumento.
+
+As duas pertencem à role `access_checkout` (`NOLOGIN`, `NOBYPASSRLS`), que tem políticas próprias e
+grants apenas no que elas leem; o lock do tipo usa uma política de `UPDATE` com `WITH CHECK (false)`,
+que nunca deixa uma linha mudar. A role de runtime só recebe `EXECUTE` nas funções e não tem
+`INSERT` em `purchases`.
+
+`committed_ticket_quantity(ticket_type_id)` é a regra única de estoque comprometido, executada com os
+direitos de quem chama: a reserva e a edição de quantidade do produtor usam a mesma definição.
+
 ## 14. Configuração
 
 ```dotenv
@@ -379,7 +407,7 @@ confirmação de que a quote Pix sem `payer_rules` é aceita, leitura de `sender
 
 ## 16. Definição de pronto
 
-- [ ] 6A: pedido, reserva, quote e payin com testes de concorrência.
+- [x] 6A: pedido, reserva, quote e payin com testes de concorrência.
 - [ ] 6B: webhooks de payin, Outbox e `OutboxRelay`, idempotentes.
 - [ ] 6C: `MintTicketWorker` emite na Testnet, idempotente, com capacidade sincronizada.
 - [ ] 6D: origem do login e ativação da conta do comprador.

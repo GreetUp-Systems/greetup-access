@@ -60,6 +60,7 @@ const baseConfig: ApiConfig = {
   blindPayWebhookSecret: "whsec_dGVzdA==",
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
+  blindPayPartnerFeeId: undefined,
   ...stellarTestConfig,
 };
 
@@ -242,6 +243,15 @@ class FakeBlindPayGateway implements BlindPayGateway {
     this.walletRegistrations.push({ input, idempotencyKey });
     return { id: "bw_test_1", address: input.address, network: "stellar_testnet" };
   }
+
+  // Checkout is covered by purchases.integration.spec.ts.
+  async createPayinQuote(): Promise<never> {
+    throw new Error("not used by producer tests");
+  }
+
+  async createPayin(): Promise<never> {
+    throw new Error("not used by producer tests");
+  }
 }
 
 const configuredTrustlines = [
@@ -395,6 +405,8 @@ describe("producer profile and RLS integration", () => {
   beforeEach(async () => {
     await ownerPrisma.blindPayWebhookDelivery.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
+    await ownerPrisma.ticket.deleteMany();
+    await ownerPrisma.purchase.deleteMany();
     await ownerPrisma.ticketType.deleteMany();
     await ownerPrisma.event.deleteMany();
     await ownerPrisma.stellarAccountProvisioning.deleteMany();
@@ -410,6 +422,8 @@ describe("producer profile and RLS integration", () => {
   afterAll(async () => {
     await ownerPrisma.blindPayWebhookDelivery.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
+    await ownerPrisma.ticket.deleteMany();
+    await ownerPrisma.purchase.deleteMany();
     await ownerPrisma.ticketType.deleteMany();
     await ownerPrisma.event.deleteMany();
     await ownerPrisma.stellarAccountProvisioning.deleteMany();
