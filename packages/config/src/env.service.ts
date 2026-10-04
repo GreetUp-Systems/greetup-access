@@ -49,6 +49,8 @@ export interface ApiConfig extends InfrastructureConfig {
   stellarUsdcAssetIssuer: string;
   stellarSponsorPublicKey: string;
   stellarSponsorSecretKey: string | undefined;
+  stellarTicketContractId: string;
+  ticketQrSecret: string;
 }
 
 function parseEnvironment<TSchema extends z.ZodTypeAny>(
@@ -118,6 +120,8 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     stellarUsdcAssetIssuer: parsed.STELLAR_USDC_ASSET_ISSUER,
     stellarSponsorPublicKey: parsed.STELLAR_SPONSOR_PUBLIC_KEY,
     stellarSponsorSecretKey: parsed.STELLAR_SPONSOR_SECRET_KEY,
+    stellarTicketContractId: parsed.STELLAR_TICKET_CONTRACT_ID,
+    ticketQrSecret: parsed.TICKET_QR_SECRET,
   };
 }
 

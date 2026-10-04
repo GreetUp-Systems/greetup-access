@@ -12,6 +12,7 @@ import { EventsModule } from "./events/events.module";
 import { HealthModule } from "./health/health.module";
 import { ProducersModule } from "./producers/producers.module";
 import { PurchasesModule } from "./purchases/purchases.module";
+import { TicketsModule } from "./tickets/tickets.module";
 
 @Module({})
 export class AppModule {
@@ -29,6 +30,7 @@ export class AppModule {
         ProducersModule,
         EventsModule,
         PurchasesModule.forRoot(config),
+        TicketsModule.forRoot(config),
         HealthModule.forRoot(config.healthCheckTimeoutMs),
       ],
     };

@@ -25,6 +25,11 @@ const optionalWebhookDatabaseUrl = z.union([z.string().url(), z.literal("")]).op
 const optionalWebhookSecret = z.union([z.string().startsWith("whsec_"), z.literal("")]).optional();
 const stellarPublicKey = z.string().regex(/^G[A-Z2-7]{55}$/);
 const stellarSecretKey = z.string().regex(/^S[A-Z2-7]{55}$/);
+const stellarContractId = z.string().regex(/^C[A-Z2-7]{55}$/);
+// 32 random bytes or more, base64url-encoded (SPEC-008 §6).
+const ticketQrSecret = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{43,}$/, "must be at least 32 bytes in base64url");
 const stellarTestnetUsdbIssuer = "GCQSSIMOW5OCGULZATDXKU5MOJBOMFX6G65X6CXZDQ7AIB3SKFUZ67NX";
 const stellarTestnetUsdcIssuer = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 
@@ -52,6 +57,8 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
     STELLAR_USDC_ASSET_ISSUER: z.literal(stellarTestnetUsdcIssuer),
     STELLAR_SPONSOR_PUBLIC_KEY: stellarPublicKey,
     STELLAR_SPONSOR_SECRET_KEY: stellarSecretKey.optional(),
+    STELLAR_TICKET_CONTRACT_ID: stellarContractId,
+    TICKET_QR_SECRET: ticketQrSecret,
   })
   .superRefine((environment, context) => {
     const databaseConfigured = Boolean(environment.DATABASE_URL_BLINDPAY_WEBHOOK);
@@ -102,7 +109,7 @@ export const workerEnvironmentSchema = z
     STELLAR_RPC_URL: z.literal("https://soroban-testnet.stellar.org"),
     STELLAR_SPONSOR_PUBLIC_KEY: stellarPublicKey,
     STELLAR_SPONSOR_SECRET_KEY: stellarSecretKey.optional(),
-    STELLAR_TICKET_CONTRACT_ID: z.string().regex(/^C[A-Z2-7]{55}$/),
+    STELLAR_TICKET_CONTRACT_ID: stellarContractId,
   })
   .superRefine((environment, context) => {
     if (environment.NODE_ENV === "production" && environment.STELLAR_SPONSOR_SECRET_KEY) {

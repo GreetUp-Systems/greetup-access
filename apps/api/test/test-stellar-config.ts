@@ -12,6 +12,7 @@ export const stellarTestConfig = {
   stellarUsdcAssetIssuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
   stellarSponsorPublicKey: sponsor.publicKey(),
   stellarSponsorSecretKey: sponsor.secret(),
+  stellarTicketContractId: `C${"A".repeat(55)}`,
 } satisfies Pick<
   ApiConfig,
   | "stellarNetwork"
@@ -22,4 +23,5 @@ export const stellarTestConfig = {
   | "stellarUsdcAssetIssuer"
   | "stellarSponsorPublicKey"
   | "stellarSponsorSecretKey"
+  | "stellarTicketContractId"
 >;

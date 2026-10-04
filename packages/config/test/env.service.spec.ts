@@ -27,6 +27,8 @@ const validEnvironment: NodeJS.ProcessEnv = {
   STELLAR_USDC_ASSET_ISSUER: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
   STELLAR_SPONSOR_PUBLIC_KEY: `G${"A".repeat(55)}`,
   STELLAR_SPONSOR_SECRET_KEY: `S${"A".repeat(55)}`,
+  STELLAR_TICKET_CONTRACT_ID: `C${"A".repeat(55)}`,
+  TICKET_QR_SECRET: "q".repeat(43),
 };
 
 describe("environment configuration", () => {
@@ -73,6 +75,19 @@ describe("environment configuration", () => {
     expect(() => loadWorkerConfig({ ...environment, NODE_ENV: "production" })).toThrow(
       "STELLAR_SPONSOR_SECRET_KEY",
     );
+  });
+
+  it("requires a ticket QR secret of at least 32 bytes and the ticket contract", () => {
+    expect(loadApiConfig(validEnvironment)).toMatchObject({
+      ticketQrSecret: validEnvironment.TICKET_QR_SECRET,
+      stellarTicketContractId: validEnvironment.STELLAR_TICKET_CONTRACT_ID,
+    });
+    expect(() => loadApiConfig({ ...validEnvironment, TICKET_QR_SECRET: "q".repeat(42) })).toThrow(
+      "TICKET_QR_SECRET",
+    );
+    expect(() =>
+      loadApiConfig({ ...validEnvironment, TICKET_QR_SECRET: "not base64url!" }),
+    ).toThrow("TICKET_QR_SECRET");
   });
 
   it("coerces API port and health timeout to numbers", () => {

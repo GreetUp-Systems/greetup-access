@@ -1,8 +1,8 @@
 # SPEC-008 — Área do comprador
 
-> **Status:** aprovada; implementação não iniciada
+> **Status:** 7A implementada; 7B pendente
 >
-> **Versão:** 1.0
+> **Versão:** 1.1
 >
 > **Atualizada em:** 04/10/2026
 >
@@ -68,6 +68,7 @@ depois pela emissão. Sem paginação no MVP, com teto de 200 itens.
       "purchaseId": "uuid",
       "issuedAt": "ISO-8601 | null",
       "onchain": {
+        "contractId": "C...",
         "tokenId": 7,
         "transactionHash": "hex | null",
         "explorerUrl": "https://stellar.expert/explorer/testnet/tx/<hash> | null"
@@ -78,7 +79,7 @@ depois pela emissão. Sem paginação no MVP, com teto de 200 itens.
 ```
 
 `onchain` é `null` enquanto o ingresso estiver `pending_mint`. O link do explorer usa a rede de
-`STELLAR_NETWORK`; o contrato vem de `STELLAR_TICKET_CONTRACT_ID`, que a API passa a ler.
+`STELLAR_NETWORK`; `contractId` vem de `STELLAR_TICKET_CONTRACT_ID`, que a API passa a ler.
 
 ### `GET /api/me/tickets/:id`
 
@@ -266,7 +267,7 @@ E-mail real pelo Resend no smoke ponta a ponta da compra (SPEC-005 §15).
 
 ## 13. Definição de pronto
 
-- [ ] 7A: meus ingressos, QR assinado e SSE, com testes.
+- [x] 7A: meus ingressos, QR assinado e SSE, com testes.
 - [ ] 7B: `NotifyWorker` com um e-mail por compra, idempotente, com testes.
 - [ ] Build, lint, typecheck, unitários e integração passam.
 - [ ] E-mail real entregue no smoke ponta a ponta.
