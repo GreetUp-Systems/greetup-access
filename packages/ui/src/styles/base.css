@@ -1,0 +1,15 @@
+/* Page defaults from the design system: canvas, primary text and the body typography. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  font: var(--text-body-l);
+  -webkit-font-smoothing: antialiased;
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@access/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "lint": "eslint \"app/**/*.{ts,tsx}\" \"scripts/**/*.mjs\" --max-warnings=0 && stylelint \"app/**/*.css\" --allow-empty-input",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "capture": "node scripts/capture.mjs"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "playwright": "^1.63.0"
+  },
+  "dependencies": {
+    "@access/ui": "workspace:^",
+    "next": "^15",
+    "react": "^19",
+    "react-dom": "^19"
+  }
+}
