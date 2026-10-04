@@ -17,6 +17,9 @@ export default defineConfig({
       },
     },
   },
+  frontend: {
+    bindingsOutput: "./bindings",
+  },
   networks: {
     testnet: {
       rpcUrl: "https://soroban-testnet.stellar.org",

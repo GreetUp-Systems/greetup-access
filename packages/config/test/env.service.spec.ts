@@ -48,19 +48,30 @@ describe("environment configuration", () => {
   });
 
   it("loads the worker configuration with its own database role", () => {
+    const contractId = `C${"A".repeat(55)}`;
     const environment = {
       NODE_ENV: "test",
       DATABASE_URL_WORKER: "postgresql://access_worker_login:test@localhost:5433/access_test",
       REDIS_URL: "redis://localhost:6380",
+      STELLAR_NETWORK: "testnet",
+      STELLAR_RPC_URL: "https://soroban-testnet.stellar.org",
+      STELLAR_SPONSOR_PUBLIC_KEY: validEnvironment.STELLAR_SPONSOR_PUBLIC_KEY,
+      STELLAR_SPONSOR_SECRET_KEY: validEnvironment.STELLAR_SPONSOR_SECRET_KEY,
+      STELLAR_TICKET_CONTRACT_ID: contractId,
     };
 
-    expect(loadWorkerConfig(environment)).toEqual({
+    expect(loadWorkerConfig(environment)).toMatchObject({
       nodeEnv: "test",
       databaseWorkerUrl: "postgresql://access_worker_login:test@localhost:5433/access_test",
       redisUrl: "redis://localhost:6380",
+      stellarNetwork: "testnet",
+      stellarTicketContractId: contractId,
     });
-    expect(() => loadWorkerConfig({ ...environment, DATABASE_URL_WORKER: "" })).toThrow(
-      "DATABASE_URL_WORKER",
+    for (const key of ["DATABASE_URL_WORKER", "STELLAR_TICKET_CONTRACT_ID", "STELLAR_NETWORK"]) {
+      expect(() => loadWorkerConfig({ ...environment, [key]: "invalid" })).toThrow(key);
+    }
+    expect(() => loadWorkerConfig({ ...environment, NODE_ENV: "production" })).toThrow(
+      "STELLAR_SPONSOR_SECRET_KEY",
     );
   });
 

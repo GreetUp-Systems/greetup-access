@@ -19,6 +19,11 @@ export interface WorkerConfig {
   nodeEnv: AppEnvironment;
   databaseWorkerUrl: string;
   redisUrl: string;
+  stellarNetwork: "testnet";
+  stellarRpcUrl: "https://soroban-testnet.stellar.org";
+  stellarSponsorPublicKey: string;
+  stellarSponsorSecretKey: string | undefined;
+  stellarTicketContractId: string;
 }
 
 export interface ApiConfig extends InfrastructureConfig {
@@ -123,5 +128,10 @@ export function loadWorkerConfig(environment: NodeJS.ProcessEnv = process.env): 
     nodeEnv: parsed.NODE_ENV,
     databaseWorkerUrl: parsed.DATABASE_URL_WORKER,
     redisUrl: parsed.REDIS_URL,
+    stellarNetwork: parsed.STELLAR_NETWORK,
+    stellarRpcUrl: parsed.STELLAR_RPC_URL,
+    stellarSponsorPublicKey: parsed.STELLAR_SPONSOR_PUBLIC_KEY,
+    stellarSponsorSecretKey: parsed.STELLAR_SPONSOR_SECRET_KEY,
+    stellarTicketContractId: parsed.STELLAR_TICKET_CONTRACT_ID,
   };
 }

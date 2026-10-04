@@ -84,8 +84,8 @@ importers:
         specifier: ^0.35.0
         version: 0.35.0
       '@stellar/stellar-sdk':
-        specifier: 16.0.0
-        version: 16.0.0
+        specifier: 16.0.1
+        version: 16.0.1
       express:
         specifier: ^5.0.0
         version: 5.2.1
@@ -123,6 +123,9 @@ importers:
       '@nestjs/core':
         specifier: ^11.0.0
         version: 11.2.6(@nestjs/common@11.2.6(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.2.6)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@stellar/stellar-sdk':
+        specifier: 16.0.1
+        version: 16.0.1
       bullmq:
         specifier: ^5.81.5
         version: 5.81.5
@@ -140,6 +143,10 @@ importers:
         version: 3.25.76
 
   packages/contracts:
+    dependencies:
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
     devDependencies:
       '@caatinga/cli':
         specifier: ^3.12.0
@@ -147,6 +154,9 @@ importers:
       '@caatinga/core':
         specifier: ^3.12.0
         version: 3.12.0
+      '@stellar/stellar-sdk':
+        specifier: 16.0.1
+        version: 16.0.1
 
   packages/database:
     dependencies:
@@ -893,8 +903,8 @@ packages:
     resolution: {integrity: sha512-+NmNa7Tk5BI5XFdy/6xGTqAN4J9a9KgCrCGhj2uEUTCBhLkch0M+QbKzNH8zEnejWe0p8w+0q5hUVX6L3OzoVA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@stellar/stellar-sdk@16.0.0':
-    resolution: {integrity: sha512-DRrgtYhJu9dE1uwSygiKa414GHOARhRnfXB9LialcXZzwxeEdlyh4WI5dVJbYROi9gflWGpys2sdPqUWSJAqFQ==}
+  '@stellar/stellar-sdk@16.0.1':
+    resolution: {integrity: sha512-bxKohaiyKVqoudRhbOOHeHhHIaeYV5Zab4rCjxhP4Ty1h1ozTLBOv8lWFnZz9ilBzXG8Bb7usQI3rlEcfvUynA==}
     engines: {node: '>=22.0.0'}
     hasBin: true
 
@@ -3632,7 +3642,7 @@ snapshots:
 
   '@stellar/js-xdr@4.0.0': {}
 
-  '@stellar/stellar-sdk@16.0.0':
+  '@stellar/stellar-sdk@16.0.1':
     dependencies:
       '@noble/ed25519': 3.2.0
       '@noble/hashes': 2.4.0

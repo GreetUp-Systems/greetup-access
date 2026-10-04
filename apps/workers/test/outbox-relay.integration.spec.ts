@@ -110,8 +110,10 @@ describe("OutboxRelay integration", () => {
   });
 
   it("runs on a restricted role that cannot touch tenant data", async () => {
-    await expect(workerPrisma.purchase.count()).rejects.toThrow(/permission denied/);
+    // Purchases, tickets and events are readable for minting (6C); identity data is not.
     await expect(workerPrisma.user.count()).rejects.toThrow(/permission denied/);
+    await expect(workerPrisma.producerProfile.count()).rejects.toThrow(/permission denied/);
+    await expect(workerPrisma.blindPayCustomer.count()).rejects.toThrow(/permission denied/);
 
     const owner = new PrismaService(ownerDatabaseUrl, true, "access_worker");
     try {
