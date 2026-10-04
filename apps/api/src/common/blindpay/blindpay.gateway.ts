@@ -2,6 +2,7 @@ import {
   type BlindPayCreatedCustomer,
   type BlindPayBlockchainWallet,
   type BlindPayGateway,
+  type BlindPayKycStatusValue,
   type BlindPayPayin,
   type BlindPayPayinQuote,
   type BlindPayPayinQuoteInput,
@@ -52,7 +53,7 @@ export class BlindPayHttpGateway implements BlindPayGateway {
     const parsedUrl = this.parseHttpsUrl(url, "create_terms_session");
 
     if (parsedUrl.hostname !== "app.blindpay.com") {
-      throw new BlindPayProviderError("create_terms_session_invalid_response", false);
+      throw new BlindPayProviderError("create_terms_session_invalid_response", true);
     }
 
     return { url: parsedUrl.toString() };
@@ -76,7 +77,7 @@ export class BlindPayHttpGateway implements BlindPayGateway {
     const parsedUrl = this.parseHttpsUrl(fileUrl, "upload_document");
 
     if (parsedUrl.hostname !== "files.blindpay.com") {
-      throw new BlindPayProviderError("upload_document_invalid_response", false);
+      throw new BlindPayProviderError("upload_document_invalid_response", true);
     }
 
     return { fileUrl: parsedUrl.toString() };
@@ -96,20 +97,33 @@ export class BlindPayHttpGateway implements BlindPayGateway {
         idempotencyKey,
       },
     );
+    // The response carries only the customer id; the KYC status is read separately.
     const data = this.unwrap(response, "create_customer");
     const id = this.requiredString(data, "id", "create_customer");
-    const kycStatus = this.requiredString(data, "kyc_status", "create_customer");
+    if (!id.startsWith("re_")) {
+      throw new BlindPayProviderError("create_customer_invalid_response", true);
+    }
 
+    return { id };
+  }
+
+  async getCustomerKycStatus(customerId: string): Promise<BlindPayKycStatusValue> {
+    const response = await this.requestJson(
+      `/instances/${this.options.instanceId}/customers/${encodeURIComponent(customerId)}`,
+      "get_customer",
+      { method: "GET" },
+    );
+    const data = this.unwrap(response, "get_customer");
+    const kycStatus = this.requiredString(data, "kyc_status", "get_customer");
     if (
-      !id.startsWith("re_") ||
       !(
         ["verifying", "approved", "rejected", "compliance_request", "approved_rfi"] as string[]
       ).includes(kycStatus)
     ) {
-      throw new BlindPayProviderError("create_customer_invalid_response", false);
+      throw new BlindPayProviderError("get_customer_invalid_response", true);
     }
 
-    return { id, kycStatus: kycStatus as BlindPayCreatedCustomer["kycStatus"] };
+    return kycStatus as BlindPayKycStatusValue;
   }
 
   async getOpenRfi(customerId: string): Promise<BlindPayRfi | null> {
@@ -168,7 +182,7 @@ export class BlindPayHttpGateway implements BlindPayGateway {
     const network = this.requiredString(data, "network", "register_stellar_wallet");
 
     if (!id.startsWith("bw_") || address !== input.address || network !== "stellar_testnet") {
-      throw new BlindPayProviderError("register_stellar_wallet_invalid_response", false);
+      throw new BlindPayProviderError("register_stellar_wallet_invalid_response", true);
     }
 
     return { id, address, network };
@@ -228,7 +242,7 @@ export class BlindPayHttpGateway implements BlindPayGateway {
     const data = this.unwrap(response, operation);
     const id = this.requiredString(data, "id", operation);
     if (!id.startsWith("pi_")) {
-      throw new BlindPayProviderError(`${operation}_invalid_response`, false);
+      throw new BlindPayProviderError(`${operation}_invalid_response`, true);
     }
 
     return {
@@ -267,9 +281,9 @@ export class BlindPayHttpGateway implements BlindPayGateway {
       return null;
     }
 
-    const payload = await this.parseJson(response, operation);
+    const text = await response.text();
     if (!response.ok) {
-      const providerCode = this.optionalString(payload, "code");
+      const providerCode = this.optionalString(this.tryParseJson(text), "code");
       throw new BlindPayProviderError(
         operation,
         response.status === 429 || response.status >= 500,
@@ -278,19 +292,21 @@ export class BlindPayHttpGateway implements BlindPayGateway {
       );
     }
 
-    return payload;
-  }
-
-  private async parseJson(response: Response, operation: string): Promise<unknown> {
-    const text = await response.text();
     if (text.length === 0) {
       return {};
     }
+    const payload = this.tryParseJson(text);
+    if (payload === undefined) {
+      throw new BlindPayProviderError(`${operation}_invalid_response`, true, response.status);
+    }
+    return payload;
+  }
 
+  private tryParseJson(text: string): unknown {
     try {
       return JSON.parse(text) as unknown;
     } catch {
-      throw new BlindPayProviderError(`${operation}_invalid_response`, false, response.status);
+      return undefined;
     }
   }
 
@@ -306,12 +322,12 @@ export class BlindPayHttpGateway implements BlindPayGateway {
     const object = this.asObject(value, "get_rfi");
     const request = object.request;
     if (!Array.isArray(request)) {
-      throw new BlindPayProviderError("get_rfi_invalid_response", false);
+      throw new BlindPayProviderError("get_rfi_invalid_response", true);
     }
 
     const status = this.requiredString(object, "status", "get_rfi");
     if (!(["pending", "submitted", "expired", "cancelled"] as string[]).includes(status)) {
-      throw new BlindPayProviderError("get_rfi_invalid_response", false);
+      throw new BlindPayProviderError("get_rfi_invalid_response", true);
     }
 
     return {
@@ -326,7 +342,7 @@ export class BlindPayHttpGateway implements BlindPayGateway {
   private toRfiSection(value: unknown): BlindPayRfi["request"][number] {
     const section = this.asObject(value, "get_rfi");
     if (!Array.isArray(section.fields)) {
-      throw new BlindPayProviderError("get_rfi_invalid_response", false);
+      throw new BlindPayProviderError("get_rfi_invalid_response", true);
     }
 
     const supportingDocument = this.optionalString(section, "supporting_document");
@@ -341,7 +357,7 @@ export class BlindPayHttpGateway implements BlindPayGateway {
   private toRfiField(value: unknown): BlindPayRfi["request"][number]["fields"][number] {
     const field = this.asObject(value, "get_rfi");
     if (typeof field.required !== "boolean") {
-      throw new BlindPayProviderError("get_rfi_invalid_response", false);
+      throw new BlindPayProviderError("get_rfi_invalid_response", true);
     }
 
     const regex = this.optionalString(field, "regex");
@@ -374,13 +390,13 @@ export class BlindPayHttpGateway implements BlindPayGateway {
       }
       return url;
     } catch {
-      throw new BlindPayProviderError(`${operation}_invalid_response`, false);
+      throw new BlindPayProviderError(`${operation}_invalid_response`, true);
     }
   }
 
   private asObject(value: unknown, operation: string): Record<string, unknown> {
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      throw new BlindPayProviderError(`${operation}_invalid_response`, false);
+      throw new BlindPayProviderError(`${operation}_invalid_response`, true);
     }
     return value as Record<string, unknown>;
   }
@@ -388,7 +404,7 @@ export class BlindPayHttpGateway implements BlindPayGateway {
   private requiredString(object: Record<string, unknown>, key: string, operation: string): string {
     const value = this.optionalString(object, key);
     if (value === undefined) {
-      throw new BlindPayProviderError(`${operation}_invalid_response`, false);
+      throw new BlindPayProviderError(`${operation}_invalid_response`, true);
     }
     return value;
   }
@@ -396,7 +412,7 @@ export class BlindPayHttpGateway implements BlindPayGateway {
   private requiredNumber(object: Record<string, unknown>, key: string, operation: string): number {
     const value = this.optionalNumber(object, key);
     if (value === undefined) {
-      throw new BlindPayProviderError(`${operation}_invalid_response`, false);
+      throw new BlindPayProviderError(`${operation}_invalid_response`, true);
     }
     return value;
   }

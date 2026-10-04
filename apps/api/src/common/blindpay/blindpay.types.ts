@@ -12,7 +12,6 @@ export interface BlindPayUploadedDocument {
 
 export interface BlindPayCreatedCustomer {
   id: string;
-  kycStatus: BlindPayKycStatusValue;
 }
 
 export interface BlindPayBlockchainWallet {
@@ -85,6 +84,7 @@ export interface BlindPayGateway {
     input: Record<string, unknown>,
     idempotencyKey: string,
   ): Promise<BlindPayCreatedCustomer>;
+  getCustomerKycStatus(customerId: string): Promise<BlindPayKycStatusValue>;
   getOpenRfi(customerId: string): Promise<BlindPayRfi | null>;
   submitRfi(customerId: string, answers: BlindPayRfiAnswers, idempotencyKey: string): Promise<void>;
   registerExternalStellarWallet(
