@@ -645,6 +645,12 @@ de `customer.new`/`customer.update` e a deduplicação da Outbox foram validados
 com payload assinado, mas o checklist permanece aberto até observar uma entrega originada pela
 BlindPay e um RFI real.
 
+Smoke em 04/10/2026, pela instância Development e túnel HTTPS: ToS aceito, documentos enviados,
+customer criado e lido `approved`, entrega real de webhook verificada pela assinatura e um único
+`producer.kyc_approved` na Outbox. A primeira execução revelou a mudança no contrato da criação
+(resposta só com ids), corrigida na v1.5. Falta só o RFI real: a instância Development aprova o
+customer direto e não abre RFI sozinha.
+
 ### Gate 3C
 
 - [x] Signer de development/testnet está decidido e documentado no ADR-010.
