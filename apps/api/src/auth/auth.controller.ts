@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from "@nestjs/common";
 
 import { type AccountView } from "../users/users.types";
 import { AuthService } from "./auth.service";
@@ -11,8 +11,11 @@ export class AuthController {
 
   @Post("auth/bootstrap")
   @HttpCode(HttpStatus.OK)
-  bootstrap(@CurrentUser() principal: AuthenticatedPrincipal): Promise<AccountView> {
-    return this.authService.bootstrap(principal);
+  bootstrap(
+    @CurrentUser() principal: AuthenticatedPrincipal,
+    @Body() body: unknown,
+  ): Promise<AccountView> {
+    return this.authService.bootstrap(principal, body);
   }
 
   @Get("me")

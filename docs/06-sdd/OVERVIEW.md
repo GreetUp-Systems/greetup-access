@@ -46,11 +46,11 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 4. a próxima SPEC permanece bloqueada até build, lint, typecheck e testes da etapa ativa passarem;
 5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
 
-**SPEC ativa:** [`SPEC-005 — Compra do ingresso`](./SPEC-005-purchase.md) (bloco 6), entregue em
-quatro partes (6A a 6D). As SPECs 004 e 006 estão concluídas. A SPEC-003 tem a implementação
-automatizada validada e aguarda os smokes reais BlindPay e Stellar/Privy/BlindPay, dos quais o smoke
-ponta a ponta da compra depende. Production usa o mesmo modelo de signer (D-24) e fica liberada só na
-etapa explícita de habilitação de Pubnet/USDC.
+**SPEC ativa:** [`SPEC-005 — Compra do ingresso`](./SPEC-005-purchase.md) (bloco 6), com as quatro
+partes (6A a 6D) implementadas e o smoke ponta a ponta pendente. As SPECs 004 e 006 estão
+concluídas. A SPEC-003 tem a implementação automatizada validada e aguarda os smokes reais BlindPay
+e Stellar/Privy/BlindPay, dos quais o smoke ponta a ponta da compra depende. Production usa o mesmo
+modelo de signer (D-24) e fica liberada só na etapa explícita de habilitação de Pubnet/USDC.
 
 O [`ADR-009`](../03-adrs/ADR-009-identity-producer-tenancy.md) fechou identidade, wallet, modelo de
 produtor e a Q-03 em 29/09/2026.
@@ -127,7 +127,7 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | SPEC-002 auth        | **Implementada e validada em 30/09/2026** — identidade e wallet user-owned concluídas conforme ADR-009                                                                                                             |
 | SPEC-003 producer    | **3A/3B e implementação automatizada de 3C (v1.4) validados localmente; smokes reais pendentes** — [nova versão](./SPEC-003-producer.md); 3C restrito a development/testnet pelo ADR-010. [Versão anterior arquivada](../_archive/06-sdd/SPEC-003-organizations.md) |
 | SPEC-004 events      | **Implementação automatizada validada localmente em 02/10/2026** — [nova versão](./SPEC-004-events.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-004-events.md) |
-| SPEC-005 purchase    | **6A, 6B e 6C implementadas em 04/10/2026; 6D pendente** — [nova versão](./SPEC-005-purchase.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-005-purchase.md) |
+| SPEC-005 purchase    | **6A a 6D implementadas em 04/10/2026; smoke ponta a ponta pendente** — [nova versão](./SPEC-005-purchase.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-005-purchase.md) |
 | SPEC-006 contracts   | **Implementada e implantada na Testnet em 03/10/2026** — [nova versão](./SPEC-006-ticket-contract.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-006-contracts.md) |
 | SPEC-007 mint worker | Reescrever: sai Treasury própria e criação de wallet do caminho crítico — [arquivada](../_archive/06-sdd/SPEC-007-mint-worker.md)                                                                                  |
 | SPEC-008 ticket read | Reescrever sem CQRS — [arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md)                                                                                                                                      |

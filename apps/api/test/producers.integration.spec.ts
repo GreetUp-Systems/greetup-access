@@ -412,6 +412,7 @@ describe("producer profile and RLS integration", () => {
     await ownerPrisma.stellarAccountProvisioning.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
+    await ownerPrisma.walletActivation.deleteMany();
     await ownerPrisma.walletAccount.deleteMany();
     await ownerPrisma.user.deleteMany();
     privy.reset();
@@ -429,6 +430,7 @@ describe("producer profile and RLS integration", () => {
     await ownerPrisma.stellarAccountProvisioning.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
+    await ownerPrisma.walletActivation.deleteMany();
     await ownerPrisma.walletAccount.deleteMany();
     await ownerPrisma.user.deleteMany();
     await app.close();

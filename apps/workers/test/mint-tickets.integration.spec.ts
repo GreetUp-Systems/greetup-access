@@ -61,6 +61,7 @@ describe("MintTicketWorker integration", () => {
     await ownerPrisma.ticketType.deleteMany();
     await ownerPrisma.event.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
+    await ownerPrisma.walletActivation.deleteMany();
     await ownerPrisma.walletAccount.deleteMany();
     await ownerPrisma.user.deleteMany();
   }

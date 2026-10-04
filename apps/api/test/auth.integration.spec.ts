@@ -140,6 +140,7 @@ describe("identity bootstrap integration", () => {
     await ownerPrisma.outboxEvent.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
+    await ownerPrisma.walletActivation.deleteMany();
     await ownerPrisma.walletAccount.deleteMany();
     await ownerPrisma.user.deleteMany();
     privy.reset();
@@ -150,6 +151,7 @@ describe("identity bootstrap integration", () => {
     await ownerPrisma.outboxEvent.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
+    await ownerPrisma.walletActivation.deleteMany();
     await ownerPrisma.walletAccount.deleteMany();
     await ownerPrisma.user.deleteMany();
     await app.close();

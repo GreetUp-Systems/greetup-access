@@ -39,4 +39,12 @@ export class UsersRepository {
 
     return account;
   }
+
+  /** Records only the first spontaneous login; later ones keep the original timestamp. */
+  async markSpontaneousLogin(userId: string): Promise<void> {
+    await this.prisma.user.updateMany({
+      where: { id: userId, spontaneousLoginAt: null },
+      data: { spontaneousLoginAt: new Date() },
+    });
+  }
 }
