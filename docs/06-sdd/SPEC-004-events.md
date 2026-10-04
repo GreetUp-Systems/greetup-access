@@ -2,9 +2,9 @@
 
 > **Status:** implementação automatizada validada localmente
 >
-> **Versão:** 2.1
+> **Versão:** 2.2 (emenda da SPEC-014, parte 9A: término, local em duas partes e disponibilidade)
 >
-> **Atualizada em:** 02/10/2026
+> **Atualizada em:** 04/10/2026
 >
 > **Aprovada em:** 02/10/2026
 >
@@ -87,13 +87,14 @@ draft ──publish──▶ published ──cancel──▶ cancelled
   └──delete──▶ (removido)
 ```
 
-"Encerrado" não é estado: é derivado de `startsAt` no passado.
+"Encerrado" não é estado: é derivado de `endsAt` (ou, sem ele, `startsAt`) no passado.
 
 | Campo                                   | `draft`        | `published`                            | `cancelled` |
 | --------------------------------------- | -------------- | -------------------------------------- | ----------- |
 | `name`                                  | editável       | editável                               | —           |
 | `slug`                                  | segue o `name` | imutável                               | —           |
-| `description`, `location`               | editável       | editável                               | —           |
+| `description`, `venueName`, `address`   | editável       | editável                               | —           |
+| `endsAt`                                | editável       | editável, depois de `startsAt`         | —           |
 | `startsAt`                              | editável       | editável, sempre no futuro (adiamento) | —           |
 | `refundPolicy`                          | editável       | editável                               | —           |
 | `capacity`                              | editável       | editável, ≥ soma das quantidades       | —           |
@@ -124,8 +125,10 @@ model Event {
   slug         String      @unique @db.VarChar(100)
   name         String      @db.VarChar(120)
   description  String?     @db.VarChar(5000)
-  location     String?     @db.VarChar(200)
+  venueName    String?     @map("venue_name") @db.VarChar(120)
+  address      String?     @db.VarChar(200)
   startsAt     DateTime    @map("starts_at") @db.Timestamptz(3)
+  endsAt       DateTime?   @map("ends_at") @db.Timestamptz(3)
   capacity     Int
   refundPolicy String?     @map("refund_policy") @db.VarChar(2000)
   status       EventStatus @default(DRAFT)
@@ -209,8 +212,10 @@ não incluem `producerId`. Preços sempre em centavos de BRL.
 {
   "name": "Festival Access",
   "description": "…",
-  "location": "Rua Exemplo, 100 — São Paulo/SP",
+  "venueName": "Casa Access",
+  "address": "Rua Exemplo, 100 · São Paulo",
   "startsAt": "2026-12-12T20:00:00-03:00",
+  "endsAt": "2026-12-13T02:00:00-03:00",
   "capacity": 300,
   "refundPolicy": "Reembolso integral até 7 dias antes do evento."
 }
@@ -279,16 +284,23 @@ respondem `404` idêntico.
   "slug": "festival-access",
   "name": "Festival Access",
   "description": "…",
-  "location": "Rua Exemplo, 100 — São Paulo/SP",
+  "venueName": "Casa Access",
+  "address": "Rua Exemplo, 100 · São Paulo",
   "startsAt": "2026-12-12T23:00:00.000Z",
+  "endsAt": "2026-12-13T05:00:00.000Z",
   "status": "published",
   "refundPolicy": "Reembolso integral até 7 dias antes do evento.",
   "producer": { "displayName": "Festival Access" },
-  "ticketTypes": [{ "id": "uuid", "name": "Pista", "description": "…", "priceCents": 8000 }]
+  "ticketTypes": [
+    { "id": "uuid", "name": "Pista", "description": "…", "priceCents": 8000, "available": 120 }
+  ]
 }
 ```
 
-`capacity` e `quantity` não são expostos; a disponibilidade entra com o bloco 6. `displayName` é o
+`capacity` e `quantity` não são expostos. `available` é a quantidade do tipo menos o estoque
+comprometido (`committed_ticket_quantity`, SPEC-005 §8), nunca negativa; zero é "Esgotado". Como a
+rota é pública e as compras ficam sob RLS, o cálculo roda numa função `SECURITY DEFINER` de leitura,
+com dono `access_checkout`, no mesmo modelo de `checkout_listing` (SPEC-005 §13). `displayName` é o
 nome de produto do produtor, não nome legal (SPEC-003 §13).
 
 ### Validação de entrada
@@ -296,7 +308,8 @@ nome de produto do produtor, não nome legal (SPEC-003 §13).
 Schemas zod, como em `producer-onboarding.schemas.ts`:
 
 - `name`: 1 a 120 caracteres após `trim`;
-- `description`: até 5.000; `location`: até 200; `refundPolicy`: até 2.000;
+- `description`: até 5.000; `venueName`: até 120; `address`: até 200; `refundPolicy`: até 2.000;
+- `endsAt`: opcional, ISO 8601 com offset, depois de `startsAt`;
 - `startsAt`: ISO 8601 com offset; na criação, na edição e na publicação, precisa estar no futuro;
 - `capacity`, `quantity`: inteiros ≥ 1;
 - `priceCents`: inteiro ≥ 1;

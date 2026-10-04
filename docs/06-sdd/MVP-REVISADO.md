@@ -191,8 +191,9 @@ Não são decisões nem pendências — são coisas que mordem se ninguém soube
 - **Payin criado não pode ser cancelado.** Se o comprador não paga, fica `processing` até a
   BlindPay limpar. Por isso a reserva de estoque dura enquanto o payin puder ser pago: nunca existe
   Pix pagável sem ingresso garantido (SPEC-005 §8). O prazo da limpeza ainda não está documentado.
-- **Quote expira em 5 minutos.** O checkout cria quote e payin na mesma requisição, então a janela
-  não alcança o comprador.
+- **Quote expira em 5 minutos.** O checkout reserva e cota num passo e gera o Pix em outro (SPEC-005
+  v1.5): a revisão mostra o total, e o Pix cota de novo se a quote venceu, sem cobrar valor diferente
+  do exibido.
 - **Payin mínimo de R$ 10.** Uma compra precisa somar pelo menos esse valor.
 - **Receita chega no dia 1º do mês seguinte.** Partner fees acumulam pelo mês calendário, já
   líquidas da fatura da BlindPay. É fluxo de caixa, não produto.

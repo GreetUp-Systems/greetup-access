@@ -46,10 +46,11 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 4. a próxima SPEC permanece bloqueada até build, lint, typecheck e testes da etapa ativa passarem;
 5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
 
-**SPEC ativa:** [`SPEC-008 — Área do comprador`](./SPEC-008-buyer-area.md) (bloco 7), em duas
-partes (7A e 7B), só API e worker; as telas entram na SPEC do app web. A SPEC-005 tem as quatro
-partes implementadas e o smoke ponta a ponta pendente. As SPECs 004 e 006 estão concluídas. A SPEC-003 tem a implementação automatizada validada e aguarda os smokes reais BlindPay
-e Stellar/Privy/BlindPay, dos quais o smoke ponta a ponta da compra depende. Production usa o mesmo
+**SPEC ativa:** [`SPEC-014 — App web · Compra`](./SPEC-014-web-purchase.md), em quatro partes
+(9A backend, 9B base do web, 9C compra, 9D área do comprador), a partir da ponte de design
+([`docs/design`](../design/README.md)). As SPECs 004, 005 e 008 recebem emendas na 9A. Os smokes que
+dependem da assinatura do usuário (3C da SPEC-003 e ponta a ponta da SPEC-005) são validados pelo
+app web. Production usa o mesmo
 modelo de signer (D-24) e fica liberada só na etapa explícita de habilitação de Pubnet/USDC.
 
 O [`ADR-009`](../03-adrs/ADR-009-identity-producer-tenancy.md) fechou identidade, wallet, modelo de
@@ -136,6 +137,7 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | SPEC-011 withdrawal  | Reescrever: saque é payout da BlindPay — [arquivada](../_archive/06-sdd/SPEC-011-withdrawal.md)                                                                                                                    |
 | SPEC-012 dashboard   | Reduzir: polling em vez de WebSocket                                                                                                                                                                               |
 | SPEC-013 pipeline    | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig                                                                                                                                                            |
+| SPEC-014 web purchase | **Aprovada em 04/10/2026; implementação não iniciada** — [nova versão](./SPEC-014-web-purchase.md) |
 
 As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Identidade e Q-03
 foram fechadas pelo ADR-009; Q-01 e Q-02 foram fechadas em 02/10/2026 pelas D-24 e D-23. Não há

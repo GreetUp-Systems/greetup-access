@@ -2,7 +2,7 @@
 
 > **Status:** 6A a 6D implementadas; smoke ponta a ponta pendente
 >
-> **Versão:** 1.4
+> **Versão:** 1.5 (emenda da SPEC-014, parte 9A: reserva e cotação separadas da geração do Pix)
 >
 > **Atualizada em:** 04/10/2026
 >
@@ -207,9 +207,14 @@ Na criação do pedido, numa transação:
 A trava do tipo também é usada pelas edições de tipo da SPEC-004: a quantidade de um tipo nunca
 fica abaixo do reservado e vendido, que é o piso que a SPEC-004 deixou para este bloco.
 
-## 9. Fluxo de checkout (6A)
+## 9. Fluxo de checkout (6A; dois passos desde a v1.5)
 
-`POST /api/purchases`, autenticado, com `Idempotency-Key`:
+A taxa de serviço aparece antes do Pix (SPEC-014, decisão A1): o pedido primeiro reserva e cota, e
+só depois gera o Pix, com o total que o comprador viu.
+
+### `POST /api/purchases` — reserva e cotação
+
+Autenticado, com `Idempotency-Key`:
 
 ```json
 { "ticketTypeId": "uuid", "quantity": 2 }
@@ -221,33 +226,49 @@ fica abaixo do reservado e vendido, que é o piso que a SPEC-004 deixou para est
    `request_amount` = subtotal em centavos, `payment_method: "pix"`, `cover_fees: true` (a taxa é
    do comprador), `token` conforme o ambiente (USDB na Testnet), `partner_fee_id` se configurado e
    sem `payer_rules`;
-4. criar o payin com a quote, usando `Idempotency-Key` derivada do ID da compra;
-5. gravar valores da quote, IDs externos e `pix_code`; compra vai a `awaiting_payment`;
-6. responder `201`:
+4. gravar os valores e a validade da quote; a compra continua `initiated`;
+5. responder `201`:
 
 ```json
 {
   "id": "uuid",
-  "status": "awaiting_payment",
+  "status": "initiated",
   "quantity": 2,
   "subtotalCents": 16000,
   "serviceFeeCents": 980,
   "totalCents": 16980,
-  "pixCode": "00020126...",
+  "pixCode": null,
   "tickets": []
 }
 ```
 
+### `POST /api/purchases/:id/pix` — gerar o Pix
+
+Autenticado, só para o comprador dono (`404 purchase_not_found` caso contrário):
+
+```json
+{ "expectedTotalCents": 16980 }
+```
+
+1. compra em `awaiting_payment` ou adiante: devolve a visão atual, sem criar outro Pix;
+2. compra `payment_failed` ou `payment_refunded`: `409 purchase_not_payable`;
+3. compra `initiated` há mais de 10 minutos (reserva vencida, §8): marca `payment_failed`
+   (`reservation_expired`) e responde `409 purchase_expired`;
+4. quote com menos de 30 segundos de validade: cria uma nova quote e grava os valores;
+5. `totalCents` diferente de `expectedTotalCents`: `409 purchase_total_changed` com a visão atual,
+   sem Pix; o comprador vê o novo total e confirma de novo;
+6. criar o payin com a quote, usando `Idempotency-Key` derivada do ID da compra e da quote;
+7. gravar IDs externos e `pix_code`; a compra vai a `awaiting_payment`; responder `200` com a visão.
+
 Falha definitiva na quote ou no payin leva a compra a `payment_failed` com `failureCode` sanitizado e
 libera a reserva (`422 payment_rejected`). Erro retryable da BlindPay deixa a compra `initiated` e
-responde `503 payment_provider_unavailable`: repetir com a mesma `Idempotency-Key` retoma o pedido,
-reaproveitando a quote enquanto restarem mais de 30 segundos de validade. Uma retomada depois dos 10
-minutos da reserva marca a compra `payment_failed` (`reservation_expired`) sem criar Pix. Uma quote
-cujo `sender_amount` fique abaixo do subtotal é recusada.
+responde `503 payment_provider_unavailable`; repetir a chamada retoma o pedido. Uma quote cujo
+`sender_amount` fique abaixo do subtotal é recusada.
 
-Outros erros: `404 ticket_type_not_available`, `409 producer_not_ready_for_sales`,
+Outros erros da criação: `404 ticket_type_not_available`, `409 producer_not_ready_for_sales`,
 `409 event_not_on_sale`, `409 ticket_type_sold_out`, `409 idempotency_key_reused`,
-`422 purchase_below_minimum`, `400 invalid_purchase` e `400 invalid_idempotency_key`.
+`422 purchase_below_minimum`, `400 invalid_purchase` e `400 invalid_idempotency_key`; do Pix,
+`400 invalid_purchase_pix` para corpo inválido.
 
 `GET /api/purchases/:id` devolve a mesma visão para o comprador dono; compra de outro usuário
 responde `404`.

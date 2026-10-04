@@ -2,7 +2,7 @@
 
 > **Status:** 7A e 7B implementadas; e-mail real pendente do smoke pelo front
 >
-> **Versão:** 1.2
+> **Versão:** 1.3 (emenda da SPEC-014, parte 9A: código legível e dados do evento no ingresso)
 >
 > **Atualizada em:** 04/10/2026
 >
@@ -63,7 +63,17 @@ depois pela emissão. Sem paginação no MVP, com teto de 200 itens.
     {
       "id": "uuid",
       "status": "issued",
-      "event": { "id": "uuid", "slug": "show", "name": "Show", "startsAt": "ISO-8601" },
+      "code": "AX-0042",
+      "event": {
+        "id": "uuid",
+        "slug": "show",
+        "name": "Show",
+        "status": "published",
+        "startsAt": "ISO-8601",
+        "endsAt": "ISO-8601 | null",
+        "venueName": "Casa Access | null",
+        "address": "Rua Exemplo, 100 · São Paulo | null"
+      },
       "ticketType": { "id": "uuid", "name": "Pista" },
       "purchaseId": "uuid",
       "issuedAt": "ISO-8601 | null",
@@ -77,6 +87,11 @@ depois pela emissão. Sem paginação no MVP, com teto de 200 itens.
   ]
 }
 ```
+
+`code` é o código legível do ingresso: `AX-` seguido do `tokenId` com pelo menos 4 dígitos
+(`AX-0042`), único no contrato; é `null` enquanto o ingresso estiver `pending_mint`. Serve para
+identificar o ingresso na tela e, no bloco 8, para digitar na entrada quando a câmera falha.
+`event.status` e `event.endsAt` separam "Próximos" de "Anteriores" (encerrado ou cancelado).
 
 `onchain` é `null` enquanto o ingresso estiver `pending_mint`. O link do explorer usa a rede de
 `STELLAR_NETWORK`; `contractId` vem de `STELLAR_TICKET_CONTRACT_ID`, que a API passa a ler.
