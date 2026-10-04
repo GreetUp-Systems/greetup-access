@@ -48,6 +48,8 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
     BLINDPAY_WEBHOOK_SECRET: optionalWebhookSecret,
     BLINDPAY_API_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000),
     BLINDPAY_ALLOWED_REDIRECT_ORIGINS: z.string().min(1).refine(isHttpOriginList),
+    // Browser origins allowed to call the API (SPEC-014): the web app.
+    API_CORS_ORIGINS: z.union([z.string().refine(isHttpOriginList), z.literal("")]).optional(),
     BLINDPAY_PARTNER_FEE_ID: z.union([z.string().startsWith("pf_"), z.literal("")]).optional(),
     STELLAR_NETWORK: z.literal("testnet"),
     STELLAR_RPC_URL: z.literal("https://soroban-testnet.stellar.org"),
@@ -61,6 +63,14 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
     TICKET_QR_SECRET: ticketQrSecret,
   })
   .superRefine((environment, context) => {
+    if (environment.NODE_ENV !== "development" && !environment.API_CORS_ORIGINS) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["API_CORS_ORIGINS"],
+        message: "is required outside development",
+      });
+    }
+
     const databaseConfigured = Boolean(environment.DATABASE_URL_BLINDPAY_WEBHOOK);
     const secretConfigured = Boolean(environment.BLINDPAY_WEBHOOK_SECRET);
     const webhookRequired = environment.NODE_ENV !== "development";

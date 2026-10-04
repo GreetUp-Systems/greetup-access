@@ -2,7 +2,18 @@ import { Prisma, TenantContextService } from "@access/database";
 import { Injectable } from "@nestjs/common";
 
 const ticketInclude = {
-  event: { select: { id: true, slug: true, name: true, startsAt: true } },
+  event: {
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      status: true,
+      startsAt: true,
+      endsAt: true,
+      venueName: true,
+      address: true,
+    },
+  },
   ticketType: { select: { id: true, name: true } },
 } satisfies Prisma.TicketInclude;
 

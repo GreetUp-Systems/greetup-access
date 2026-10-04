@@ -5,6 +5,7 @@ const maxInteger = 2_147_483_647;
 const text = (max: number) => z.string().trim().min(1).max(max);
 const positiveInteger = z.number().int().min(1).max(maxInteger);
 const startsAt = z.string().datetime({ offset: true });
+const endsAt = z.string().datetime({ offset: true });
 
 function hasAtLeastOneField(value: Record<string, unknown>): boolean {
   return Object.keys(value).length > 0;
@@ -14,8 +15,10 @@ export const createEventSchema = z
   .object({
     name: text(120),
     description: text(5_000).optional(),
-    location: text(200).optional(),
+    venueName: text(120).optional(),
+    address: text(200).optional(),
     startsAt,
+    endsAt: endsAt.optional(),
     capacity: positiveInteger,
     refundPolicy: text(2_000).optional(),
   })
@@ -25,8 +28,10 @@ export const updateEventSchema = z
   .object({
     name: text(120).optional(),
     description: text(5_000).nullable().optional(),
-    location: text(200).nullable().optional(),
+    venueName: text(120).nullable().optional(),
+    address: text(200).nullable().optional(),
     startsAt: startsAt.optional(),
+    endsAt: endsAt.nullable().optional(),
     capacity: positiveInteger.optional(),
     refundPolicy: text(2_000).nullable().optional(),
   })

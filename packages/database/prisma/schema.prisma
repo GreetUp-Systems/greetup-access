@@ -175,8 +175,10 @@ model Event {
   slug         String      @unique @db.VarChar(100)
   name         String      @db.VarChar(120)
   description  String?     @db.VarChar(5000)
-  location     String?     @db.VarChar(200)
+  venueName    String?     @map("venue_name") @db.VarChar(120)
+  address      String?     @db.VarChar(200)
   startsAt     DateTime    @map("starts_at") @db.Timestamptz(3)
+  endsAt       DateTime?   @map("ends_at") @db.Timestamptz(3)
   capacity     Int
   refundPolicy String?     @map("refund_policy") @db.VarChar(2000)
   status       EventStatus @default(DRAFT)

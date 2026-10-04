@@ -7,6 +7,12 @@ export const createPurchaseSchema = z
   })
   .strict();
 
+export const generatePixSchema = z
+  .object({
+    expectedTotalCents: z.number().int().min(1),
+  })
+  .strict();
+
 export const idempotencyKeySchema = z.string().uuid();
 
 export type CreatePurchaseInput = z.infer<typeof createPurchaseSchema>;

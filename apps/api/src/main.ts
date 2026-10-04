@@ -11,7 +11,7 @@ async function bootstrap(): Promise<void> {
   const config = loadApiConfig();
   const app = await NestFactory.create(AppModule.forRoot(config));
 
-  configureApplication(app);
+  configureApplication(app, { corsOrigins: config.corsOrigins });
   await app.listen(config.apiPort);
 }
 

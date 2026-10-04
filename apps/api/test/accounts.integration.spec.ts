@@ -50,6 +50,7 @@ const config: ApiConfig = {
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
   blindPayPartnerFeeId: undefined,
+  corsOrigins: [],
   ...stellarTestConfig,
   ...ticketsTestConfig,
 };

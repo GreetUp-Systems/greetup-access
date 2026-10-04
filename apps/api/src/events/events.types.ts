@@ -13,8 +13,10 @@ export interface EventSummaryView {
   slug: string;
   name: string;
   description: string | null;
-  location: string | null;
+  venueName: string | null;
+  address: string | null;
   startsAt: string;
+  endsAt: string | null;
   capacity: number;
   refundPolicy: string | null;
   status: EventStatusView;
@@ -32,10 +34,13 @@ export interface PublicEventView {
   slug: string;
   name: string;
   description: string | null;
-  location: string | null;
+  venueName: string | null;
+  address: string | null;
   startsAt: string;
+  endsAt: string | null;
   status: Exclude<EventStatusView, "draft">;
   refundPolicy: string | null;
   producer: { displayName: string };
-  ticketTypes: Array<Omit<TicketTypeView, "quantity">>;
+  /** `available` is quantity minus committed stock, never negative; zero means sold out. */
+  ticketTypes: Array<Omit<TicketTypeView, "quantity"> & { available: number }>;
 }

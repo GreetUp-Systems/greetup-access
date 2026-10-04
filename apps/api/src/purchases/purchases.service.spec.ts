@@ -53,6 +53,13 @@ const quote = {
   partnerFeeAmount: 0,
 };
 
+const quoted = {
+  externalQuoteId: quote.id,
+  quoteExpiresAt: quote.expiresAt,
+  totalCents: 16_980,
+  serviceFeeCents: 980,
+};
+
 function purchase(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
   return {
     id: purchaseId,
@@ -134,13 +141,15 @@ describe("PurchasesService", () => {
 
   const body = { ticketTypeId, quantity: 2 };
 
-  it("reserves, quotes to the producer wallet and returns the Pix with a single service fee", async () => {
+  it("reserves and quotes to the producer wallet, showing the fee before any Pix", async () => {
+    repository.find.mockResolvedValueOnce(purchase()).mockResolvedValueOnce(purchase(quoted));
+
     await expect(service.create(principal, body, idempotencyKey)).resolves.toMatchObject({
-      status: "awaiting_payment",
+      status: "initiated",
       subtotalCents: 16_000,
       serviceFeeCents: 980,
       totalCents: 16_980,
-      pixCode: "00020126pix",
+      pixCode: null,
     });
 
     expect(repository.reserve).toHaveBeenCalledWith(user.id, ticketTypeId, 2, idempotencyKey);
@@ -154,10 +163,7 @@ describe("PurchasesService", () => {
       expect.stringMatching(/^[0-9a-f]{64}$/),
     );
     expect(repository.recordQuote).toHaveBeenCalledWith(user.id, purchaseId, quote, 16_000);
-    expect(blindPay.createPayin).toHaveBeenCalledWith(
-      quote.id,
-      expect.stringMatching(/^[0-9a-f]{64}$/),
-    );
+    expect(blindPay.createPayin).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -219,13 +225,19 @@ describe("PurchasesService", () => {
   it("resumes an initiated purchase reusing a still valid quote", async () => {
     repository.reserve.mockResolvedValue({ purchaseId, created: false });
     repository.find.mockResolvedValue(
-      purchase({ externalQuoteId: "qu_old", quoteExpiresAt: new Date(Date.now() + 120_000) }),
+      purchase({
+        ...quoted,
+        externalQuoteId: "qu_old",
+        quoteExpiresAt: new Date(Date.now() + 120_000),
+      }),
     );
 
-    await service.create(principal, body, idempotencyKey);
-
+    await expect(service.create(principal, body, idempotencyKey)).resolves.toMatchObject({
+      status: "initiated",
+      totalCents: 16_980,
+    });
     expect(blindPay.createPayinQuote).not.toHaveBeenCalled();
-    expect(blindPay.createPayin).toHaveBeenCalledWith("qu_old", expect.any(String));
+    expect(blindPay.createPayin).not.toHaveBeenCalled();
   });
 
   it("fails an initiated purchase whose reservation already lapsed", async () => {
@@ -240,7 +252,9 @@ describe("PurchasesService", () => {
   });
 
   it("keeps the purchase resumable when BlindPay is temporarily unavailable", async () => {
-    blindPay.createPayin.mockRejectedValue(new BlindPayProviderError("create_payin", true, 503));
+    blindPay.createPayinQuote.mockRejectedValue(
+      new BlindPayProviderError("create_payin_quote", true, 503),
+    );
 
     await expect(service.create(principal, body, idempotencyKey)).rejects.toMatchObject({
       response: { code: "payment_provider_unavailable" },
@@ -271,6 +285,93 @@ describe("PurchasesService", () => {
     });
     expect(repository.recordQuote).not.toHaveBeenCalled();
     expect(blindPay.createPayin).not.toHaveBeenCalled();
+  });
+
+  describe("generatePix", () => {
+    const valid = (overrides: Partial<PurchaseRecord> = {}) =>
+      purchase({ ...quoted, quoteExpiresAt: new Date(Date.now() + 120_000), ...overrides });
+
+    it("creates the Pix with the quote the buyer confirmed", async () => {
+      repository.find.mockResolvedValue(valid());
+
+      await expect(
+        service.generatePix(principal, purchaseId, { expectedTotalCents: 16_980 }),
+      ).resolves.toMatchObject({ status: "awaiting_payment", pixCode: "00020126pix" });
+      expect(blindPay.createPayinQuote).not.toHaveBeenCalled();
+      expect(blindPay.createPayin).toHaveBeenCalledWith(
+        quote.id,
+        expect.stringMatching(/^[0-9a-f]{64}$/),
+      );
+    });
+
+    it("requotes an expiring quote and refuses a total the buyer has not seen", async () => {
+      repository.find
+        .mockResolvedValueOnce(valid({ quoteExpiresAt: new Date(Date.now() + 10_000) }))
+        .mockResolvedValueOnce(valid({ totalCents: 17_100, serviceFeeCents: 1_100 }));
+
+      await expect(
+        service.generatePix(principal, purchaseId, { expectedTotalCents: 16_980 }),
+      ).rejects.toMatchObject({
+        response: {
+          code: "purchase_total_changed",
+          purchase: { totalCents: 17_100, serviceFeeCents: 1_100, status: "initiated" },
+        },
+      });
+      expect(blindPay.createPayinQuote).toHaveBeenCalledTimes(1);
+      expect(blindPay.createPayin).not.toHaveBeenCalled();
+    });
+
+    it("returns the existing Pix without creating another", async () => {
+      repository.find.mockResolvedValue(
+        valid({ status: "AWAITING_PAYMENT", pixCode: "00020126pix" }),
+      );
+
+      await expect(
+        service.generatePix(principal, purchaseId, { expectedTotalCents: 1 }),
+      ).resolves.toMatchObject({ status: "awaiting_payment" });
+      expect(blindPay.createPayin).not.toHaveBeenCalled();
+    });
+
+    it("refuses failed purchases and expires a lapsed reservation", async () => {
+      repository.find.mockResolvedValueOnce(valid({ status: "PAYMENT_FAILED" }));
+      await expect(
+        service.generatePix(principal, purchaseId, { expectedTotalCents: 16_980 }),
+      ).rejects.toMatchObject({ response: { code: "purchase_not_payable" } });
+
+      repository.find.mockResolvedValueOnce(
+        valid({ createdAt: new Date(Date.now() - 11 * 60_000) }),
+      );
+      await expect(
+        service.generatePix(principal, purchaseId, { expectedTotalCents: 16_980 }),
+      ).rejects.toMatchObject({ response: { code: "purchase_expired" } });
+      expect(repository.markFailed).toHaveBeenCalledWith(
+        user.id,
+        purchaseId,
+        "reservation_expired",
+      );
+      expect(blindPay.createPayin).not.toHaveBeenCalled();
+    });
+
+    it("keeps the purchase resumable when the Pix provider is temporarily down", async () => {
+      repository.find.mockResolvedValue(valid());
+      blindPay.createPayin.mockRejectedValue(new BlindPayProviderError("create_payin", true, 503));
+
+      await expect(
+        service.generatePix(principal, purchaseId, { expectedTotalCents: 16_980 }),
+      ).rejects.toMatchObject({ response: { code: "payment_provider_unavailable" } });
+      expect(repository.markFailed).not.toHaveBeenCalled();
+    });
+
+    it("rejects an invalid body and a purchase the buyer does not own", async () => {
+      await expect(
+        service.generatePix(principal, purchaseId, { expectedTotalCents: "16980" }),
+      ).rejects.toMatchObject({ response: { code: "invalid_purchase_pix" } });
+
+      repository.find.mockResolvedValue(null);
+      await expect(
+        service.generatePix(principal, purchaseId, { expectedTotalCents: 16_980 }),
+      ).rejects.toMatchObject({ response: { code: "purchase_not_found" } });
+    });
   });
 
   it("hides the Pix code once the purchase is no longer awaiting payment", async () => {

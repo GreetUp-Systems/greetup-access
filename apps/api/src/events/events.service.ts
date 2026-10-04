@@ -48,6 +48,8 @@ export class EventsService {
   async create(principal: AuthenticatedPrincipal, body: unknown): Promise<EventView> {
     const input = this.parse(createEventSchema, body, "invalid_event");
     const startsAt = this.futureDate(input.startsAt);
+    const endsAt = input.endsAt === undefined ? null : new Date(input.endsAt);
+    this.assertEndsAfterStart(startsAt, endsAt);
     const userId = await this.requireUserId(principal);
 
     const event = await this.withSlug(input.name, (slug) =>
@@ -55,8 +57,10 @@ export class EventsService {
         slug: slug ?? slugify(input.name),
         name: input.name,
         description: input.description ?? null,
-        location: input.location ?? null,
+        venueName: input.venueName ?? null,
+        address: input.address ?? null,
         startsAt,
+        endsAt,
         capacity: input.capacity,
         refundPolicy: input.refundPolicy ?? null,
       }),
@@ -94,6 +98,16 @@ export class EventsService {
     const event = await this.withSlug(input.name, (slug) =>
       this.events.withLockedEvent(userId, eventId, async (scope) => {
         this.assertNotCancelled(scope.event);
+        const endsAt =
+          input.endsAt === undefined
+            ? undefined
+            : input.endsAt === null
+              ? null
+              : new Date(input.endsAt);
+        this.assertEndsAfterStart(
+          startsAt ?? scope.event.startsAt,
+          endsAt === undefined ? scope.event.endsAt : endsAt,
+        );
         const capacity = input.capacity ?? scope.event.capacity;
         if (scope.event.status === "PUBLISHED") {
           this.assertWithinCapacity(this.totalQuantity(scope.event), capacity);
@@ -108,8 +122,10 @@ export class EventsService {
           name: input.name,
           slug: renamesDraft ? slug : undefined,
           description: input.description,
-          location: input.location,
+          venueName: input.venueName,
+          address: input.address,
           startsAt,
+          endsAt,
           capacity: input.capacity,
           refundPolicy: input.refundPolicy,
         });
@@ -265,7 +281,7 @@ export class EventsService {
     if (event === null || event.status === "DRAFT") {
       throw this.eventNotFound();
     }
-    return this.toPublicView(event);
+    return this.toPublicView(event, await this.events.publicAvailability(event.id));
   }
 
   private async requireUserId(principal: AuthenticatedPrincipal): Promise<string> {
@@ -353,6 +369,15 @@ export class EventsService {
     return result.data;
   }
 
+  private assertEndsAfterStart(startsAt: Date, endsAt: Date | null): void {
+    if (endsAt !== null && endsAt.getTime() <= startsAt.getTime()) {
+      throw new UnprocessableEntityException({
+        code: "event_ends_before_start",
+        message: "The event must end after it starts.",
+      });
+    }
+  }
+
   private futureDate(value: string): Date {
     const date = new Date(value);
     if (date.getTime() <= Date.now()) {
@@ -418,8 +443,10 @@ export class EventsService {
       slug: event.slug,
       name: event.name,
       description: event.description,
-      location: event.location,
+      venueName: event.venueName,
+      address: event.address,
       startsAt: event.startsAt.toISOString(),
+      endsAt: event.endsAt?.toISOString() ?? null,
       capacity: event.capacity,
       refundPolicy: event.refundPolicy,
       status: event.status.toLowerCase() as EventSummaryView["status"],
@@ -447,13 +474,18 @@ export class EventsService {
     };
   }
 
-  private toPublicView(event: PublicEventRecord): PublicEventView {
+  private toPublicView(
+    event: PublicEventRecord,
+    availability: Map<string, number>,
+  ): PublicEventView {
     return {
       slug: event.slug,
       name: event.name,
       description: event.description,
-      location: event.location,
+      venueName: event.venueName,
+      address: event.address,
       startsAt: event.startsAt.toISOString(),
+      endsAt: event.endsAt?.toISOString() ?? null,
       status: event.status === "CANCELLED" ? "cancelled" : "published",
       refundPolicy: event.refundPolicy,
       producer: { displayName: event.producer.displayName },
@@ -462,6 +494,7 @@ export class EventsService {
         name: ticketType.name,
         description: ticketType.description,
         priceCents: ticketType.priceCents,
+        available: availability.get(ticketType.id) ?? 0,
       })),
     };
   }

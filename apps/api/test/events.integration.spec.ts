@@ -41,6 +41,7 @@ const config: ApiConfig = {
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
   blindPayPartnerFeeId: undefined,
+  corsOrigins: [],
   ...stellarTestConfig,
   ...ticketsTestConfig,
 };
@@ -273,13 +274,21 @@ describe("events integration", () => {
       slug: "festival-access",
       name: "Festival Access",
       description: null,
-      location: null,
+      venueName: null,
+      address: null,
+      endsAt: null,
       startsAt: expect.any(String),
       status: "published",
       refundPolicy: "Reembolso integral até 7 dias antes do evento.",
       producer: { displayName: users.a.displayName },
       ticketTypes: [
-        { id: expect.any(String), name: "Pista", description: null, priceCents: 8_000 },
+        {
+          id: expect.any(String),
+          name: "Pista",
+          description: null,
+          priceCents: 8_000,
+          available: 200,
+        },
       ],
     });
 

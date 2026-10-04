@@ -26,7 +26,7 @@ import {
   type PurchaseRecord,
   PurchasesRepository,
 } from "./purchases.repository";
-import { createPurchaseSchema, idempotencyKeySchema } from "./purchases.schemas";
+import { createPurchaseSchema, generatePixSchema, idempotencyKeySchema } from "./purchases.schemas";
 import {
   PURCHASE_CHECKOUT_CONFIG,
   type PurchaseCheckoutConfig,
@@ -67,6 +67,13 @@ const checkoutErrors: Record<CheckoutErrorCode, () => HttpException> = {
       message: "There are not enough tickets left of this type.",
     }),
 };
+
+function purchaseNotFound(): NotFoundException {
+  return new NotFoundException({
+    code: "purchase_not_found",
+    message: "The purchase does not exist.",
+  });
+}
 
 function ticketTypeNotAvailable(): NotFoundException {
   return new NotFoundException({
@@ -109,57 +116,110 @@ export class PurchasesService {
     const reservation = await this.withCheckoutErrors(() =>
       this.purchases.reserve(userId, input.data.ticketTypeId, input.data.quantity, idempotencyKey),
     );
-    const purchase = await this.purchases.find(userId, reservation.purchaseId);
-    if (purchase === null) {
-      throw new ServiceUnavailableException({
-        code: "purchase_unavailable",
-        message: "The purchase is temporarily unavailable.",
-      });
-    }
+    const purchase = await this.requirePurchase(userId, reservation.purchaseId);
 
     if (purchase.status !== "INITIATED") {
       return this.toView(purchase);
     }
-    // A retry after the reservation lapsed must not create a Pix without guaranteed stock.
-    if (Date.now() - purchase.createdAt.getTime() >= initiatedReservationMs) {
+    // A retry after the reservation lapsed must not quote a purchase without guaranteed stock.
+    if (this.reservationExpired(purchase)) {
       return this.toView(
         await this.purchases.markFailed(userId, purchase.id, "reservation_expired"),
       );
     }
 
-    return this.startPayment(userId, purchase, destinationWalletId);
+    // Step 1 of 2 (SPEC-005 §9): reserve and quote, so the buyer sees the fee before the Pix.
+    await this.withProviderErrors(userId, purchase, () =>
+      this.ensureQuote(userId, purchase, destinationWalletId),
+    );
+    return this.toView(await this.requirePurchase(userId, purchase.id));
+  }
+
+  /**
+   * Step 2 of 2 (SPEC-005 §9): creates the Pix with the quoted total the buyer confirmed. An
+   * expired quote is replaced; a different total is refused so nothing is charged unseen.
+   */
+  async generatePix(
+    principal: AuthenticatedPrincipal,
+    purchaseId: string,
+    body: unknown,
+  ): Promise<PurchaseView> {
+    const input = generatePixSchema.safeParse(body);
+    if (!input.success) {
+      throw new BadRequestException({
+        code: "invalid_purchase_pix",
+        message: "The request body is invalid.",
+      });
+    }
+    const userId = await this.requireUserId(principal);
+    const purchase = await this.purchases.find(userId, purchaseId);
+    if (purchase === null) {
+      throw purchaseNotFound();
+    }
+    if (purchase.status === "PAYMENT_FAILED" || purchase.status === "PAYMENT_REFUNDED") {
+      throw new ConflictException({
+        code: "purchase_not_payable",
+        message: "This purchase can no longer be paid.",
+      });
+    }
+    if (purchase.status !== "INITIATED") {
+      return this.toView(purchase);
+    }
+    if (this.reservationExpired(purchase)) {
+      await this.purchases.markFailed(userId, purchase.id, "reservation_expired");
+      throw new ConflictException({
+        code: "purchase_expired",
+        message: "The reservation expired. Start a new purchase.",
+      });
+    }
+
+    const listing = await this.purchases.listing(userId, purchase.ticketTypeId);
+    if (listing === null) {
+      throw ticketTypeNotAvailable();
+    }
+    const destinationWalletId = this.salesDestination(listing);
+
+    return this.withProviderErrors(userId, purchase, async () => {
+      const quoteId = await this.ensureQuote(userId, purchase, destinationWalletId);
+      const quoted = await this.requirePurchase(userId, purchase.id);
+      if (quoted.totalCents !== input.data.expectedTotalCents) {
+        throw new ConflictException({
+          code: "purchase_total_changed",
+          message: "The total changed. Confirm the new total to continue.",
+          purchase: this.toView(quoted),
+        });
+      }
+      const payin = await this.blindPay.createPayin(
+        quoteId,
+        this.hashKey(`payin:${purchase.id}:${quoteId}`),
+      );
+      return this.toView(await this.purchases.markAwaitingPayment(userId, purchase.id, payin));
+    });
   }
 
   async get(principal: AuthenticatedPrincipal, purchaseId: string): Promise<PurchaseView> {
     const userId = await this.requireUserId(principal);
     const purchase = await this.purchases.find(userId, purchaseId);
     if (purchase === null) {
-      throw new NotFoundException({
-        code: "purchase_not_found",
-        message: "The purchase does not exist.",
-      });
+      throw purchaseNotFound();
     }
     return this.toView(purchase);
   }
 
-  private async startPayment(
+  /** Retryable provider errors keep the purchase initiated; final ones release the reservation. */
+  private async withProviderErrors<T>(
     userId: string,
     purchase: PurchaseRecord,
-    destinationWalletId: string,
-  ): Promise<PurchaseView> {
+    operation: () => Promise<T>,
+  ): Promise<T> {
     try {
-      const quoteId = await this.ensureQuote(userId, purchase, destinationWalletId);
-      const payin = await this.blindPay.createPayin(
-        quoteId,
-        this.hashKey(`payin:${purchase.id}:${quoteId}`),
-      );
-      return this.toView(await this.purchases.markAwaitingPayment(userId, purchase.id, payin));
+      return await operation();
     } catch (error) {
       if (!(error instanceof BlindPayProviderError)) {
         throw error;
       }
       if (error.retryable) {
-        // The purchase stays initiated, so the same Idempotency-Key can resume it.
+        // The purchase stays initiated, so repeating the call resumes it.
         throw new ServiceUnavailableException({
           code: "payment_provider_unavailable",
           message: "The payment provider is temporarily unavailable. Try again.",
@@ -172,6 +232,21 @@ export class PurchasesService {
         message: "The payment could not be created for this purchase.",
       });
     }
+  }
+
+  private reservationExpired(purchase: PurchaseRecord): boolean {
+    return Date.now() - purchase.createdAt.getTime() >= initiatedReservationMs;
+  }
+
+  private async requirePurchase(userId: string, purchaseId: string): Promise<PurchaseRecord> {
+    const purchase = await this.purchases.find(userId, purchaseId);
+    if (purchase === null) {
+      throw new ServiceUnavailableException({
+        code: "purchase_unavailable",
+        message: "The purchase is temporarily unavailable.",
+      });
+    }
+    return purchase;
   }
 
   private async ensureQuote(

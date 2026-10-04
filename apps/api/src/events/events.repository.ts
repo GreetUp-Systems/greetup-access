@@ -22,8 +22,10 @@ export interface NewEvent {
   slug: string;
   name: string;
   description: string | null;
-  location: string | null;
+  venueName: string | null;
+  address: string | null;
   startsAt: Date;
+  endsAt: Date | null;
   capacity: number;
   refundPolicy: string | null;
 }
@@ -33,8 +35,10 @@ export interface EventChanges {
   slug?: string | undefined;
   name?: string | undefined;
   description?: string | null | undefined;
-  location?: string | null | undefined;
+  venueName?: string | null | undefined;
+  address?: string | null | undefined;
   startsAt?: Date | undefined;
+  endsAt?: Date | null | undefined;
   capacity?: number | undefined;
   refundPolicy?: string | null | undefined;
   status?: "PUBLISHED" | "CANCELLED" | undefined;
@@ -148,6 +152,22 @@ export class EventsRepository {
       where: { slug, status: { in: ["PUBLISHED", "CANCELLED"] } },
       include: publicEventInclude,
     });
+  }
+
+  /**
+   * Remaining tickets per type of a public event. Purchases are under RLS, so the count runs in
+   * public_ticket_availability(), a SECURITY DEFINER read (SPEC-004 v2.2).
+   */
+  async publicAvailability(eventId: string): Promise<Map<string, number>> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{ availability_ticket_type_id: string; availability_remaining: number }>
+    >`
+      SELECT "availability_ticket_type_id", "availability_remaining"
+      FROM public_ticket_availability(${eventId}::uuid)
+    `;
+    return new Map(
+      rows.map((row) => [row.availability_ticket_type_id, row.availability_remaining]),
+    );
   }
 
   private scopeFor(
