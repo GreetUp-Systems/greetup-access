@@ -73,21 +73,22 @@ da compra.
 O cabeçalho do desktop tem "Entrar", que abre a mesma identificação com `origin: "login"` e leva a
 "Seus ingressos". "Vender ingressos" fica fora desta SPEC (§12).
 
-## 6. Telas a desenhar no Figma (B)
+## 6. Estados desenhados no Figma (B)
 
-O fluxo prevê estes estados sem tela; entram na página "Compra", em 360 e 1440, com os componentes
-existentes, antes da 9C:
+O fluxo previa estes estados sem tela. Foram desenhados em 04/10/2026 na página "Compra", a partir
+das telas existentes e só com componentes e variáveis do Design System (linhas em y = 3700 e
+y = 4700), e aguardam revisão.
 
-1. **Evento indisponível:** evento cancelado, encerrado ou inexistente.
-2. **Valor mínimo:** subtotal abaixo de R$ 10, aviso na escolha do ingresso.
-3. **Esgotou:** o tipo esgotou entre a escolha e a revisão.
-4. **Total mudou:** a cotação venceu e o novo total difere do exibido (A1).
-5. **Pagamento não concluído:** Pix falhou ou foi devolvido, com "Tentar de novo".
-6. **Erro de conexão:** falha de rede ou da API em qualquer etapa.
-7. **Seus ingressos vazio:** nenhum ingresso.
-8. **Entrar:** a identificação aberta pelo cabeçalho, sem resumo de pedido.
-
-Cada uma ganha o nó na tabela do §5 quando for criada.
+| Estado                  | Celular    | Desktop    | Como aparece                                                                                   |
+| ----------------------- | ---------- | ---------- | ---------------------------------------------------------------------------------------------- |
+| Evento indisponível     | `176:2096` | `176:5567` | Selo "Cancelado" no título; a barra (ou o cartão) diz "Vendas encerradas", sem botão de compra |
+| Valor mínimo            | `175:1777` | `176:4873` | Toast de atenção no lugar da nota da taxa; "Continuar"/"Comprar ingresso" desabilitado         |
+| Esgotou                 | `175:2013` | `176:5075` | Toast de erro na revisão ("Nada foi cobrado"); ação "Escolher outro"                           |
+| Total mudou             | `175:4622` | `176:5200` | Toast de atenção na revisão com o novo total; ação "Gerar Pix"                                 |
+| Pagamento não concluído | `175:4806` | `176:5451` | Componente Pix no estado Falhou, com "Tentar novamente" (nova compra)                          |
+| Erro de conexão         | `175:4714` | `176:5324` | Toast de erro ("seu pedido continua reservado"); ação "Tentar de novo"                         |
+| Seus ingressos vazio    | `176:2209` | `176:5667` | "Nenhum ingresso por aqui" e a explicação                                                      |
+| Entrar                  | `176:2292` | `176:5744` | A identificação sem o resumo do pedido, título "Entre no Access"                               |
 
 ## 7. Arquitetura do app
 
@@ -172,7 +173,7 @@ NEXT_PUBLIC_PRIVY_APP_ID=
 ## 13. Definição de pronto
 
 - [x] 9A: dois passos, página pública ampliada, código do ingresso e CORS, com testes.
-- [ ] Telas do §6 desenhadas no Figma e revisadas.
+- [ ] Telas do §6 desenhadas no Figma (feito em 04/10/2026) e revisadas pelo Matheus.
 - [ ] 9B: login, identificação e base do app, com conferência visual.
 - [ ] 9C: compra de ponta a ponta com a API simulada e conferência visual.
 - [ ] 9D: área do comprador com conferência visual.

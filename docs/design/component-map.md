@@ -63,4 +63,6 @@ Página "Ícones" (`27:2`): 47 ícones, dos quais 43 são Lucide com o mesmo nom
 
 Página "Compra" (`138:321`): página do evento, escolher ingresso, identificação (e-mail e código),
 revisar pedido, Pix, pagamento confirmado, ingresso pronto, seus ingressos (e anteriores) e
-ingresso, cada uma em 360 e 1440. Os IDs de cada quadro entram na SPEC de front do fluxo.
+ingresso, cada uma em 360 e 1440, mais os estados de borda (indisponível, valor mínimo, esgotou,
+total mudou, pagamento não concluído, erro de conexão, vazio e entrar). Os IDs de cada quadro estão
+na [SPEC-014](../06-sdd/SPEC-014-web-purchase.md) §5 e §6.
