@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 
 import { type ApiConfig } from "@access/config";
 import { PrismaClient, PrismaService, TenantContextService } from "@access/database";
@@ -187,6 +187,7 @@ describe("purchases integration", () => {
   });
 
   async function cleanDatabase(): Promise<void> {
+    await ownerPrisma.blindPayWebhookDelivery.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
     await ownerPrisma.ticket.deleteMany();
     await ownerPrisma.purchase.deleteMany();
@@ -482,5 +483,116 @@ describe("purchases integration", () => {
         `,
       ),
     ).rejects.toThrow(/permission denied/);
+  });
+
+  describe("payin webhooks (6B)", () => {
+    let messageSequence = 0;
+
+    function payinWebhook(payinId: string, status: string, event = "payin.complete") {
+      const body = JSON.stringify({ webhook_event: event, id: payinId, status });
+      const messageId = `msg_payin_${(messageSequence += 1)}`;
+      const timestamp = Math.floor(Date.now() / 1_000);
+      const signature = createHmac("sha256", Buffer.from("test", "utf8"))
+        .update(Buffer.from(`${messageId}.${timestamp}.${body}`, "utf8"))
+        .digest("base64");
+      const send = () =>
+        request(app.getHttpServer())
+          .post("/api/webhooks/blindpay")
+          .set("Content-Type", "application/json")
+          .set("svix-id", messageId)
+          .set("svix-timestamp", String(timestamp))
+          .set("svix-signature", `v1,${signature}`)
+          .send(body);
+      return { send };
+    }
+
+    async function awaitingPurchase(quantity = 2) {
+      await readyProducer();
+      const ticketTypeId = await publishedTicketType(5);
+      await bootstrap(users.buyerA);
+      const created = await buy(users.buyerA, ticketTypeId, quantity).expect(201);
+      const stored = await ownerPrisma.purchase.findUniqueOrThrow({
+        where: { id: created.body.id },
+      });
+      return { ticketTypeId, purchaseId: stored.id, payinId: stored.externalPayinId! };
+    }
+
+    it("confirms the payment once, creating the tickets and payment.confirmed together", async () => {
+      const { purchaseId, payinId } = await awaitingPurchase(2);
+
+      const delivery = payinWebhook(payinId, "completed");
+      await delivery.send().expect(200);
+      await delivery.send().expect(200);
+      await payinWebhook(payinId, "completed").send().expect(200);
+
+      const purchase = await ownerPrisma.purchase.findUniqueOrThrow({
+        where: { id: purchaseId },
+        include: { tickets: true },
+      });
+      expect(purchase.status).toBe("PAYMENT_CONFIRMED");
+      expect(purchase.paymentConfirmedAt).not.toBeNull();
+      expect(purchase.tickets).toHaveLength(2);
+      for (const ticket of purchase.tickets) {
+        expect(ticket).toMatchObject({
+          status: "PENDING_MINT",
+          ownerUserId: purchase.buyerUserId,
+          eventId: purchase.eventId,
+          ticketTypeId: purchase.ticketTypeId,
+          tokenId: null,
+        });
+      }
+      const outbox = await ownerPrisma.outboxEvent.findMany();
+      expect(outbox).toHaveLength(1);
+      expect(outbox[0]).toMatchObject({
+        eventType: "payment.confirmed",
+        aggregateType: "purchase",
+        aggregateId: purchaseId,
+        deduplicationKey: `purchase:${purchaseId}:payment_confirmed:v1`,
+        payload: { purchaseId },
+      });
+
+      const view = await api(users.buyerA).get(`/api/purchases/${purchaseId}`).expect(200);
+      expect(view.body).toMatchObject({ status: "payment_confirmed", pixCode: null });
+      expect(view.body.tickets).toHaveLength(2);
+    });
+
+    it.each([
+      ["failed", "PAYMENT_FAILED", "payin_failed"],
+      ["refunded", "PAYMENT_REFUNDED", "payin_refunded"],
+    ])("moves a %s payin to its final state and frees the stock", async (status, final, code) => {
+      const { ticketTypeId, purchaseId, payinId } = await awaitingPurchase(5);
+
+      await payinWebhook(payinId, status).send().expect(200);
+
+      await expect(
+        ownerPrisma.purchase.findUniqueOrThrow({ where: { id: purchaseId } }),
+      ).resolves.toMatchObject({ status: final, failureCode: code });
+      await expect(ownerPrisma.ticket.count()).resolves.toBe(0);
+      await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(0);
+      await buy(users.buyerA, ticketTypeId, 5).expect(201);
+    });
+
+    it("keeps open payins waiting and ignores a late completion of a failed purchase", async () => {
+      const { purchaseId, payinId } = await awaitingPurchase(2);
+
+      await payinWebhook(payinId, "processing", "payin.new").send().expect(200);
+      await payinWebhook(payinId, "on_hold", "payin.update").send().expect(200);
+      await expect(
+        ownerPrisma.purchase.findUniqueOrThrow({ where: { id: purchaseId } }),
+      ).resolves.toMatchObject({ status: "AWAITING_PAYMENT" });
+
+      await payinWebhook(payinId, "failed").send().expect(200);
+      await payinWebhook(payinId, "completed").send().expect(200);
+      await expect(
+        ownerPrisma.purchase.findUniqueOrThrow({ where: { id: purchaseId } }),
+      ).resolves.toMatchObject({ status: "PAYMENT_FAILED" });
+      await expect(ownerPrisma.ticket.count()).resolves.toBe(0);
+    });
+
+    it("asks BlindPay to retry a final status for a payin it does not know yet", async () => {
+      await payinWebhook("pi_unknown", "completed").send().expect(503);
+      await payinWebhook("pi_unknown", "processing", "payin.new").send().expect(200);
+      await expect(ownerPrisma.blindPayWebhookDelivery.count()).resolves.toBe(1);
+    });
   });
 });

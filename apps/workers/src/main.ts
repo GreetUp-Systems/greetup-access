@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { loadInfrastructureConfig } from "@access/config";
+import { loadWorkerConfig } from "@access/config";
 import { PrismaService } from "@access/database";
 import { RedisService } from "@access/redis";
 import { Logger, type INestApplicationContext } from "@nestjs/common";
@@ -9,7 +9,7 @@ import { NestFactory } from "@nestjs/core";
 import { WorkersModule } from "./workers.module";
 
 async function bootstrap(): Promise<void> {
-  const config = loadInfrastructureConfig();
+  const config = loadWorkerConfig();
   let app: INestApplicationContext | undefined;
 
   try {

@@ -1,6 +1,10 @@
 import { type z } from "zod";
 
-import { apiEnvironmentSchema, infrastructureEnvironmentSchema } from "./env.schema";
+import {
+  apiEnvironmentSchema,
+  infrastructureEnvironmentSchema,
+  workerEnvironmentSchema,
+} from "./env.schema";
 
 export type AppEnvironment = "development" | "test" | "production";
 
@@ -8,6 +12,12 @@ export interface InfrastructureConfig {
   nodeEnv: AppEnvironment;
   databaseUrl: string;
   databaseDirectUrl: string;
+  redisUrl: string;
+}
+
+export interface WorkerConfig {
+  nodeEnv: AppEnvironment;
+  databaseWorkerUrl: string;
   redisUrl: string;
 }
 
@@ -103,5 +113,15 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     stellarUsdcAssetIssuer: parsed.STELLAR_USDC_ASSET_ISSUER,
     stellarSponsorPublicKey: parsed.STELLAR_SPONSOR_PUBLIC_KEY,
     stellarSponsorSecretKey: parsed.STELLAR_SPONSOR_SECRET_KEY,
+  };
+}
+
+export function loadWorkerConfig(environment: NodeJS.ProcessEnv = process.env): WorkerConfig {
+  const parsed = parseEnvironment(workerEnvironmentSchema, environment);
+
+  return {
+    nodeEnv: parsed.NODE_ENV,
+    databaseWorkerUrl: parsed.DATABASE_URL_WORKER,
+    redisUrl: parsed.REDIS_URL,
   };
 }

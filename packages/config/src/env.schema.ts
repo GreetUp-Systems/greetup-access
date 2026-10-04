@@ -21,6 +21,13 @@ export const infrastructureEnvironmentSchema = z.object({
     }),
 });
 
+// Worker processes connect with their own restricted role (SPEC-005 §13).
+export const workerEnvironmentSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]),
+  DATABASE_URL_WORKER: z.string().url(),
+  REDIS_URL: infrastructureEnvironmentSchema.shape.REDIS_URL,
+});
+
 const optionalWebhookDatabaseUrl = z.union([z.string().url(), z.literal("")]).optional();
 const optionalWebhookSecret = z.union([z.string().startsWith("whsec_"), z.literal("")]).optional();
 const stellarPublicKey = z.string().regex(/^G[A-Z2-7]{55}$/);

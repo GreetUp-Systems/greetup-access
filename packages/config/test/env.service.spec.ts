@@ -1,4 +1,4 @@
-import { loadApiConfig, loadInfrastructureConfig } from "../src";
+import { loadApiConfig, loadInfrastructureConfig, loadWorkerConfig } from "../src";
 
 const validEnvironment: NodeJS.ProcessEnv = {
   NODE_ENV: "test",
@@ -45,6 +45,23 @@ describe("environment configuration", () => {
       databaseDirectUrl: validEnvironment.DATABASE_URL_DIRECT,
       redisUrl: validEnvironment.REDIS_URL,
     });
+  });
+
+  it("loads the worker configuration with its own database role", () => {
+    const environment = {
+      NODE_ENV: "test",
+      DATABASE_URL_WORKER: "postgresql://access_worker_login:test@localhost:5433/access_test",
+      REDIS_URL: "redis://localhost:6380",
+    };
+
+    expect(loadWorkerConfig(environment)).toEqual({
+      nodeEnv: "test",
+      databaseWorkerUrl: "postgresql://access_worker_login:test@localhost:5433/access_test",
+      redisUrl: "redis://localhost:6380",
+    });
+    expect(() => loadWorkerConfig({ ...environment, DATABASE_URL_WORKER: "" })).toThrow(
+      "DATABASE_URL_WORKER",
+    );
   });
 
   it("coerces API port and health timeout to numbers", () => {

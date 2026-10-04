@@ -21,8 +21,20 @@ BEGIN
       LOGIN PASSWORD 'test_webhook'
       NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;
   END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'access_worker') THEN
+    CREATE ROLE access_worker
+      NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'access_worker_login') THEN
+    CREATE ROLE access_worker_login
+      LOGIN PASSWORD 'test_worker'
+      NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;
+  END IF;
 END
 $$;
 
 GRANT access_app_runtime TO access_runtime;
 GRANT access_blindpay_webhook TO access_blindpay_webhook_login;
+GRANT access_worker TO access_worker_login;

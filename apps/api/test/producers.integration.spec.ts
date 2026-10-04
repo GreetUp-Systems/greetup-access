@@ -675,11 +675,11 @@ describe("producer profile and RLS integration", () => {
   });
 
   it("rejects an owner connection when configured as the API runtime", async () => {
-    const unsafeRuntime = new PrismaService(ownerDatabaseUrl, true);
+    const unsafeRuntime = new PrismaService(ownerDatabaseUrl, true, "access_app_runtime");
 
     try {
       await expect(unsafeRuntime.assertRestrictedRuntimeRole()).rejects.toThrow(
-        "DATABASE_URL must use the restricted Access runtime role.",
+        "The database URL must use the restricted access_app_runtime role.",
       );
     } finally {
       await unsafeRuntime.$disconnect();

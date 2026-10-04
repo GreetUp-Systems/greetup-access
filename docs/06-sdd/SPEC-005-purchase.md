@@ -1,8 +1,8 @@
 # SPEC-005 — Compra do ingresso
 
-> **Status:** 6A implementada; 6B, 6C e 6D pendentes
+> **Status:** 6A e 6B implementadas; 6C e 6D pendentes
 >
-> **Versão:** 1.1
+> **Versão:** 1.2
 >
 > **Atualizada em:** 03/10/2026
 >
@@ -285,6 +285,11 @@ A confirmação grava, na mesma transação, a compra, os ingressos e:
 Payin desconhecido gera alerta sanitizado e `2xx`. Transição para trás (por exemplo `failed` depois
 de `completed`) não altera a compra e gera alerta.
 
+O `payin.complete` também é enviado quando o payin termina em `failed` ou `refunded`: o efeito é
+decidido sempre pelo `status` do payload, nunca pelo nome do evento. Um status final de payin ainda
+desconhecido pelo Access responde `503` para a BlindPay reenviar; status aberto desconhecido é só
+registrado.
+
 ### OutboxRelay
 
 - processo no app `workers`, em laço com intervalo curto;
@@ -293,7 +298,13 @@ de `completed`) não altera a compra e gera alerta.
   republicação inofensiva;
 - marca o evento como processado; falha incrementa `attempts` e agenda nova tentativa;
 - `payment.confirmed` vai para a fila `tickets`, job `MintTicketJob`; os demais eventos de domínio
-  permanecem `pending` até existir consumidor (bloco 7).
+  permanecem `pending` até existir consumidor (bloco 7);
+- payload inválido marca o evento `failed`; falha ao publicar mantém `pending`, incrementa
+  `attempts` e adia `available_at` com backoff exponencial (até 5 minutos);
+- jobs concluídos ficam 24 h no Redis, para que um `jobId` republicado ainda seja reconhecido.
+
+As suítes de integração compartilham Postgres e Redis e rodam um pacote por vez
+(`turbo run test:integration --concurrency=1`).
 
 ## 11. Emissão (6C)
 
@@ -408,7 +419,7 @@ confirmação de que a quote Pix sem `payer_rules` é aceita, leitura de `sender
 ## 16. Definição de pronto
 
 - [x] 6A: pedido, reserva, quote e payin com testes de concorrência.
-- [ ] 6B: webhooks de payin, Outbox e `OutboxRelay`, idempotentes.
+- [x] 6B: webhooks de payin, Outbox e `OutboxRelay`, idempotentes.
 - [ ] 6C: `MintTicketWorker` emite na Testnet, idempotente, com capacidade sincronizada.
 - [ ] 6D: origem do login e ativação da conta do comprador.
 - [ ] Nenhuma venda acima do limite em nenhum teste de concorrência.
