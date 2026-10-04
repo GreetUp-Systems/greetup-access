@@ -46,9 +46,9 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 4. a próxima SPEC permanece bloqueada até build, lint, typecheck e testes da etapa ativa passarem;
 5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
 
-**SPEC ativa:** [`SPEC-005 — Compra do ingresso`](./SPEC-005-purchase.md) (bloco 6), com as quatro
-partes (6A a 6D) implementadas e o smoke ponta a ponta pendente. As SPECs 004 e 006 estão
-concluídas. A SPEC-003 tem a implementação automatizada validada e aguarda os smokes reais BlindPay
+**SPEC ativa:** [`SPEC-008 — Área do comprador`](./SPEC-008-buyer-area.md) (bloco 7), em duas
+partes (7A e 7B), só API e worker; as telas entram na SPEC do app web. A SPEC-005 tem as quatro
+partes implementadas e o smoke ponta a ponta pendente. As SPECs 004 e 006 estão concluídas. A SPEC-003 tem a implementação automatizada validada e aguarda os smokes reais BlindPay
 e Stellar/Privy/BlindPay, dos quais o smoke ponta a ponta da compra depende. Production usa o mesmo
 modelo de signer (D-24) e fica liberada só na etapa explícita de habilitação de Pubnet/USDC.
 
@@ -129,8 +129,8 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | SPEC-004 events      | **Implementação automatizada validada localmente em 02/10/2026** — [nova versão](./SPEC-004-events.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-004-events.md) |
 | SPEC-005 purchase    | **6A a 6D implementadas em 04/10/2026; smoke ponta a ponta pendente** — [nova versão](./SPEC-005-purchase.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-005-purchase.md) |
 | SPEC-006 contracts   | **Implementada e implantada na Testnet em 03/10/2026** — [nova versão](./SPEC-006-ticket-contract.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-006-contracts.md) |
-| SPEC-007 mint worker | Reescrever: sai Treasury própria e criação de wallet do caminho crítico — [arquivada](../_archive/06-sdd/SPEC-007-mint-worker.md)                                                                                  |
-| SPEC-008 ticket read | Reescrever sem CQRS — [arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md)                                                                                                                                      |
+| SPEC-007 mint worker | **Absorvida pela SPEC-005 (parte 6C)** — [arquivada](../_archive/06-sdd/SPEC-007-mint-worker.md)                                                                                                                  |
+| SPEC-008 buyer area  | **Aprovada em 04/10/2026; implementação não iniciada** — [nova versão](./SPEC-008-buyer-area.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md) |
 | SPEC-009 checkin     | Dividir: online na fase 1, offline na fase 2                                                                                                                                                                       |
 | SPEC-010 finance     | Reescrever: não há escrow — [arquivada](../_archive/06-sdd/SPEC-010-finance.md)                                                                                                                                    |
 | SPEC-011 withdrawal  | Reescrever: saque é payout da BlindPay — [arquivada](../_archive/06-sdd/SPEC-011-withdrawal.md)                                                                                                                    |
