@@ -25,6 +25,7 @@ export interface ApiConfig extends InfrastructureConfig {
   blindPayWebhookSecret: string | undefined;
   blindPayApiTimeoutMs: number;
   blindPayAllowedRedirectOrigins: string[];
+  blindPayPartnerFeeId: string | undefined;
   stellarNetwork: "testnet";
   stellarRpcUrl: "https://soroban-testnet.stellar.org";
   stellarHorizonUrl: "https://horizon-testnet.stellar.org";
@@ -93,6 +94,7 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     blindPayWebhookSecret: parsed.BLINDPAY_WEBHOOK_SECRET || undefined,
     blindPayApiTimeoutMs: parsed.BLINDPAY_API_TIMEOUT_MS,
     blindPayAllowedRedirectOrigins,
+    blindPayPartnerFeeId: parsed.BLINDPAY_PARTNER_FEE_ID || undefined,
     stellarNetwork: parsed.STELLAR_NETWORK,
     stellarRpcUrl: parsed.STELLAR_RPC_URL,
     stellarHorizonUrl: parsed.STELLAR_HORIZON_URL,

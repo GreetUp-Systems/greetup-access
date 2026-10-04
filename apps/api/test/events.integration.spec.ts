@@ -39,6 +39,7 @@ const config: ApiConfig = {
   blindPayWebhookSecret: "whsec_dGVzdA==",
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
+  blindPayPartnerFeeId: undefined,
   ...stellarTestConfig,
 };
 
@@ -136,6 +137,8 @@ describe("events integration", () => {
 
   async function cleanDatabase(): Promise<void> {
     await ownerPrisma.outboxEvent.deleteMany();
+    await ownerPrisma.ticket.deleteMany();
+    await ownerPrisma.purchase.deleteMany();
     await ownerPrisma.ticketType.deleteMany();
     await ownerPrisma.event.deleteMany();
     await ownerPrisma.stellarAccountProvisioning.deleteMany();

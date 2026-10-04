@@ -2,6 +2,9 @@ import {
   type BlindPayCreatedCustomer,
   type BlindPayBlockchainWallet,
   type BlindPayGateway,
+  type BlindPayPayin,
+  type BlindPayPayinQuote,
+  type BlindPayPayinQuoteInput,
   BlindPayProviderError,
   type BlindPayRfi,
   type BlindPayRfiAnswers,
@@ -171,6 +174,70 @@ export class BlindPayHttpGateway implements BlindPayGateway {
     return { id, address, network };
   }
 
+  // Pix payin quote without payer_rules: the buyer never informs a CPF (SPEC-005 §3).
+  async createPayinQuote(
+    input: BlindPayPayinQuoteInput,
+    idempotencyKey: string,
+  ): Promise<BlindPayPayinQuote> {
+    const operation = "create_payin_quote";
+    const response = await this.requestJson(
+      `/instances/${this.options.instanceId}/payin-quotes`,
+      operation,
+      {
+        method: "POST",
+        contentType: "application/json",
+        idempotencyKey,
+        body: JSON.stringify({
+          blockchain_wallet_id: input.blockchainWalletId,
+          currency_type: "sender",
+          cover_fees: true,
+          request_amount: input.requestAmountCents,
+          payment_method: "pix",
+          token: input.token,
+          ...(input.partnerFeeId === undefined ? {} : { partner_fee_id: input.partnerFeeId }),
+        }),
+      },
+    );
+    const data = this.unwrap(response, operation);
+    const expiresAt = this.requiredNumber(data, "expires_at", operation);
+
+    return {
+      id: this.requiredString(data, "id", operation),
+      expiresAt: new Date(expiresAt),
+      senderAmount: this.requiredNumber(data, "sender_amount", operation),
+      receiverAmount: this.requiredNumber(data, "receiver_amount", operation),
+      commercialQuotation: this.requiredNumber(data, "commercial_quotation", operation),
+      blindpayQuotation: this.requiredNumber(data, "blindpay_quotation", operation),
+      flatFee: this.optionalNumber(data, "flat_fee") ?? 0,
+      partnerFeeAmount: this.optionalNumber(data, "partner_fee_amount") ?? 0,
+    };
+  }
+
+  async createPayin(quoteId: string, idempotencyKey: string): Promise<BlindPayPayin> {
+    const operation = "create_payin";
+    const response = await this.requestJson(
+      `/instances/${this.options.instanceId}/payins/evm`,
+      operation,
+      {
+        method: "POST",
+        contentType: "application/json",
+        idempotencyKey,
+        body: JSON.stringify({ payin_quote_id: quoteId }),
+      },
+    );
+    const data = this.unwrap(response, operation);
+    const id = this.requiredString(data, "id", operation);
+    if (!id.startsWith("pi_")) {
+      throw new BlindPayProviderError(`${operation}_invalid_response`, false);
+    }
+
+    return {
+      id,
+      status: this.requiredString(data, "status", operation),
+      pixCode: this.requiredString(data, "pix_code", operation),
+    };
+  }
+
   private async requestJson(
     path: string,
     operation: string,
@@ -324,6 +391,19 @@ export class BlindPayHttpGateway implements BlindPayGateway {
       throw new BlindPayProviderError(`${operation}_invalid_response`, false);
     }
     return value;
+  }
+
+  private requiredNumber(object: Record<string, unknown>, key: string, operation: string): number {
+    const value = this.optionalNumber(object, key);
+    if (value === undefined) {
+      throw new BlindPayProviderError(`${operation}_invalid_response`, false);
+    }
+    return value;
+  }
+
+  private optionalNumber(object: Record<string, unknown>, key: string): number | undefined {
+    const value = object[key];
+    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
   }
 
   private optionalString(object: unknown, key: string): string | undefined {

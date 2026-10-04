@@ -43,6 +43,7 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
     BLINDPAY_WEBHOOK_SECRET: optionalWebhookSecret,
     BLINDPAY_API_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000),
     BLINDPAY_ALLOWED_REDIRECT_ORIGINS: z.string().min(1).refine(isHttpOriginList),
+    BLINDPAY_PARTNER_FEE_ID: z.union([z.string().startsWith("pf_"), z.literal("")]).optional(),
     STELLAR_NETWORK: z.literal("testnet"),
     STELLAR_RPC_URL: z.literal("https://soroban-testnet.stellar.org"),
     STELLAR_HORIZON_URL: z.literal("https://horizon-testnet.stellar.org"),

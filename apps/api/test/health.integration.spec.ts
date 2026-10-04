@@ -27,6 +27,7 @@ const baseConfig: ApiConfig = {
   blindPayWebhookSecret: undefined,
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
+  blindPayPartnerFeeId: undefined,
   ...stellarTestConfig,
 };
 

@@ -10,6 +10,7 @@ import { StellarModule } from "./common/stellar/stellar.module";
 import { EventsModule } from "./events/events.module";
 import { HealthModule } from "./health/health.module";
 import { ProducersModule } from "./producers/producers.module";
+import { PurchasesModule } from "./purchases/purchases.module";
 
 @Module({})
 export class AppModule {
@@ -25,6 +26,7 @@ export class AppModule {
         AuthModule,
         ProducersModule,
         EventsModule,
+        PurchasesModule.forRoot(config),
         HealthModule.forRoot(config.healthCheckTimeoutMs),
       ],
     };

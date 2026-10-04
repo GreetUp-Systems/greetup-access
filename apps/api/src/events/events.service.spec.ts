@@ -140,6 +140,7 @@ describe("EventsService", () => {
         ),
       deleteTicketType: jest.fn().mockResolvedValue(undefined),
       deleteDraftEvent: jest.fn().mockResolvedValue(undefined),
+      lockCommittedQuantity: jest.fn().mockResolvedValue(0),
       recordCancellation: jest.fn().mockResolvedValue(undefined),
       reload: jest.fn().mockResolvedValue(current),
     };
@@ -395,6 +396,19 @@ describe("EventsService", () => {
       await expect(
         service.updateTicketType(principal, eventId, ticketType().id, { quantity: 150 }),
       ).resolves.toMatchObject({ quantity: 150 });
+    });
+
+    it("refuses a quantity below the tickets already reserved or sold", async () => {
+      scope.lockCommittedQuantity.mockResolvedValue(40);
+
+      await expect(
+        service.updateTicketType(principal, eventId, ticketType().id, { quantity: 39 }),
+      ).rejects.toMatchObject({ response: { code: "ticket_quantity_below_committed" } });
+      expect(scope.updateTicketType).not.toHaveBeenCalled();
+
+      await expect(
+        service.updateTicketType(principal, eventId, ticketType().id, { quantity: 40 }),
+      ).resolves.toMatchObject({ quantity: 40 });
     });
 
     it("rejects zero price and an unknown ticket type", async () => {
