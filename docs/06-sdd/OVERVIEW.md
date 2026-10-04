@@ -47,10 +47,10 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
 
 **SPEC ativa:** [`SPEC-005 — Compra do ingresso`](./SPEC-005-purchase.md) (bloco 6), com as quatro
-partes (6A a 6D) implementadas e o smoke ponta a ponta pendente. As SPECs 004 e 006 estão concluídas. A SPEC-003 tem a implementação
-automatizada validada e aguarda os smokes reais BlindPay e Stellar/Privy/BlindPay, dos quais o smoke
-ponta a ponta da compra depende. Production usa o mesmo modelo de signer (D-24) e fica liberada só na
-etapa explícita de habilitação de Pubnet/USDC.
+partes (6A a 6D) implementadas e o smoke ponta a ponta pendente. As SPECs 004 e 006 estão
+concluídas. A SPEC-003 tem a implementação automatizada validada e aguarda os smokes reais BlindPay
+e Stellar/Privy/BlindPay, dos quais o smoke ponta a ponta da compra depende. Production usa o mesmo
+modelo de signer (D-24) e fica liberada só na etapa explícita de habilitação de Pubnet/USDC.
 
 O [`ADR-009`](../03-adrs/ADR-009-identity-producer-tenancy.md) fechou identidade, wallet, modelo de
 produtor e a Q-03 em 29/09/2026.
@@ -121,21 +121,21 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 
 ## Status das SPECs
 
-| SPEC                 | Situação                                                                                                                                                                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SPEC-001 foundation  | **Implementada e validada em 29/09/2026** — Foundation v2 concluída                                                                                                                                                                                                 |
-| SPEC-002 auth        | **Implementada e validada em 30/09/2026** — identidade e wallet user-owned concluídas conforme ADR-009                                                                                                                                                              |
+| SPEC                 | Situação                                                                                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| SPEC-001 foundation  | **Implementada e validada em 29/09/2026** — Foundation v2 concluída                                                                                                                                                |
+| SPEC-002 auth        | **Implementada e validada em 30/09/2026** — identidade e wallet user-owned concluídas conforme ADR-009                                                                                                             |
 | SPEC-003 producer    | **3A/3B e implementação automatizada de 3C (v1.4) validados localmente; smokes reais pendentes** — [nova versão](./SPEC-003-producer.md); 3C restrito a development/testnet pelo ADR-010. [Versão anterior arquivada](../_archive/06-sdd/SPEC-003-organizations.md) |
-| SPEC-004 events      | **Implementação automatizada validada localmente em 02/10/2026** — [nova versão](./SPEC-004-events.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-004-events.md)                                                                                          |
-| SPEC-005 purchase    | **6A a 6D implementadas em 04/10/2026; smoke ponta a ponta pendente** — [nova versão](./SPEC-005-purchase.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-005-purchase.md)                                                                                 |
-| SPEC-006 contracts   | **Implementada e implantada na Testnet em 03/10/2026** — [nova versão](./SPEC-006-ticket-contract.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-006-contracts.md)                                                                                        |
-| SPEC-007 mint worker | Reescrever: sai Treasury própria e criação de wallet do caminho crítico — [arquivada](../_archive/06-sdd/SPEC-007-mint-worker.md)                                                                                                                                   |
-| SPEC-008 ticket read | Reescrever sem CQRS — [arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md)                                                                                                                                                                                       |
-| SPEC-009 checkin     | Dividir: online na fase 1, offline na fase 2                                                                                                                                                                                                                        |
-| SPEC-010 finance     | Reescrever: não há escrow — [arquivada](../_archive/06-sdd/SPEC-010-finance.md)                                                                                                                                                                                     |
-| SPEC-011 withdrawal  | Reescrever: saque é payout da BlindPay — [arquivada](../_archive/06-sdd/SPEC-011-withdrawal.md)                                                                                                                                                                     |
-| SPEC-012 dashboard   | Reduzir: polling em vez de WebSocket                                                                                                                                                                                                                                |
-| SPEC-013 pipeline    | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig                                                                                                                                                                                                             |
+| SPEC-004 events      | **Implementação automatizada validada localmente em 02/10/2026** — [nova versão](./SPEC-004-events.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-004-events.md) |
+| SPEC-005 purchase    | **6A a 6D implementadas em 04/10/2026; smoke ponta a ponta pendente** — [nova versão](./SPEC-005-purchase.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-005-purchase.md) |
+| SPEC-006 contracts   | **Implementada e implantada na Testnet em 03/10/2026** — [nova versão](./SPEC-006-ticket-contract.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-006-contracts.md) |
+| SPEC-007 mint worker | Reescrever: sai Treasury própria e criação de wallet do caminho crítico — [arquivada](../_archive/06-sdd/SPEC-007-mint-worker.md)                                                                                  |
+| SPEC-008 ticket read | Reescrever sem CQRS — [arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md)                                                                                                                                      |
+| SPEC-009 checkin     | Dividir: online na fase 1, offline na fase 2                                                                                                                                                                       |
+| SPEC-010 finance     | Reescrever: não há escrow — [arquivada](../_archive/06-sdd/SPEC-010-finance.md)                                                                                                                                    |
+| SPEC-011 withdrawal  | Reescrever: saque é payout da BlindPay — [arquivada](../_archive/06-sdd/SPEC-011-withdrawal.md)                                                                                                                    |
+| SPEC-012 dashboard   | Reduzir: polling em vez de WebSocket                                                                                                                                                                               |
+| SPEC-013 pipeline    | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig                                                                                                                                                            |
 
 As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Identidade e Q-03
 foram fechadas pelo ADR-009; Q-01 e Q-02 foram fechadas em 02/10/2026 pelas D-24 e D-23. Não há
