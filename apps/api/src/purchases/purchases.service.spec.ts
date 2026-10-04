@@ -19,6 +19,7 @@ const user: UserWithWallet = {
   id: "00000000-0000-4000-8000-000000000001",
   privyUserId: principal.privyUserId,
   email: "buyer@example.com",
+  spontaneousLoginAt: null,
   createdAt: now,
   updatedAt: now,
   wallet: {

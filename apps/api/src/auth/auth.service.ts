@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { Prisma } from "@access/database";
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -20,6 +21,9 @@ import { type AccountView } from "../users/users.types";
 import { UsersRepository, type UserWithWallet } from "../users/users.repository";
 import { type AuthenticatedPrincipal } from "./auth.types";
 
+/** Where the OTP happened: a spontaneous login or inside a checkout (D-23). */
+export type BootstrapOrigin = "login" | "checkout";
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -29,7 +33,8 @@ export class AuthService {
     @Inject(PRIVY_GATEWAY) private readonly privy: PrivyGateway,
   ) {}
 
-  async bootstrap(principal: AuthenticatedPrincipal): Promise<AccountView> {
+  async bootstrap(principal: AuthenticatedPrincipal, body: unknown = {}): Promise<AccountView> {
+    const origin = this.parseOrigin(body);
     try {
       const identity = await this.privy.getIdentity(principal.privyUserId);
       if (identity.privyUserId !== principal.privyUserId) {
@@ -37,6 +42,9 @@ export class AuthService {
       }
 
       const user = await this.users.upsertIdentity(principal.privyUserId, identity.verifiedEmail);
+      if (origin === "login" && user.spontaneousLoginAt === null) {
+        await this.users.markSpontaneousLogin(user.id);
+      }
 
       if (user.wallet !== null) {
         return this.toView(user);
@@ -92,6 +100,34 @@ export class AuthService {
     }
 
     return this.toView(account);
+  }
+
+  // Without an explicit origin the request is treated as a checkout, which grants nothing.
+  private parseOrigin(body: unknown): BootstrapOrigin {
+    if (body === undefined || body === null) {
+      return "checkout";
+    }
+    if (typeof body !== "object" || Array.isArray(body)) {
+      throw this.invalidBootstrap();
+    }
+    const fields = body as Record<string, unknown>;
+    if (Object.keys(fields).some((key) => key !== "origin")) {
+      throw this.invalidBootstrap();
+    }
+    if (fields.origin === undefined) {
+      return "checkout";
+    }
+    if (fields.origin !== "login" && fields.origin !== "checkout") {
+      throw this.invalidBootstrap();
+    }
+    return fields.origin;
+  }
+
+  private invalidBootstrap(): BadRequestException {
+    return new BadRequestException({
+      code: "invalid_bootstrap",
+      message: "origin must be login or checkout.",
+    });
   }
 
   private assertWalletOwner(wallet: PrivyStellarWallet, privyUserId: string): void {

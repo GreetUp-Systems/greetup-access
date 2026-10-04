@@ -144,6 +144,7 @@ describe("events integration", () => {
     await ownerPrisma.stellarAccountProvisioning.deleteMany();
     await ownerPrisma.blindPayCustomer.deleteMany();
     await ownerPrisma.producerProfile.deleteMany();
+    await ownerPrisma.walletActivation.deleteMany();
     await ownerPrisma.walletAccount.deleteMany();
     await ownerPrisma.user.deleteMany();
   }

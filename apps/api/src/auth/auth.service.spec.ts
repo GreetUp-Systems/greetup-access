@@ -16,6 +16,7 @@ function user(wallet: WalletAccount | null): UserWithWallet {
     id: "3a7cd71d-5104-4697-8729-b5c977864209",
     privyUserId: principal.privyUserId,
     email: "verified@example.com",
+    spontaneousLoginAt: null,
     createdAt: now,
     updatedAt: now,
     wallet,
@@ -35,7 +36,10 @@ function wallet(): WalletAccount {
 
 describe("AuthService", () => {
   let users: jest.Mocked<
-    Pick<UsersRepository, "upsertIdentity" | "findByPrivyUserId" | "attachWallet">
+    Pick<
+      UsersRepository,
+      "upsertIdentity" | "findByPrivyUserId" | "attachWallet" | "markSpontaneousLogin"
+    >
   >;
   let privy: jest.Mocked<PrivyGateway>;
   let service: AuthService;
@@ -45,6 +49,7 @@ describe("AuthService", () => {
       upsertIdentity: jest.fn(),
       findByPrivyUserId: jest.fn(),
       attachWallet: jest.fn(),
+      markSpontaneousLogin: jest.fn().mockResolvedValue(undefined),
     };
     privy = {
       verifyAccessToken: jest.fn(),
@@ -84,6 +89,44 @@ describe("AuthService", () => {
       principal.privyUserId,
       expect.stringMatching(/^access-stellar-[a-f0-9]{40}$/),
     );
+  });
+
+  it.each([
+    [{ origin: "login" }, true],
+    [{ origin: "checkout" }, false],
+    [{}, false],
+    [undefined, false],
+  ])("records a spontaneous login only for origin login (%p)", async (body, marked) => {
+    privy.getIdentity.mockResolvedValue({
+      privyUserId: principal.privyUserId,
+      verifiedEmail: "verified@example.com",
+    });
+    users.upsertIdentity.mockResolvedValue(user(wallet()));
+
+    await service.bootstrap(principal, body);
+
+    if (marked) {
+      expect(users.markSpontaneousLogin).toHaveBeenCalledWith(user(null).id);
+    } else {
+      expect(users.markSpontaneousLogin).not.toHaveBeenCalled();
+    }
+  });
+
+  it("keeps the first spontaneous login and rejects an unknown origin", async () => {
+    privy.getIdentity.mockResolvedValue({
+      privyUserId: principal.privyUserId,
+      verifiedEmail: "verified@example.com",
+    });
+    users.upsertIdentity.mockResolvedValue({ ...user(wallet()), spontaneousLoginAt: now });
+
+    await service.bootstrap(principal, { origin: "login" });
+    expect(users.markSpontaneousLogin).not.toHaveBeenCalled();
+
+    for (const body of [{ origin: "admin" }, { origin: "login", extra: 1 }, "login"]) {
+      await expect(service.bootstrap(principal, body)).rejects.toMatchObject({
+        response: { code: "invalid_bootstrap" },
+      });
+    }
   });
 
   it("reuses the persisted wallet without another Privy wallet lookup", async () => {

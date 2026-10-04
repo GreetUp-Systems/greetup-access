@@ -3,6 +3,7 @@ import { PrismaModule } from "@access/database";
 import { RedisModule } from "@access/redis";
 import { DynamicModule, Module } from "@nestjs/common";
 
+import { AccountsModule } from "./accounts/accounts.module";
 import { AuthModule } from "./auth/auth.module";
 import { BlindPayModule } from "./common/blindpay/blindpay.module";
 import { PrivyModule } from "./common/privy/privy.module";
@@ -24,6 +25,7 @@ export class AppModule {
         PrivyModule.forRoot(config),
         StellarModule.forRoot(config),
         AuthModule,
+        AccountsModule,
         ProducersModule,
         EventsModule,
         PurchasesModule.forRoot(config),

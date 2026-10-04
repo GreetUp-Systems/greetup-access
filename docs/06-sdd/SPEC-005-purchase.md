@@ -1,10 +1,10 @@
 # SPEC-005 — Compra do ingresso
 
-> **Status:** 6A, 6B e 6C implementadas; 6D pendente
+> **Status:** 6A a 6D implementadas; smoke ponta a ponta pendente
 >
-> **Versão:** 1.3
+> **Versão:** 1.4
 >
-> **Atualizada em:** 03/10/2026
+> **Atualizada em:** 04/10/2026
 >
 > **Aprovada em:** 03/10/2026
 >
@@ -351,7 +351,8 @@ transação.
 ## 12. Ativação da conta do comprador (6D)
 
 - `POST /api/auth/bootstrap` aceita `{ "origin": "login" | "checkout" }`; `login` registra que o
-  usuário entrou por vontade própria (D-23).
+  usuário entrou por vontade própria (D-23). Sem `origin`, vale `checkout`, o lado que não
+  patrocina; qualquer outro valor responde `400 invalid_bootstrap`.
 - `POST /api/me/stellar/activate`, autenticado e repetível, ativa a conta do usuário com reserva
   patrocinada (`beginSponsoringFutureReserves`, `createAccount`, `endSponsoringFutureReserves`), com
   a assinatura da wallet via Privy usando o JWT do próprio usuário e a da plataforma localmente.
@@ -363,7 +364,12 @@ transação.
 - Produtor continua no fluxo da SPEC-003, que já trata conta ativada no login.
 
 O estado da ativação fica em `wallet_activations` (wallet única, status, hash e código de falha),
-com a mesma reconciliação on-chain da SPEC-003.
+com a mesma reconciliação on-chain da SPEC-003. A resposta é `{ status, transactionHash }`, com
+`status` em `signing`, `submitted` ou `active`; uma ativação em andamento não gera segunda transação,
+e resultado incerto fica `submitted` até a próxima chamada reconciliar pelo hash.
+
+Sem smoke real nesta parte: a assinatura exige o JWT de um usuário Privy logado, o que entra no smoke
+ponta a ponta.
 
 ## 13. Banco, roles e RLS
 
@@ -418,7 +424,7 @@ signer Stellar (mesmas variáveis e validação fail-closed da SPEC-003) e o ID 
 - idempotência do `POST` por chave;
 - `OutboxRelay`: republicação inofensiva e retry;
 - `MintTicketJob`: compra já emitida, ingresso já emitido, capacidade divergente, resultado incerto;
-- elegibilidade da ativação.
+- elegibilidade da ativação, origem do bootstrap, ativação em andamento e falha de submissão.
 
 ### Integração (PostgreSQL e Redis reais, providers fakes)
 
@@ -430,7 +436,9 @@ signer Stellar (mesmas variáveis e validação fail-closed da SPEC-003) e o ID 
 - relay entrega o job uma vez mesmo sob dois relays concorrentes;
 - worker emite, grava `ticket.issued` e leva a compra a `ticket_issued`; repetido, não duplica;
 - comprador A não lê compra de B; produtor lê só vendas dos próprios eventos;
-- roles `access_worker` e de webhook acessam só o concedido.
+- roles `access_worker` e de webhook acessam só o concedido;
+- login espontâneo ativa a conta uma única vez; checkout sem compra paga recebe `409` e passa a ser
+  elegível com compra emitida; `wallet_activations` isolada por usuário.
 
 ### Smoke (Testnet e BlindPay Development)
 
@@ -443,9 +451,9 @@ confirmação de que a quote Pix sem `payer_rules` é aceita, leitura de `sender
 - [x] 6A: pedido, reserva, quote e payin com testes de concorrência.
 - [x] 6B: webhooks de payin, Outbox e `OutboxRelay`, idempotentes.
 - [x] 6C: `MintTicketWorker` emite na Testnet, idempotente, com capacidade sincronizada.
-- [ ] 6D: origem do login e ativação da conta do comprador.
-- [ ] Nenhuma venda acima do limite em nenhum teste de concorrência.
-- [ ] Build, lint, typecheck, unitários e integração passam.
+- [x] 6D: origem do login e ativação da conta do comprador.
+- [x] Nenhuma venda acima do limite em nenhum teste de concorrência.
+- [x] Build, lint, typecheck, unitários e integração passam.
 - [ ] Smoke ponta a ponta executado.
 
 ## 17. Fora do escopo
