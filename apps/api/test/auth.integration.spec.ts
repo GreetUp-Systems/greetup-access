@@ -16,6 +16,7 @@ import {
   type VerifiedPrivyPrincipal,
 } from "../src/common/privy/privy.types";
 import { stellarTestConfig } from "./test-stellar-config";
+import { ticketsTestConfig } from "./test-tickets-config";
 
 const baseConfig: ApiConfig = {
   nodeEnv: "test",
@@ -38,6 +39,7 @@ const baseConfig: ApiConfig = {
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
   blindPayPartnerFeeId: undefined,
   ...stellarTestConfig,
+  ...ticketsTestConfig,
 };
 
 const testUserId = "did:privy:test-user";

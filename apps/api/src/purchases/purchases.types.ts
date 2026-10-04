@@ -34,3 +34,15 @@ export interface PurchaseCheckoutConfig {
 }
 
 export const PURCHASE_CHECKOUT_CONFIG = Symbol("PURCHASE_CHECKOUT_CONFIG");
+
+/** What the waiting screen shows; the texts belong to the frontend (SPEC-008 §7). */
+export type PurchaseStage =
+  "order_placed" | "awaiting_payment" | "payment_confirmed" | "ticket_issued" | "not_completed";
+
+export interface PurchaseStreamTiming {
+  pollMs: number;
+  heartbeatMs: number;
+  timeoutMs: number;
+}
+
+export const PURCHASE_STREAM_TIMING = Symbol("PURCHASE_STREAM_TIMING");

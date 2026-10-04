@@ -36,6 +36,7 @@ import {
   type StellarTransactionStatus,
 } from "../src/common/stellar/stellar.types";
 import { stellarTestConfig } from "./test-stellar-config";
+import { ticketsTestConfig } from "./test-tickets-config";
 
 const ownerDatabaseUrl = "postgresql://test:test@localhost:5433/access_test";
 const runtimeDatabaseUrl = "postgresql://access_runtime:test_runtime@localhost:5433/access_test";
@@ -62,6 +63,7 @@ const baseConfig: ApiConfig = {
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
   blindPayPartnerFeeId: undefined,
   ...stellarTestConfig,
+  ...ticketsTestConfig,
 };
 
 const users = {
