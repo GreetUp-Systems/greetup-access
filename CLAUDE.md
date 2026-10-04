@@ -210,6 +210,11 @@ pnpm exec ctg upgrade ticket --network testnet --source <identidade>
 # Banco de dados
 pnpm db:generate                  # gera Prisma Client após mudança de schema
 pnpm db:migrate                   # aplica migrations
+
+# Frontend e design (docs/design/README.md)
+pnpm --filter @access/ui tokens   # gera tokens.css a partir de packages/ui/tokens/figma-tokens.json
+pnpm --filter @access/web dev     # app em http://localhost:3000 (catálogo em /dev/catalog)
+pnpm --filter @access/web capture dev/catalog catalog   # capturas em 360 e 1440 (rota sem a barra inicial)
 ```
 
 ---
@@ -240,6 +245,7 @@ docs/
 │   ├── MVP-REVISADO.md                 ← fonte de verdade da arquitetura
 │   ├── OVERVIEW.md
 │   └── SPEC-*.md
+├── design/                             ← processo de design, mapa Figma ↔ código
 └── _archive/                           ← documentação superada, só histórico
 
 apps/
@@ -251,7 +257,49 @@ packages/
 ├── contracts/   Rust + Soroban — TicketContract (extensão do NFT OpenZeppelin, D-03)
 ├── database/    Prisma schema + migrations
 ├── shared/      Tipos TypeScript compartilhados
-└── config/      ESLint, TSConfig base
+├── ui/          Design System: tokens gerados do Figma e componentes React
+└── config/      Configuração de ambiente validada
 ```
 
 Quando em dúvida sobre onde algo deveria viver, verifique a estrutura de arquivos exata definida na SPEC correspondente antes de decidir por conta própria.
+
+---
+
+## 13. Frontend e design
+
+O design mora no Figma e é decidido aqui, junto com as SPECs. Detalhes em
+[`docs/design/README.md`](docs/design/README.md).
+
+- **Fontes:** Design System e telas em `figma.com/design/WYqT9b0lxW4QhWmjuoPblV`; fluxos, regras por
+  etapa e perguntas em aberto no FigJam `figma.com/board/2lbuNUP0m7qulZGR9cVALm`.
+- **Ordem de leitura antes de uma tela:** `MVP-REVISADO.md` → SPEC de front do fluxo →
+  [`docs/design/component-map.md`](docs/design/component-map.md) → o nó do Figma, **relido na hora**.
+  O Figma evolui em paralelo; leitura antiga não vale.
+- **Pare e pergunte** se o design contradiz a SPEC ou uma regra de negócio.
+- **Faltou no Figma (tela, estado, componente, token): resolve no Figma.** Avise o Matheus, ou crie
+  seguindo o padrão do arquivo. Nunca invente no código.
+- **Nenhum valor solto:** cor, espaço, raio, tamanho, tipografia e efeito vêm dos tokens gerados
+  (`packages/ui`). O lint barra hex, `rgb()` e `px` fora do arquivo gerado.
+- **Componentes em inglês**, ligados ao nome do Figma pelo mapa. Variantes viram props tipadas;
+  Hover, Foco e Pressionado são estados de CSS. Componente novo entra no mapa no mesmo PR.
+- **Conferência visual obrigatória:** implementar, capturar em 360 e 1440, comparar lado a lado com a
+  captura do Figma e registrar no PR o que foi comparado (nós, larguras, resultado). Divergência é
+  corrigida antes do PR.
+- **Uso do Figma pelo MCP:** ler por nó ou tela (o plano tem limite de chamadas); estrutura de
+  páginas e variáveis só por script de leitura (`use_figma`); o código do `get_design_context` é
+  referência, adaptado a CSS Modules e tokens.
+- **Pronto de front:** além da seção 11, tokens em vez de valores, mapa atualizado, textos do design
+  ou da SPEC, estados de foco e desabilitado acessíveis, comparação 360/1440 registrada no PR.
+
+---
+
+## 14. Como trabalhamos
+
+- **Conversar antes de executar.** Decisões abertas vão juntas numa mensagem só, cada uma com
+  recomendação e trade-off. Não decidir sozinho o que é do Matheus.
+- **Simplicidade.** Não adicionar camada, dependência ou mitigação que o problema não pede. Nomear
+  um risco não é licença para desenhar a solução dele.
+- **Aprovada a direção, a execução é completa.** Varrer tudo o que a mudança toca (testes, docs,
+  mapa, OVERVIEW) sem devolver pendências como "escolha sua".
+- **Evidência antes de afirmar.** Rodar, medir, capturar; reportar o que de fato aconteceu, inclusive
+  falha.

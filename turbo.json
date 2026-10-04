@@ -14,7 +14,7 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "test/**", "jest.config.*", "../../jest.preset.cjs"],
+      "inputs": ["src/**", "test/**", "tokens/**", "jest.config.*", "../../jest.preset.cjs"],
       "outputs": []
     },
     "test:integration": {
@@ -22,7 +22,16 @@
       "dependsOn": ["^build"]
     },
     "lint": {
-      "inputs": ["src/**", "test/**", "*.ts", "../../eslint.config.mjs"],
+      "inputs": [
+        "src/**",
+        "test/**",
+        "app/**",
+        "tokens/**",
+        "scripts/**",
+        "*.ts",
+        "../../eslint.config.mjs",
+        "../../stylelint.config.mjs"
+      ],
       "outputs": []
     },
     "format": {
@@ -31,7 +40,7 @@
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "tsconfig*.json"],
+      "inputs": ["src/**", "app/**", "tokens/**", "tsconfig*.json"],
       "outputs": []
     },
     "db:generate": {
@@ -45,10 +54,7 @@
       "cache": false
     }
   },
-  "globalDependencies": [
-    ".env",
-    "tsconfig.json"
-  ],
+  "globalDependencies": [".env", "tsconfig.json"],
   "globalEnv": [
     "NODE_ENV",
     "API_PORT",

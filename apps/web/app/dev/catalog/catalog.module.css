@@ -1,0 +1,29 @@
+.page {
+  display: grid;
+  gap: var(--space-12);
+  min-height: 100vh;
+  padding: var(--space-10);
+  background: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.title {
+  margin: 0;
+  font: var(--text-label-m);
+  letter-spacing: var(--text-label-m-tracking);
+  text-transform: var(--text-label-m-case);
+  color: var(--color-text-secondary);
+}
+
+/* The Figma page lays each set out as 3 sizes (columns) by 6 states (rows). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: var(--space-8) var(--space-16);
+  place-items: center;
+}

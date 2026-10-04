@@ -1,0 +1,181 @@
+/*
+ * Figma: page "Botão" (Botão/Primário 29:120, Secundário 29:238, Fantasma 29:356,
+ * Destrutivo 29:474, Inverso 130:312). Every value is a token; per-variant colors are set as
+ * local custom properties and the states swap them.
+ * [data-preview-state] only exists for the dev catalog, to show hover, focus and pressed.
+ */
+
+.button {
+  --button-bg: transparent;
+  --button-bg-hover: transparent;
+  --button-border: transparent;
+  --button-text: var(--color-text-primary);
+  --button-ring: var(--color-border-accent);
+  --button-opacity-hover: 1;
+
+  position: relative;
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: var(--stroke-default) solid var(--button-border);
+  border-radius: var(--radius-full);
+  background: var(--button-bg);
+  color: var(--button-text);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Sizes: S 36 and M 44 use UI/Button M with 16 icons; L 52 uses UI/Button L with 20 icons. */
+.s {
+  --button-icon-size: var(--size-icon-sm);
+
+  height: var(--size-control-sm);
+  padding-inline: var(--space-3);
+  font: var(--text-ui-button-m);
+  letter-spacing: var(--text-ui-button-m-tracking);
+}
+
+.m {
+  --button-icon-size: var(--size-icon-sm);
+
+  height: var(--size-control-md);
+  padding-inline: var(--space-4);
+  font: var(--text-ui-button-m);
+  letter-spacing: var(--text-ui-button-m-tracking);
+}
+
+.l {
+  --button-icon-size: var(--size-icon-md);
+
+  height: var(--size-control-lg);
+  padding-inline: var(--space-6);
+  font: var(--text-ui-button-l);
+  letter-spacing: var(--text-ui-button-l-tracking);
+}
+
+/* Variants */
+.primary {
+  --button-bg: var(--color-bg-accent);
+  --button-bg-hover: var(--color-bg-accent-hover);
+  --button-text: var(--color-text-on-accent);
+}
+
+.secondary {
+  --button-bg: var(--color-bg-surface);
+  --button-bg-hover: var(--color-bg-subtle);
+  --button-border: var(--color-border-strong);
+  --button-text: var(--color-text-primary);
+}
+
+.ghost {
+  --button-bg-hover: var(--color-bg-subtle);
+  --button-text: var(--color-text-primary);
+}
+
+.destructive {
+  --button-bg: var(--color-bg-danger-subtle);
+  --button-bg-hover: var(--color-bg-danger-subtle-hover);
+  --button-border: var(--color-border-danger-subtle);
+  --button-text: var(--color-text-danger);
+  --button-ring: var(--color-border-danger);
+}
+
+.inverse {
+  --button-bg: var(--color-bg-inverse);
+  --button-bg-hover: var(--color-bg-inverse);
+  --button-text: var(--color-text-inverse);
+  --button-opacity-hover: 0.88;
+}
+
+/* Hover only where a pointer hovers, so touch never sticks in the hover color. */
+@media (hover: hover) {
+  .button:hover:not(:disabled, [aria-busy="true"]) {
+    background: var(--button-bg-hover);
+    opacity: var(--button-opacity-hover);
+  }
+}
+
+.button[data-preview-state="hover"] {
+  background: var(--button-bg-hover);
+  opacity: var(--button-opacity-hover);
+}
+
+/* Pressed: 70% opacity, for touch. The ghost also takes its hover fill. */
+.button:active:not(:disabled, [aria-busy="true"]),
+.button[data-preview-state="pressed"] {
+  opacity: 0.7;
+}
+
+.ghost:active:not(:disabled, [aria-busy="true"]),
+.ghost[data-preview-state="pressed"] {
+  background: var(--button-bg-hover);
+}
+
+/* Focus: a 2 px ring 2 px away, in the action color; the inner border disappears. */
+.button:focus-visible,
+.button[data-preview-state="focus"] {
+  border-color: transparent;
+  outline: var(--stroke-focus) solid var(--button-ring);
+  outline-offset: var(--stroke-focus);
+}
+
+.button:disabled {
+  --button-text: var(--color-text-tertiary);
+
+  cursor: not-allowed;
+}
+
+.primary:disabled,
+.destructive:disabled,
+.inverse:disabled {
+  --button-bg: var(--color-bg-subtle);
+}
+
+.secondary:disabled,
+.destructive:disabled {
+  --button-border: var(--color-border-subtle);
+}
+
+.inverse:disabled {
+  --button-border: transparent;
+}
+
+.button[aria-busy="true"] {
+  cursor: progress;
+}
+
+.label {
+  display: inline-block;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  width: var(--button-icon-size);
+  height: var(--button-icon-size);
+}
+
+.icon > svg {
+  width: 100%;
+  height: 100%;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
