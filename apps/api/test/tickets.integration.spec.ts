@@ -90,6 +90,7 @@ describe("buyer tickets integration", () => {
   });
 
   async function cleanDatabase(): Promise<void> {
+    await ownerPrisma.emailNotification.deleteMany();
     await ownerPrisma.walletActivation.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
     await ownerPrisma.ticket.deleteMany();

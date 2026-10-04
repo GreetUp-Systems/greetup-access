@@ -55,6 +55,7 @@ describe("MintTicketWorker integration", () => {
   });
 
   async function cleanDatabase(): Promise<void> {
+    await ownerPrisma.emailNotification.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
     await ownerPrisma.ticket.deleteMany();
     await ownerPrisma.purchase.deleteMany();
@@ -214,6 +215,8 @@ describe("MintTicketWorker integration", () => {
     await expect(
       workerPrisma.ticket.updateMany({ where: { purchaseId }, data: { tokenId: 99 } }),
     ).resolves.toEqual({ count: 0 });
-    await expect(workerPrisma.user.count()).rejects.toThrow(/permission denied/);
+    await expect(workerPrisma.user.findFirst({ select: { privyUserId: true } })).rejects.toThrow(
+      /permission denied/,
+    );
   });
 });

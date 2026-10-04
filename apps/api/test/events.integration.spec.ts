@@ -138,6 +138,7 @@ describe("events integration", () => {
   });
 
   async function cleanDatabase(): Promise<void> {
+    await ownerPrisma.emailNotification.deleteMany();
     await ownerPrisma.outboxEvent.deleteMany();
     await ownerPrisma.ticket.deleteMany();
     await ownerPrisma.purchase.deleteMany();

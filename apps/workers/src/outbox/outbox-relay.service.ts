@@ -1,13 +1,8 @@
 import { PrismaService } from "@access/database";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 
-import {
-  MINT_TICKET_JOB,
-  type MintTicketJobData,
-  QUEUE_PUBLISHER,
-  type QueuePublisher,
-  TICKETS_QUEUE,
-} from "../queues/queues";
+import { QUEUE_PUBLISHER, type QueuePublisher } from "../queues/queues";
+import { OUTBOX_ROUTES, type OutboxRoutes } from "./outbox-routes";
 
 interface OutboxRow {
   id: string;
@@ -15,28 +10,6 @@ interface OutboxRow {
   payload: unknown;
   attempts: number;
 }
-
-interface Route {
-  queue: string;
-  job: string;
-  data(eventId: string, payload: unknown): object | undefined;
-}
-
-// Only events with a consumer are routed; the others stay pending until one exists (SPEC-005 §10).
-const routes: Record<string, Route> = {
-  "payment.confirmed": {
-    queue: TICKETS_QUEUE,
-    job: MINT_TICKET_JOB,
-    data: (outboxEventId, payload): MintTicketJobData | undefined => {
-      const purchaseId =
-        typeof payload === "object" && payload !== null
-          ? (payload as Record<string, unknown>).purchaseId
-          : undefined;
-      return typeof purchaseId === "string" ? { purchaseId, outboxEventId } : undefined;
-    },
-  },
-};
-const routedEventTypes = Object.keys(routes);
 
 const batchSize = 50;
 const maxBackoffMs = 5 * 60 * 1_000;
@@ -48,6 +21,7 @@ export class OutboxRelayService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(QUEUE_PUBLISHER) private readonly publisher: QueuePublisher,
+    @Inject(OUTBOX_ROUTES) private readonly routes: OutboxRoutes,
   ) {}
 
   /**
@@ -62,14 +36,14 @@ export class OutboxRelayService {
           FROM "outbox_events"
           WHERE "status" = 'pending'
             AND "available_at" <= (now() AT TIME ZONE 'UTC')
-            AND "event_type" = ANY(${routedEventTypes})
+            AND "event_type" = ANY(${Object.keys(this.routes)})
           ORDER BY "created_at"
           LIMIT ${batchSize}
           FOR UPDATE SKIP LOCKED
         `;
 
         for (const event of events) {
-          const route = routes[event.event_type];
+          const route = this.routes[event.event_type];
           const data = route?.data(event.id, event.payload);
           if (route === undefined || data === undefined) {
             await transaction.outboxEvent.update({
