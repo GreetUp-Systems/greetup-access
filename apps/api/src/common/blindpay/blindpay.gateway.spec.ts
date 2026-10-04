@@ -13,45 +13,78 @@ describe("BlindPayHttpGateway", () => {
     jest.restoreAllMocks();
   });
 
-  it("returns the initial KYC status from customer creation", async () => {
-    jest.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ id: "re_test", kyc_status: "approved" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+  function json(body: unknown, status = 200): Response {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  it("accepts the customer creation response that carries only ids", async () => {
+    jest.spyOn(global, "fetch").mockResolvedValue(json({ id: "re_test", customer_id: "re_test" }));
 
     await expect(
       gateway.createCustomer({ type: "individual" }, "idempotency-key"),
-    ).resolves.toEqual({
-      id: "re_test",
-      kycStatus: "approved",
+    ).resolves.toEqual({ id: "re_test" });
+  });
+
+  it("reads the customer KYC status and rejects an unknown one as uncertain", async () => {
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(json({ id: "re_test", kyc_status: "approved" }))
+      .mockResolvedValueOnce(json({ id: "re_test", kyc_status: "unknown" }));
+
+    await expect(gateway.getCustomerKycStatus("re_test")).resolves.toBe("approved");
+    expect(fetchMock.mock.calls[0]![0]).toBe(
+      "https://api.blindpay.com/v1/instances/in_test/customers/re_test",
+    );
+    await expect(gateway.getCustomerKycStatus("re_test")).rejects.toMatchObject({
+      operation: "get_customer_invalid_response",
+      retryable: true,
     });
   });
 
-  it("rejects an unknown initial KYC status", async () => {
-    jest.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ id: "re_test", kyc_status: "unknown" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+  it("treats an unexpected success response as an uncertain outcome", async () => {
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(json({ customer_id: "re_test" }))
+      .mockResolvedValueOnce(new Response("<html>ok</html>", { status: 200 }));
 
     await expect(
       gateway.createCustomer({ type: "individual" }, "idempotency-key"),
-    ).rejects.toBeInstanceOf(BlindPayProviderError);
+    ).rejects.toMatchObject({ operation: "create_customer_invalid_response", retryable: true });
+    await expect(
+      gateway.createCustomer({ type: "individual" }, "idempotency-key"),
+    ).rejects.toMatchObject({ operation: "create_customer_invalid_response", retryable: true });
+  });
+
+  it("keeps an explicit rejection final, with or without a JSON body", async () => {
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(json({ success: false, code: "CUSTOMERS_INVALID_TAX_ID" }, 400))
+      .mockResolvedValueOnce(new Response("<html>Bad Request</html>", { status: 400 }));
+
+    await expect(
+      gateway.createCustomer({ type: "individual" }, "idempotency-key"),
+    ).rejects.toMatchObject({
+      operation: "create_customer",
+      retryable: false,
+      statusCode: 400,
+      providerCode: "CUSTOMERS_INVALID_TAX_ID",
+    });
+    await expect(
+      gateway.createCustomer({ type: "individual" }, "idempotency-key"),
+    ).rejects.toMatchObject({ operation: "create_customer", retryable: false, statusCode: 400 });
   });
 
   it("registers a Stellar Testnet wallet by direct address", async () => {
     const address = `G${"A".repeat(55)}`;
-    const fetchMock = jest
-      .spyOn(global, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify({ id: "bw_test", address, network: "stellar_testnet" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "bw_test", address, network: "stellar_testnet" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
     await expect(
       gateway.registerExternalStellarWallet(

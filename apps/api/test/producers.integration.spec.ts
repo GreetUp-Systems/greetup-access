@@ -15,6 +15,7 @@ import {
   BLINDPAY_GATEWAY,
   type BlindPayCreatedCustomer,
   type BlindPayGateway,
+  type BlindPayKycStatusValue,
   BlindPayProviderError,
   type BlindPayRfi,
   type BlindPayRfiAnswers,
@@ -175,7 +176,8 @@ class FakeBlindPayGateway implements BlindPayGateway {
   }> = [];
   openRfi: BlindPayRfi | null = null;
   nextCustomerError: BlindPayProviderError | undefined;
-  nextCustomerKycStatus: BlindPayCreatedCustomer["kycStatus"] = "verifying";
+  nextCustomerKycStatus: BlindPayKycStatusValue = "verifying";
+  nextKycReadError: BlindPayProviderError | undefined;
   private customerSequence = 0;
 
   reset(): void {
@@ -187,6 +189,7 @@ class FakeBlindPayGateway implements BlindPayGateway {
     this.openRfi = null;
     this.nextCustomerError = undefined;
     this.nextCustomerKycStatus = "verifying";
+    this.nextKycReadError = undefined;
     this.customerSequence = 0;
   }
 
@@ -217,7 +220,16 @@ class FakeBlindPayGateway implements BlindPayGateway {
       throw error;
     }
     this.customerSequence += 1;
-    return { id: `re_test_${this.customerSequence}`, kycStatus: this.nextCustomerKycStatus };
+    return { id: `re_test_${this.customerSequence}` };
+  }
+
+  async getCustomerKycStatus(): Promise<BlindPayKycStatusValue> {
+    if (this.nextKycReadError !== undefined) {
+      const error = this.nextKycReadError;
+      this.nextKycReadError = undefined;
+      throw error;
+    }
+    return this.nextCustomerKycStatus;
   }
 
   async getOpenRfi(): Promise<BlindPayRfi | null> {
@@ -858,6 +870,48 @@ describe("producer profile and RLS integration", () => {
       isCurrent: false,
     });
     expect(attempts[1]).toMatchObject({ creationStatus: "CREATED", isCurrent: true });
+  });
+
+  it("keeps a created customer when its status read fails, for the webhook to settle", async () => {
+    await createProducer();
+    blindPay.nextCustomerKycStatus = "approved";
+    blindPay.nextKycReadError = new BlindPayProviderError("get_customer", true, 503);
+
+    const created = await createBlindPayCustomer();
+
+    expect(created.status).toBe(200);
+    expect(created.body).toMatchObject({ customerId: "re_test_1", status: "verifying" });
+    await expect(ownerPrisma.blindPayCustomer.findFirst()).resolves.toMatchObject({
+      externalCustomerId: "re_test_1",
+      creationStatus: "CREATED",
+      kycStatus: "VERIFYING",
+    });
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(0);
+  });
+
+  it("keeps the attempt open when the creation outcome is uncertain and resumes it", async () => {
+    await createProducer();
+    blindPay.nextCustomerError = new BlindPayProviderError(
+      "create_customer_invalid_response",
+      true,
+      200,
+    );
+    const idempotencyKey = randomUUID();
+
+    const uncertain = await createBlindPayCustomer(idempotencyKey);
+    expect(uncertain.status).toBe(503);
+    await expect(ownerPrisma.blindPayCustomer.findFirst()).resolves.toMatchObject({
+      creationStatus: "PENDING",
+      failureCode: null,
+    });
+
+    const resumed = await createBlindPayCustomer(idempotencyKey);
+    expect(resumed.status).toBe(200);
+    expect(blindPay.customerInputs).toHaveLength(2);
+    expect(blindPay.customerInputs[1]?.idempotencyKey).toBe(
+      blindPay.customerInputs[0]?.idempotencyKey,
+    );
+    await expect(ownerPrisma.blindPayCustomer.count()).resolves.toBe(1);
   });
 
   it("validates an open RFI dynamically and forwards only declared answers", async () => {

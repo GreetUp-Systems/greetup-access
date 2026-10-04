@@ -3,9 +3,9 @@
 > **Status:** gates 3A/3B e implementação automatizada de 3C (v1.4) validados localmente; smokes
 > reais BlindPay e Stellar/Privy/BlindPay pendentes
 >
-> **Versão:** 1.4
+> **Versão:** 1.5
 >
-> **Atualizada em:** 02/10/2026
+> **Atualizada em:** 04/10/2026
 >
 > **Aprovada em:** 30/09/2026
 >
@@ -380,8 +380,10 @@ Rota pública quanto ao Privy, mas autenticada pelos headers `svix-id`, `svix-ti
 2. validar assinatura em tempo constante e tolerância de cinco minutos;
 3. deduplicar por `svix-id` e conferir o hash para detectar reuso divergente;
 4. aceitar `customer.new` e `customer.update` nesta SPEC; a criação também persiste o
-   `kyc_status` síncrono devolvido pelo provider, pois em Development o customer pode nascer
-   `approved` sem uma transição posterior;
+   `kyc_status` inicial, pois em Development o customer pode nascer `approved` sem uma transição
+   posterior. Desde 10/2026 a resposta da criação traz só `id` e `customer_id`: o status é lido por
+   `GET /customers/{id}` logo depois; se essa leitura falhar, o customer fica `verifying` e o
+   webhook traz o status real;
 5. localizar o customer somente depois da validação;
 6. atualizar status e, na primeira entrada operacional, gravar Outbox na mesma transação;
 7. responder `2xx` também para entrega válida já processada.
@@ -406,7 +408,8 @@ domínio:
 interface BlindPayGateway {
   createTermsOfServiceUrl(input: CreateTermsInput): Promise<TermsSession>;
   uploadDocument(input: DocumentUpload): Promise<UploadedDocument>;
-  createCustomer(input: CreateCustomerInput, idempotencyKey: string): Promise<BlindPayCustomerView>;
+  createCustomer(input: CreateCustomerInput, idempotencyKey: string): Promise<{ id: string }>;
+  getCustomerKycStatus(customerId: string): Promise<BlindPayKycStatus>;
   getOpenRfi(customerId: string): Promise<BlindPayRfi | null>;
   submitRfi(customerId: string, answers: RfiAnswers, idempotencyKey: string): Promise<void>;
   registerExternalStellarWallet(
@@ -422,6 +425,9 @@ Regras:
 - toda chamada possui timeout e validação estrita da resposta;
 - mutações enviam `Idempotency-Key` estável para a mesma intenção e corpo;
 - `429`, timeout e `5xx` viram erro retryable; `4xx` de regra viram erro de domínio sanitizado;
+- resposta `2xx` fora do contrato é resultado incerto, não rejeição: vira erro retryable, a
+  tentativa não é marcada como falha e a repetição reusa a mesma `Idempotency-Key`, recuperando o
+  recurso que o provider possa ter criado. Só um `4xx` de regra encerra a tentativa;
 - `externalCustomerId` começa com `re_` e wallet externa com `bw_`;
 - network é obrigatoriamente `stellar_testnet` nesta SPEC;
 - wallet externa usa `is_account_abstraction: true` conforme o fluxo da BlindPay para Stellar;

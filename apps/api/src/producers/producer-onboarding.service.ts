@@ -6,6 +6,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
   UnprocessableEntityException,
@@ -54,6 +55,8 @@ const storedKycStatus = {
 
 @Injectable()
 export class ProducerOnboardingService {
+  private readonly logger = new Logger(ProducerOnboardingService.name);
+
   constructor(
     private readonly users: UsersRepository,
     private readonly producers: ProducersRepository,
@@ -191,11 +194,12 @@ export class ProducerOnboardingService {
 
     try {
       const created = await this.blindPay.createCustomer(providerInput, providerKey);
+      const kycStatus = await this.readInitialKycStatus(created.id);
       const stored = await this.onboarding.markCreated(
         user.id,
         attempt.id,
         created.id,
-        storedKycStatus[created.kycStatus],
+        storedKycStatus[kycStatus],
       );
       return this.toCustomerView(stored);
     } catch (error) {
@@ -518,8 +522,33 @@ export class ProducerOnboardingService {
     return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
   }
 
+  /**
+   * The customer already exists at this point, so a failed read must not lose it: the status
+   * falls back to verifying and the customer lifecycle webhook brings the real one.
+   */
+  private async readInitialKycStatus(customerId: string): Promise<BlindPayKycStatusValue> {
+    try {
+      return await this.blindPay.getCustomerKycStatus(customerId);
+    } catch (error) {
+      if (!this.isProviderError(error)) {
+        throw error;
+      }
+      this.logger.warn(`BlindPay customer ${customerId} status read failed (${error.operation}).`);
+      return "verifying";
+    }
+  }
+
+  /** Only an explicit rejection of the request is final; any other failure may have succeeded. */
   private isPermanentProviderError(error: unknown): error is BlindPayProviderError {
-    return this.isProviderError(error) && !error.retryable;
+    return (
+      this.isProviderError(error) &&
+      !error.retryable &&
+      error.statusCode !== undefined &&
+      error.statusCode >= 400 &&
+      error.statusCode < 500 &&
+      error.statusCode !== 401 &&
+      error.statusCode !== 403
+    );
   }
 
   private isProviderError(error: unknown): error is BlindPayProviderError {
