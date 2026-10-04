@@ -1,8 +1,8 @@
 # SPEC-005 — Compra do ingresso
 
-> **Status:** 6A e 6B implementadas; 6C e 6D pendentes
+> **Status:** 6A, 6B e 6C implementadas; 6D pendente
 >
-> **Versão:** 1.2
+> **Versão:** 1.3
 >
 > **Atualizada em:** 03/10/2026
 >
@@ -319,12 +319,34 @@ como falho no BullMQ e gera alerta (D-15).
    `ticket.issued` (`ticket:{id}:issued:v1`) na mesma transação;
 4. com todos emitidos, a compra vai a `ticket_issued`.
 
-Resultado incerto após a submissão é resolvido repetindo o `mint`: o contrato devolve o mesmo token
-para o mesmo `ticket_id`. A conta do comprador não precisa estar ativa (D-23, verificado no smoke da
-SPEC-006).
+Resultado incerto após a submissão é resolvido repetindo o job. Antes de emitir, o worker consulta
+`token_of(ticket_id)`, uma leitura gratuita: se o ingresso já existe on-chain, usa o token sem nova
+transação. Isso importa porque `mint` exige a autorização do dono do contrato, então até o caminho
+idempotente do `mint` seria uma transação paga. A conta do comprador não precisa estar ativa (D-23,
+verificado no smoke da SPEC-006 e de novo no desta parte).
 
-Os bindings TypeScript do contrato são gerados por `ctg generate` e versionados. O ID do contrato
-vem de `STELLAR_TICKET_CONTRACT_ID`; um teste falha se ele divergir do `caatinga.artifacts.json`.
+Erros do contrato encerram o job sem retry (`UnrecoverableError`): não mudam ao repetir e precisam
+de investigação. Falhas de RPC e de rede seguem o retry com backoff. O worker roda com concorrência
+1: todas as transações são assinadas pela mesma conta da plataforma, e submissões em série evitam
+conflito de número de sequência.
+
+### Acesso ao contrato
+
+O worker usa o client do `@stellar/stellar-sdk` orientado por spec (`contract.Client.from`), que lê
+a interface do contrato na rede, com um gateway tipado próprio só para `event`, `set_event_capacity`,
+`token_of` e `mint`. Os bindings TypeScript gerados por `ctg generate` ficam versionados em
+`packages/contracts/bindings/ticket` como referência da interface e para o frontend: o pacote gerado
+é ESM e exporta TypeScript cru, pensado para Vite, e não roda direto no worker NestJS compilado em
+CommonJS. Um teste falha se as assinaturas que o gateway chama divergirem da spec registrada nos
+bindings, e outro se `STELLAR_TICKET_CONTRACT_ID` divergir do `caatinga.artifacts.json` ou do
+marcador dos bindings.
+
+Para o `ctg generate`, o `@stellar/stellar-sdk` está alinhado em 16.0.1 no monorepo (mínimo
+suportado pelo Caatinga).
+
+Smoke na Testnet em 04/10/2026, pelo gateway contra o contrato implantado: evento sem capacidade,
+`set_event_capacity`, mint para conta nunca ativada e repetição resolvida por `token_of` sem
+transação.
 
 ## 12. Ativação da conta do comprador (6D)
 
@@ -420,7 +442,7 @@ confirmação de que a quote Pix sem `payer_rules` é aceita, leitura de `sender
 
 - [x] 6A: pedido, reserva, quote e payin com testes de concorrência.
 - [x] 6B: webhooks de payin, Outbox e `OutboxRelay`, idempotentes.
-- [ ] 6C: `MintTicketWorker` emite na Testnet, idempotente, com capacidade sincronizada.
+- [x] 6C: `MintTicketWorker` emite na Testnet, idempotente, com capacidade sincronizada.
 - [ ] 6D: origem do login e ativação da conta do comprador.
 - [ ] Nenhuma venda acima do limite em nenhum teste de concorrência.
 - [ ] Build, lint, typecheck, unitários e integração passam.

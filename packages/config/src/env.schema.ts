@@ -21,13 +21,6 @@ export const infrastructureEnvironmentSchema = z.object({
     }),
 });
 
-// Worker processes connect with their own restricted role (SPEC-005 §13).
-export const workerEnvironmentSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]),
-  DATABASE_URL_WORKER: z.string().url(),
-  REDIS_URL: infrastructureEnvironmentSchema.shape.REDIS_URL,
-});
-
 const optionalWebhookDatabaseUrl = z.union([z.string().url(), z.literal("")]).optional();
 const optionalWebhookSecret = z.union([z.string().startsWith("whsec_"), z.literal("")]).optional();
 const stellarPublicKey = z.string().regex(/^G[A-Z2-7]{55}$/);
@@ -89,6 +82,36 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
       });
     }
 
+    if (environment.NODE_ENV !== "production" && !environment.STELLAR_SPONSOR_SECRET_KEY) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["STELLAR_SPONSOR_SECRET_KEY"],
+        message: "is required outside production",
+      });
+    }
+  });
+
+// Worker processes connect with their own restricted role and mint as the platform account
+// (SPEC-005 §13–14). The local signer follows the same fail-closed rules as the API (ADR-010).
+export const workerEnvironmentSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]),
+    DATABASE_URL_WORKER: z.string().url(),
+    REDIS_URL: infrastructureEnvironmentSchema.shape.REDIS_URL,
+    STELLAR_NETWORK: z.literal("testnet"),
+    STELLAR_RPC_URL: z.literal("https://soroban-testnet.stellar.org"),
+    STELLAR_SPONSOR_PUBLIC_KEY: stellarPublicKey,
+    STELLAR_SPONSOR_SECRET_KEY: stellarSecretKey.optional(),
+    STELLAR_TICKET_CONTRACT_ID: z.string().regex(/^C[A-Z2-7]{55}$/),
+  })
+  .superRefine((environment, context) => {
+    if (environment.NODE_ENV === "production" && environment.STELLAR_SPONSOR_SECRET_KEY) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["STELLAR_SPONSOR_SECRET_KEY"],
+        message: "is forbidden in production",
+      });
+    }
     if (environment.NODE_ENV !== "production" && !environment.STELLAR_SPONSOR_SECRET_KEY) {
       context.addIssue({
         code: z.ZodIssueCode.custom,

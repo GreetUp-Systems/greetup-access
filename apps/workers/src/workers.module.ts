@@ -4,6 +4,7 @@ import { RedisModule } from "@access/redis";
 import { DynamicModule, Module } from "@nestjs/common";
 
 import { OutboxModule } from "./outbox/outbox.module";
+import { TicketsModule } from "./tickets/tickets.module";
 
 @Module({})
 export class WorkersModule {
@@ -17,6 +18,7 @@ export class WorkersModule {
         }),
         RedisModule.forRoot(config.redisUrl),
         OutboxModule.forRoot(config.redisUrl),
+        TicketsModule.forRoot(config),
       ],
     };
   }
