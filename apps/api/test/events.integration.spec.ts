@@ -41,6 +41,8 @@ const config: ApiConfig = {
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
   blindPayPartnerFeeId: undefined,
+  ticketMinPriceCents: 6_000,
+  purchaseMaxTotalCents: 4_000_000,
   corsOrigins: [],
   ...stellarTestConfig,
   ...ticketsTestConfig,
@@ -459,6 +461,31 @@ describe("events integration", () => {
     expect(invalid.body).toMatchObject({ code: "invalid_event" });
     await api(users.a).get("/api/events/not-a-uuid").expect(400);
     await request(app.getHttpServer()).get("/api/events").expect(401);
+  });
+
+  it("refuses a ticket price below the Pix minimum and accepts the minimum (D-26)", async () => {
+    await createProducer(users.a);
+    const event = await createEvent(users.a);
+
+    const refused = await api(users.a)
+      .post(`/api/events/${event.id}/ticket-types`, {
+        name: "Meia",
+        priceCents: 5_999,
+        quantity: 1,
+      })
+      .expect(422);
+    expect(refused.body).toMatchObject({ code: "ticket_price_below_minimum", minimumCents: 6_000 });
+
+    const accepted = await api(users.a)
+      .post(`/api/events/${event.id}/ticket-types`, {
+        name: "Meia",
+        priceCents: 6_000,
+        quantity: 1,
+      })
+      .expect(201);
+    await api(users.a)
+      .patch(`/api/events/${event.id}/ticket-types/${accepted.body.id}`, { priceCents: 100 })
+      .expect(422);
   });
 
   it("enforces positive capacity, quantity and price in the database", async () => {

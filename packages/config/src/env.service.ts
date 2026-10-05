@@ -51,6 +51,10 @@ export interface ApiConfig extends InfrastructureConfig {
   /** Empty disables CORS (development without the web app). */
   corsOrigins: string[];
   blindPayPartnerFeeId: string | undefined;
+  /** Minimum price of a ticket type in BRL cents; covers the Pix minimum with a margin (D-26). */
+  ticketMinPriceCents: number;
+  /** Ceiling of an order's subtotal in BRL cents; below the Pix maximum with a margin (D-26). */
+  purchaseMaxTotalCents: number;
   stellarNetwork: "testnet";
   stellarRpcUrl: "https://soroban-testnet.stellar.org";
   stellarHorizonUrl: "https://horizon-testnet.stellar.org";
@@ -129,6 +133,8 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
         ]
       : [],
     blindPayPartnerFeeId: parsed.BLINDPAY_PARTNER_FEE_ID || undefined,
+    ticketMinPriceCents: parsed.TICKET_MIN_PRICE_CENTS,
+    purchaseMaxTotalCents: parsed.PURCHASE_MAX_TOTAL_CENTS,
     stellarNetwork: parsed.STELLAR_NETWORK,
     stellarRpcUrl: parsed.STELLAR_RPC_URL,
     stellarHorizonUrl: parsed.STELLAR_HORIZON_URL,

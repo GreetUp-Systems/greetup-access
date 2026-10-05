@@ -1,14 +1,28 @@
-import { Module } from "@nestjs/common";
+import { type ApiConfig } from "@access/config";
+import { DynamicModule, Module } from "@nestjs/common";
 
 import { UsersModule } from "../users/users.module";
 import { EventsController } from "./events.controller";
 import { EventsRepository } from "./events.repository";
 import { EventsService } from "./events.service";
+import { TICKET_PRICING, type TicketPricing } from "./events.types";
 import { PublicEventsController } from "./public-events.controller";
 
-@Module({
-  imports: [UsersModule],
-  controllers: [EventsController, PublicEventsController],
-  providers: [EventsRepository, EventsService],
-})
-export class EventsModule {}
+@Module({})
+export class EventsModule {
+  static forRoot(config: ApiConfig): DynamicModule {
+    return {
+      module: EventsModule,
+      imports: [UsersModule],
+      controllers: [EventsController, PublicEventsController],
+      providers: [
+        EventsRepository,
+        EventsService,
+        {
+          provide: TICKET_PRICING,
+          useValue: { minPriceCents: config.ticketMinPriceCents } satisfies TicketPricing,
+        },
+      ],
+    };
+  }
+}

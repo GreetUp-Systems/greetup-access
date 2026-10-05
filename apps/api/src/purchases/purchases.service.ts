@@ -13,6 +13,7 @@ import {
 
 import { type AuthenticatedPrincipal } from "../auth/auth.types";
 import {
+  BlindPayAmountOutOfRangeError,
   BLINDPAY_GATEWAY,
   type BlindPayGateway,
   type BlindPayPayinQuote,
@@ -51,22 +52,29 @@ const checkoutErrors: Record<CheckoutErrorCode, () => HttpException> = {
     }),
   event_not_on_sale: () =>
     new ConflictException({ code: "event_not_on_sale", message: "The event is not on sale." }),
-  purchase_below_minimum: () =>
-    new UnprocessableEntityException({
-      code: "purchase_below_minimum",
-      message: "A purchase must total at least R$ 10.",
-    }),
-  purchase_above_maximum: () =>
-    new UnprocessableEntityException({
-      code: "purchase_above_maximum",
-      message: "The purchase total is above the allowed maximum.",
-    }),
+  purchase_above_maximum: () => purchaseAboveMaximum(),
   ticket_type_sold_out: () =>
     new ConflictException({
       code: "ticket_type_sold_out",
       message: "There are not enough tickets left of this type.",
     }),
 };
+
+// The Pix range is in dollars at the current rate (D-26): a rate outside the margin of the minimum
+// ticket price or of the order ceiling lands here, and the buyer chooses again.
+function purchaseBelowMinimum(): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    code: "purchase_below_minimum",
+    message: "The order is below the minimum Pix accepts right now.",
+  });
+}
+
+function purchaseAboveMaximum(): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    code: "purchase_above_maximum",
+    message: "The order is above the maximum Pix accepts.",
+  });
+}
 
 function purchaseNotFound(): NotFoundException {
   return new NotFoundException({
@@ -112,6 +120,9 @@ export class PurchasesService {
       throw ticketTypeNotAvailable();
     }
     const destinationWalletId = this.salesDestination(listing);
+    if (listing.unitPriceCents * input.data.quantity > this.config.maxTotalCents) {
+      throw purchaseAboveMaximum();
+    }
 
     const reservation = await this.withCheckoutErrors(() =>
       this.purchases.reserve(userId, input.data.ticketTypeId, input.data.quantity, idempotencyKey),
@@ -217,6 +228,10 @@ export class PurchasesService {
     } catch (error) {
       if (!(error instanceof BlindPayProviderError)) {
         throw error;
+      }
+      if (error instanceof BlindPayAmountOutOfRangeError) {
+        await this.purchases.markFailed(userId, purchase.id, `amount_${error.direction}`);
+        throw error.direction === "below_minimum" ? purchaseBelowMinimum() : purchaseAboveMaximum();
       }
       if (error.retryable) {
         // The purchase stays initiated, so repeating the call resumes it.

@@ -51,6 +51,10 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
     // Browser origins allowed to call the API (SPEC-014): the web app.
     API_CORS_ORIGINS: z.union([z.string().refine(isHttpOriginList), z.literal("")]).optional(),
     BLINDPAY_PARTNER_FEE_ID: z.union([z.string().startsWith("pf_"), z.literal("")]).optional(),
+    // Pix limits are US$ 10 to US$ 10,000 at the current rate (D-26): the minimum ticket price and
+    // the order ceiling keep a margin for the rate, in BRL cents.
+    TICKET_MIN_PRICE_CENTS: z.coerce.number().int().min(1).default(6_000),
+    PURCHASE_MAX_TOTAL_CENTS: z.coerce.number().int().min(1).max(2_147_483_647).default(4_000_000),
     STELLAR_NETWORK: z.literal("testnet"),
     STELLAR_RPC_URL: z.literal("https://soroban-testnet.stellar.org"),
     STELLAR_HORIZON_URL: z.literal("https://horizon-testnet.stellar.org"),

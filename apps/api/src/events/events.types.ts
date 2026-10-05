@@ -1,3 +1,10 @@
+/** Minimum price of a ticket type in BRL cents, covering the Pix minimum with a margin (D-26). */
+export interface TicketPricing {
+  minPriceCents: number;
+}
+
+export const TICKET_PRICING = Symbol("TICKET_PRICING");
+
 export type EventStatusView = "draft" | "published" | "cancelled";
 
 export interface TicketTypeView {

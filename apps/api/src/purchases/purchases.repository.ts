@@ -27,7 +27,7 @@ export const checkoutErrorCodes = [
   "ticket_type_not_found",
   "purchase_idempotency_conflict",
   "event_not_on_sale",
-  "purchase_below_minimum",
+  // Only the column's integer range; the configured ceiling is checked before (D-26).
   "purchase_above_maximum",
   "ticket_type_sold_out",
 ] as const;

@@ -16,6 +16,7 @@ import {
   type BlindPayPayin,
   type BlindPayPayinQuote,
   type BlindPayPayinQuoteInput,
+  BlindPayAmountOutOfRangeError,
   BlindPayProviderError,
 } from "../src/common/blindpay/blindpay.types";
 import {
@@ -52,6 +53,8 @@ const config: ApiConfig = {
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
   blindPayPartnerFeeId: undefined,
+  ticketMinPriceCents: 6_000,
+  purchaseMaxTotalCents: 4_000_000,
   corsOrigins: [],
   ...stellarTestConfig,
   ...ticketsTestConfig,
@@ -484,14 +487,39 @@ describe("purchases integration", () => {
     await buy(users.buyerA, ticketTypeId, 2).expect(201);
   });
 
-  it("refuses drafts, unready producers and orders below R$ 10", async () => {
-    const producerId = await readyProducer();
-    const ticketTypeId = await publishedTicketType(10, 900);
+  it("maps the Pix range to the minimum and maximum codes and releases the reservation", async () => {
+    await readyProducer();
+    const ticketTypeId = await publishedTicketType(1, 6_000);
     await bootstrap(users.buyerA);
 
+    // The rate moved past the margin of the minimum price (D-26): BlindPay refuses the amount.
+    blindPay.nextQuoteError = new BlindPayAmountOutOfRangeError(
+      "create_payin_quote",
+      "below_minimum",
+    );
     await buy(users.buyerA, ticketTypeId, 1)
       .expect(422)
       .expect(({ body }) => expect(body.code).toBe("purchase_below_minimum"));
+    await expect(
+      ownerPrisma.purchase.findFirstOrThrow({ where: { failureCode: "amount_below_minimum" } }),
+    ).resolves.toMatchObject({ status: "PAYMENT_FAILED" });
+
+    // The only ticket was reserved by the refused order and is free again.
+    await buy(users.buyerA, ticketTypeId, 1).expect(201);
+
+    const expensive = await publishedTicketType(10, 500_000);
+    await buy(users.buyerA, expensive, 9)
+      .expect(422)
+      .expect(({ body }) => expect(body.code).toBe("purchase_above_maximum"));
+    await expect(ownerPrisma.purchase.count({ where: { ticketTypeId: expensive } })).resolves.toBe(
+      0,
+    );
+  });
+
+  it("refuses drafts and unready producers", async () => {
+    const producerId = await readyProducer();
+    const ticketTypeId = await publishedTicketType(10);
+    await bootstrap(users.buyerA);
     await buy(users.buyerA, ticketTypeId, 2).expect(201);
 
     const draft = await api(users.producer)
@@ -500,7 +528,7 @@ describe("purchases integration", () => {
     const draftType = await api(users.producer)
       .post(`/api/events/${draft.body.id}/ticket-types`, {
         name: "X",
-        priceCents: 5_000,
+        priceCents: 6_000,
         quantity: 5,
       })
       .expect(201);
