@@ -168,6 +168,7 @@ describe("EventsService", () => {
     service = new EventsService(
       users as unknown as UsersRepository,
       repository as unknown as EventsRepository,
+      { minPriceCents: 6_000 },
     );
     lock(event());
   });
@@ -452,6 +453,37 @@ describe("EventsService", () => {
       await expect(
         service.updateTicketType(principal, eventId, ticketType().id, { quantity: 40 }),
       ).resolves.toMatchObject({ quantity: 40 });
+    });
+
+    it("refuses a price below the minimum on create and on edit, and accepts the minimum", async () => {
+      await expect(
+        service.createTicketType(principal, eventId, {
+          name: "Meia",
+          priceCents: 5_999,
+          quantity: 1,
+        }),
+      ).rejects.toMatchObject({
+        status: 422,
+        response: { code: "ticket_price_below_minimum", minimumCents: 6_000 },
+      });
+      expect(scope.createTicketType).not.toHaveBeenCalled();
+
+      await expect(
+        service.updateTicketType(principal, eventId, ticketType().id, { priceCents: 5_999 }),
+      ).rejects.toMatchObject({ response: { code: "ticket_price_below_minimum" } });
+      expect(scope.updateTicketType).not.toHaveBeenCalled();
+
+      await expect(
+        service.createTicketType(principal, eventId, {
+          name: "Meia",
+          priceCents: 6_000,
+          quantity: 1,
+        }),
+      ).resolves.toBeDefined();
+      // Editing only the quantity of an older ticket type below the minimum is still allowed.
+      await expect(
+        service.updateTicketType(principal, eventId, ticketType().id, { quantity: 150 }),
+      ).resolves.toBeDefined();
     });
 
     it("rejects zero price and an unknown ticket type", async () => {

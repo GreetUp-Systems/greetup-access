@@ -9,6 +9,7 @@ import { PurchasesService } from "./purchases.service";
 import {
   PURCHASE_CHECKOUT_CONFIG,
   PURCHASE_STREAM_TIMING,
+  type PurchaseCheckoutConfig,
   type PurchaseStreamTiming,
 } from "./purchases.types";
 
@@ -34,7 +35,11 @@ export class PurchasesModule {
         {
           provide: PURCHASE_CHECKOUT_CONFIG,
           // BlindPay settles in the configured asset: USDB on Testnet (SPEC-003 §12).
-          useValue: { token: config.stellarAssetCode, partnerFeeId: config.blindPayPartnerFeeId },
+          useValue: {
+            token: config.stellarAssetCode,
+            partnerFeeId: config.blindPayPartnerFeeId,
+            maxTotalCents: config.purchaseMaxTotalCents,
+          } satisfies PurchaseCheckoutConfig,
         },
       ],
     };

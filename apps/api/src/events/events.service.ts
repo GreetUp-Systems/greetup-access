@@ -2,6 +2,7 @@ import { Prisma, ProducerContextNotFoundError } from "@access/database";
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
@@ -33,6 +34,8 @@ import {
   type EventSummaryView,
   type EventView,
   type PublicEventView,
+  TICKET_PRICING,
+  type TicketPricing,
   type TicketTypeView,
 } from "./events.types";
 
@@ -43,6 +46,7 @@ export class EventsService {
   constructor(
     private readonly users: UsersRepository,
     private readonly events: EventsRepository,
+    @Inject(TICKET_PRICING) private readonly pricing: TicketPricing,
   ) {}
 
   async create(principal: AuthenticatedPrincipal, body: unknown): Promise<EventView> {
@@ -207,6 +211,8 @@ export class EventsService {
     const input = this.parse(createTicketTypeSchema, body, "invalid_ticket_type");
     const userId = await this.requireUserId(principal);
     const ticketType = await this.locked(userId, eventId, async (scope) => {
+      // Inside the lookup, so another producer's event answers 404 before any price rule.
+      this.assertPriceAtLeastMinimum(input.priceCents);
       this.assertNotCancelled(scope.event);
       if (scope.event.status === "PUBLISHED") {
         this.assertWithinCapacity(
@@ -235,6 +241,9 @@ export class EventsService {
     const ticketType = await this.locked(userId, eventId, async (scope) => {
       this.assertNotCancelled(scope.event);
       const current = this.requireTicketType(scope, ticketTypeId);
+      if (input.priceCents !== undefined) {
+        this.assertPriceAtLeastMinimum(input.priceCents);
+      }
       if (input.quantity !== undefined) {
         // Reserved and sold tickets are the floor (SPEC-005 §8); the row lock keeps checkout out.
         if (input.quantity < (await scope.lockCommittedQuantity(ticketTypeId))) {
@@ -417,6 +426,17 @@ export class EventsService {
 
   private totalQuantity(event: EventRecord): number {
     return event.ticketTypes.reduce((total, ticketType) => total + ticketType.quantity, 0);
+  }
+
+  // One ticket already clears the Pix minimum, with a margin for the exchange rate (D-26).
+  private assertPriceAtLeastMinimum(priceCents: number): void {
+    if (priceCents < this.pricing.minPriceCents) {
+      throw new UnprocessableEntityException({
+        code: "ticket_price_below_minimum",
+        message: "The ticket price is below the minimum accepted by Pix.",
+        minimumCents: this.pricing.minPriceCents,
+      });
+    }
   }
 
   private startsInPast(): UnprocessableEntityException {

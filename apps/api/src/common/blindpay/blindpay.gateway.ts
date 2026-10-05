@@ -1,4 +1,5 @@
 import {
+  BlindPayAmountOutOfRangeError,
   type BlindPayCreatedCustomer,
   type BlindPayBlockchainWallet,
   type BlindPayGateway,
@@ -252,6 +253,28 @@ export class BlindPayHttpGateway implements BlindPayGateway {
     };
   }
 
+  // "The amount in USD is $2.1. It should be between $10 and $10000" (measured on 05/10/2026).
+  private amountOutOfRange(
+    status: number,
+    payload: unknown,
+  ): "below_minimum" | "above_maximum" | undefined {
+    const message = this.optionalString(payload, "message");
+    const match =
+      status === 400 && message !== undefined
+        ? /^The amount in USD is \$([\d.]+)\. It should be between \$([\d.]+) and \$([\d.]+)$/.exec(
+            message,
+          )
+        : null;
+    if (match === null) {
+      return undefined;
+    }
+    const [amount, minimum, maximum] = match.slice(1).map(Number) as [number, number, number];
+    if (amount < minimum) {
+      return "below_minimum";
+    }
+    return amount > maximum ? "above_maximum" : undefined;
+  }
+
   private async requestJson(
     path: string,
     operation: string,
@@ -283,6 +306,10 @@ export class BlindPayHttpGateway implements BlindPayGateway {
 
     const text = await response.text();
     if (!response.ok) {
+      const outOfRange = this.amountOutOfRange(response.status, this.tryParseJson(text));
+      if (outOfRange !== undefined) {
+        throw new BlindPayAmountOutOfRangeError(operation, outOfRange);
+      }
       const providerCode = this.optionalString(this.tryParseJson(text), "code");
       throw new BlindPayProviderError(
         operation,

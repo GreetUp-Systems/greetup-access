@@ -31,6 +31,8 @@ export interface PurchaseView {
 export interface PurchaseCheckoutConfig {
   token: string;
   partnerFeeId: string | undefined;
+  /** Ceiling of an order's subtotal in BRL cents, below the Pix maximum with a margin (D-26). */
+  maxTotalCents: number;
 }
 
 export const PURCHASE_CHECKOUT_CONFIG = Symbol("PURCHASE_CHECKOUT_CONFIG");

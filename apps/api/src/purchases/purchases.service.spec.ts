@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 
-import { type BlindPayGateway, BlindPayProviderError } from "../common/blindpay/blindpay.types";
+import {
+  BlindPayAmountOutOfRangeError,
+  type BlindPayGateway,
+  BlindPayProviderError,
+} from "../common/blindpay/blindpay.types";
 import { type UserWithWallet, UsersRepository } from "../users/users.repository";
 import {
   CheckoutError,
@@ -135,7 +139,7 @@ describe("PurchasesService", () => {
       users as unknown as UsersRepository,
       repository as unknown as PurchasesRepository,
       blindPay as unknown as BlindPayGateway,
-      { token: "USDB", partnerFeeId: undefined },
+      { token: "USDB", partnerFeeId: undefined, maxTotalCents: 4_000_000 },
     );
   });
 
@@ -275,6 +279,44 @@ describe("PurchasesService", () => {
       purchaseId,
       "create_payin_quote:AMOUNT_BELOW_MINIMUM",
     );
+  });
+
+  it.each([
+    ["below_minimum", "purchase_below_minimum"],
+    ["above_maximum", "purchase_above_maximum"],
+  ] as const)(
+    "turns a Pix amount %s refused by BlindPay into %s and releases the stock",
+    async (direction, code) => {
+      blindPay.createPayinQuote.mockRejectedValue(
+        new BlindPayAmountOutOfRangeError("create_payin_quote", direction),
+      );
+
+      await expect(service.create(principal, body, idempotencyKey)).rejects.toMatchObject({
+        status: 422,
+        response: { code },
+      });
+      expect(repository.markFailed).toHaveBeenCalledWith(
+        user.id,
+        purchaseId,
+        `amount_${direction}`,
+      );
+    },
+  );
+
+  it("refuses an order above the configured ceiling before reserving", async () => {
+    repository.listing.mockResolvedValue({ ...readyListing, unitPriceCents: 500_000 });
+
+    await expect(
+      service.create(principal, { ticketTypeId, quantity: 9 }, idempotencyKey),
+    ).rejects.toMatchObject({ status: 422, response: { code: "purchase_above_maximum" } });
+    expect(repository.reserve).not.toHaveBeenCalled();
+    expect(blindPay.createPayinQuote).not.toHaveBeenCalled();
+
+    // Exactly at the ceiling (8 × R$ 5.000 = R$ 40.000) is accepted.
+    repository.find.mockResolvedValueOnce(purchase()).mockResolvedValueOnce(purchase(quoted));
+    await expect(
+      service.create(principal, { ticketTypeId, quantity: 8 }, idempotencyKey),
+    ).resolves.toBeDefined();
   });
 
   it("refuses a quote that charges the buyer less than the ticket price", async () => {

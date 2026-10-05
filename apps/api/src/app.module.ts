@@ -28,7 +28,7 @@ export class AppModule {
         AuthModule,
         AccountsModule,
         ProducersModule,
-        EventsModule,
+        EventsModule.forRoot(config),
         PurchasesModule.forRoot(config),
         TicketsModule.forRoot(config),
         HealthModule.forRoot(config.healthCheckTimeoutMs),

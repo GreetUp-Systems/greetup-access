@@ -110,6 +110,20 @@ export class BlindPayProviderError extends Error {
   }
 }
 
+/**
+ * A quote whose amount is outside the payment method's range, in dollars at the current rate (Pix:
+ * US$ 10 to US$ 10,000). BlindPay sends no code for it, only the message, so the gateway reads it.
+ */
+export class BlindPayAmountOutOfRangeError extends BlindPayProviderError {
+  constructor(
+    operation: string,
+    readonly direction: "below_minimum" | "above_maximum",
+  ) {
+    super(operation, false, 400, `amount_${direction}`);
+    this.name = "BlindPayAmountOutOfRangeError";
+  }
+}
+
 export const BLINDPAY_GATEWAY = Symbol("BLINDPAY_GATEWAY");
 export const BLINDPAY_WEBHOOK_SECRET = Symbol("BLINDPAY_WEBHOOK_SECRET");
 export const BLINDPAY_ALLOWED_REDIRECT_ORIGINS = Symbol("BLINDPAY_ALLOWED_REDIRECT_ORIGINS");

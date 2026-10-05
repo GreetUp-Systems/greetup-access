@@ -132,6 +132,23 @@ describe("environment configuration", () => {
     ).toEqual([]);
   });
 
+  it("defaults the Pix limits to R$ 60 per ticket and R$ 40 mil per order (D-26)", () => {
+    expect(loadApiConfig(validEnvironment)).toMatchObject({
+      ticketMinPriceCents: 6_000,
+      purchaseMaxTotalCents: 4_000_000,
+    });
+    expect(
+      loadApiConfig({
+        ...validEnvironment,
+        TICKET_MIN_PRICE_CENTS: "6500",
+        PURCHASE_MAX_TOTAL_CENTS: "3000000",
+      }),
+    ).toMatchObject({ ticketMinPriceCents: 6_500, purchaseMaxTotalCents: 3_000_000 });
+    expect(() => loadApiConfig({ ...validEnvironment, TICKET_MIN_PRICE_CENTS: "0" })).toThrow(
+      "TICKET_MIN_PRICE_CENTS",
+    );
+  });
+
   it("requires a ticket QR secret of at least 32 bytes and the ticket contract", () => {
     expect(loadApiConfig(validEnvironment)).toMatchObject({
       ticketQrSecret: validEnvironment.TICKET_QR_SECRET,
@@ -157,6 +174,8 @@ describe("environment configuration", () => {
       stellarAssetCode: "USDB",
       stellarUsdcAssetIssuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
       blindPayPartnerFeeId: undefined,
+      ticketMinPriceCents: 6_000,
+      purchaseMaxTotalCents: 4_000_000,
     });
   });
 

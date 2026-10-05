@@ -1,5 +1,5 @@
 import { BlindPayHttpGateway } from "./blindpay.gateway";
-import { BlindPayProviderError } from "./blindpay.types";
+import { BlindPayAmountOutOfRangeError, BlindPayProviderError } from "./blindpay.types";
 
 const gateway = new BlindPayHttpGateway({
   apiKey: "blindpay-test-key",
@@ -179,6 +179,62 @@ describe("BlindPayHttpGateway", () => {
     expect(JSON.parse(fetchMock.mock.calls[0]![1]!.body as string)).not.toHaveProperty(
       "partner_fee_id",
     );
+  });
+
+  it.each([
+    ["The amount in USD is $2.1. It should be between $10 and $10000", "below_minimum"],
+    ["The amount in USD is $199756.64. It should be between $10 and $10000", "above_maximum"],
+  ])(
+    "reads the Pix range refusal %#, which BlindPay sends without a code",
+    async (message, direction) => {
+      jest
+        .spyOn(global, "fetch")
+        .mockResolvedValue(
+          new Response(JSON.stringify({ success: false, message, errors: [] }), { status: 400 }),
+        );
+
+      const error: unknown = await gateway
+        .createPayinQuote(
+          {
+            blockchainWalletId: "bw_producer",
+            requestAmountCents: 1_000,
+            token: "USDB",
+            partnerFeeId: undefined,
+          },
+          "quote-key",
+        )
+        .catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(BlindPayAmountOutOfRangeError);
+      expect(error).toMatchObject({ direction, retryable: false, operation: "create_payin_quote" });
+    },
+  );
+
+  it("keeps any other 400 as a plain provider rejection", async () => {
+    jest.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          message: "One or more params are not valid",
+          errors: [],
+        }),
+        { status: 400 },
+      ),
+    );
+
+    const error: unknown = await gateway
+      .createPayinQuote(
+        {
+          blockchainWalletId: "bw_producer",
+          requestAmountCents: 6_000,
+          token: "USDB",
+          partnerFeeId: undefined,
+        },
+        "quote-key",
+      )
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(BlindPayProviderError);
+    expect(error).not.toBeInstanceOf(BlindPayAmountOutOfRangeError);
+    expect(error).toMatchObject({ retryable: false, statusCode: 400 });
   });
 
   it("creates a payin and requires a Pix code", async () => {

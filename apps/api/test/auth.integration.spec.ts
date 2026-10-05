@@ -38,6 +38,8 @@ const baseConfig: ApiConfig = {
   blindPayApiTimeoutMs: 500,
   blindPayAllowedRedirectOrigins: ["http://localhost:3000"],
   blindPayPartnerFeeId: undefined,
+  ticketMinPriceCents: 6_000,
+  purchaseMaxTotalCents: 4_000_000,
   corsOrigins: [],
   ...stellarTestConfig,
   ...ticketsTestConfig,
