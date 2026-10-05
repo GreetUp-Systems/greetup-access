@@ -6,7 +6,7 @@ Componente ainda não implementado é feito na primeira tela que precisar dele, 
 
 ## Implementados
 
-### Button · `packages/ui/src/components/Button`
+### Button · `packages/ui/src/components/button.tsx` (shadcn/ui)
 
 | Figma            | Nó        | Código                                |
 | ---------------- | --------- | ------------------------------------- |
@@ -16,20 +16,24 @@ Componente ainda não implementado é feito na primeira tela que precisar dele, 
 | Botão/Destrutivo | `29:474`  | `<Button variant="destructive">`      |
 | Botão/Inverso    | `130:312` | `<Button variant="inverse">`          |
 
-| Propriedade no Figma                | Prop                                                   |
-| ----------------------------------- | ------------------------------------------------------ |
-| Tamanho = S · M · L                 | `size="s" \| "m" \| "l"` (padrão `m`)                  |
-| Rótulo                              | `children`                                             |
-| Ícone esquerdo + troca              | `iconLeft` (ícone `lucide-react`)                      |
-| Ícone direito + troca               | `iconRight`                                            |
-| Estado = Carregando                 | `loading`                                              |
-| Estado = Desabilitado               | `disabled`                                             |
-| Estado = Hover · Foco · Pressionado | estados de CSS (`:hover`, `:focus-visible`, `:active`) |
+| Propriedade no Figma                | Prop                                  |
+| ----------------------------------- | ------------------------------------- |
+| Tamanho = S · M · L                 | `size="s" \| "m" \| "l"` (padrão `m`) |
+| Rótulo                              | `children`                            |
+| Ícone esquerdo + troca              | `iconLeft` (ícone `lucide-react`)     |
+| Ícone direito + troca               | `iconRight`                           |
+| Estado = Carregando                 | `loading`                             |
+| Estado = Desabilitado               | `disabled`                            |
+| Estado = Hover · Foco · Pressionado | `hover:`, `focus-visible:`, `active:` |
 
 Regras do Figma: no máximo um Primário por tela; Inverso substitui o Primário sobre imagem, câmera
 ou vidro, nunca junto dele; Destrutivo sempre com confirmação.
 
-Validado em 04/10/2026: catálogo em 1440 comparado com Primário, Secundário e Destrutivo no Figma.
+Import: `import { Button } from "@access/ui/components/button"`. Com `asChild`, o filho único (um
+link) recebe o visual do botão.
+
+Validado em 04/10/2026, já sobre o shadcn/ui: catálogo em 1440 comparado com Primário, Secundário,
+Fantasma, Destrutivo e Inverso no Figma (todos os estados).
 
 ## Ícones
 

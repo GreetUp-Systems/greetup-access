@@ -10,7 +10,10 @@
     "declaration": false,
     "declarationMap": false,
     "experimentalDecorators": false,
-    "emitDecoratorMetadata": false
+    "emitDecoratorMetadata": false,
+    "paths": {
+      "@access/ui/*": ["./src/*"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "tokens/**/*.ts", "jest.config.ts"]
 }

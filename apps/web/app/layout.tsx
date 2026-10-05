@@ -1,4 +1,4 @@
-import "@access/ui/styles.css";
+import "@access/ui/globals.css";
 
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Unbounded } from "next/font/google";
@@ -23,8 +23,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
+    // Dark only in the MVP: Light exists in the tokens but is not reviewed yet.
     <html
       lang="pt-BR"
+      data-theme="dark"
       className={`${unbounded.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body>{children}</body>

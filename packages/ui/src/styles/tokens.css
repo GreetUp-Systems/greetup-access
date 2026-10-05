@@ -1,10 +1,8 @@
 /* Generated from tokens/figma-tokens.json (Figma file WYqT9b0lxW4QhWmjuoPblV). Do not edit: run
    `pnpm --filter @access/ui tokens` after exporting a new snapshot. */
 
+/* Figma variables that are not utilities by themselves: palette, sizes, strokes, contexts. */
 :root {
-  --font-display: var(--font-unbounded, "Unbounded"), system-ui, sans-serif;
-  --font-sans: var(--font-inter, "Inter"), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono, "JetBrains Mono"), ui-monospace, monospace;
   --palette-brand-midnight: #140b12;
   --palette-brand-magenta: #d24fc6;
   --palette-brand-creme: #fbf7ef;
@@ -59,12 +57,6 @@
   --space-10: 40px;
   --space-12: 48px;
   --space-16: 64px;
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
   --stroke-default: 1px;
   --stroke-focus: 2px;
   --size-touch-min: 44px;
@@ -74,90 +66,32 @@
   --size-icon-sm: 16px;
   --size-icon-md: 20px;
   --size-icon-lg: 24px;
+  --size-icon-glass: 22px;
+  --stroke-indicator: 3px;
+  --size-page-content: 1200px;
+  --size-dialog: 480px;
   --icon-current: var(--color-icon-primary);
-  --text-display-xl: 500 56px/60px var(--font-display);
-  --text-display-xl-tracking: -0.04em;
-  --text-display-xl-case: none;
-  --text-display-l: 500 40px/44px var(--font-display);
-  --text-display-l-tracking: -0.03em;
-  --text-display-l-case: none;
-  --text-heading-h1: 500 32px/36px var(--font-display);
-  --text-heading-h1-tracking: -0.03em;
-  --text-heading-h1-case: none;
-  --text-heading-h2: 500 26px/30px var(--font-display);
-  --text-heading-h2-tracking: -0.03em;
-  --text-heading-h2-case: none;
-  --text-heading-h3: 500 20px/24px var(--font-display);
-  --text-heading-h3-tracking: -0.02em;
-  --text-heading-h3-case: none;
-  --text-heading-h4: 600 18px/24px var(--font-sans);
-  --text-heading-h4-tracking: -0.01em;
-  --text-heading-h4-case: none;
-  --text-numeric-display: 600 36px/40px var(--font-display);
-  --text-numeric-display-tracking: -0.03em;
-  --text-numeric-display-case: none;
-  --text-body-l: 400 16px/24px var(--font-sans);
-  --text-body-l-tracking: 0;
-  --text-body-l-case: none;
-  --text-body-l-strong: 600 16px/24px var(--font-sans);
-  --text-body-l-strong-tracking: 0;
-  --text-body-l-strong-case: none;
-  --text-body-m: 400 14px/20px var(--font-sans);
-  --text-body-m-tracking: 0;
-  --text-body-m-case: none;
-  --text-body-m-strong: 600 14px/20px var(--font-sans);
-  --text-body-m-strong-tracking: 0;
-  --text-body-m-strong-case: none;
-  --text-body-s: 400 12px/16px var(--font-sans);
-  --text-body-s-tracking: 0;
-  --text-body-s-case: none;
-  --text-ui-button-l: 600 16px/24px var(--font-sans);
-  --text-ui-button-l-tracking: 0;
-  --text-ui-button-l-case: none;
-  --text-ui-button-m: 600 14px/20px var(--font-sans);
-  --text-ui-button-m-tracking: 0;
-  --text-ui-button-m-case: none;
-  --text-label-m: 500 12px/16px var(--font-mono);
-  --text-label-m-tracking: 0.14em;
-  --text-label-m-case: uppercase;
-  --text-label-s: 500 11px/16px var(--font-mono);
-  --text-label-s-tracking: 0.1em;
-  --text-label-s-case: uppercase;
-  --text-mono-m: 400 14px/20px var(--font-mono);
-  --text-mono-m-tracking: 0;
-  --text-mono-m-case: none;
-  --text-mono-l: 500 18px/24px var(--font-mono);
-  --text-mono-l-tracking: 0;
-  --text-mono-l-case: none;
-  --text-label-l: 500 16px/20px var(--font-mono);
-  --text-label-l-tracking: 0.14em;
-  --text-label-l-case: uppercase;
-  --text-tab-rotulo: 600 10px/12px var(--font-sans);
-  --text-tab-rotulo-tracking: 0.002em;
-  --text-tab-rotulo-case: none;
-  --text-tab-selo: 600 11px/13px var(--font-sans);
-  --text-tab-selo-tracking: 0;
-  --text-tab-selo-case: none;
-  --text-badge-s: 600 11px/14px var(--font-sans);
-  --text-badge-s-tracking: 0;
-  --text-badge-s-case: none;
-  --text-badge-m: 600 12px/16px var(--font-sans);
-  --text-badge-m-tracking: 0;
-  --text-badge-m-case: none;
-  --text-resultado-titulo: 600 22px/28px var(--font-sans);
-  --text-resultado-titulo-tracking: -0.003em;
-  --text-resultado-titulo-case: none;
-  --effect-glow-accent: 0 0 24px 0 var(--color-effect-glow);
-  --effect-focus-ring: 0 0 0 2px var(--color-bg-canvas), 0 0 0 4px var(--color-effect-focus);
-  --effect-elevation-1: 0 4px 12px -2px #00000029, 0 1px 2px 0 #0000003d;
-  --effect-elevation-2: 0 12px 32px -8px #00000052;
-  --effect-glass-superficie-blur: blur(15px);
-  --effect-glass-superficie: 0 10px 32px -2px var(--color-shadow-glass);
 }
 
-:root,
-[data-theme="dark"] {
-  color-scheme: dark;
+/* The Tailwind theme: Dark colors by default, spacing, radius, fonts and effects. */
+@theme static {
+  --color-*: initial;
+  --font-*: initial;
+  --font-weight-*: initial;
+  --text-*: initial;
+  --tracking-*: initial;
+  --leading-*: initial;
+  --spacing: initial;
+  --spacing-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+  --blur-*: initial;
+  --font-display: var(--font-unbounded, "Unbounded"), system-ui, sans-serif;
+  --font-sans: var(--font-inter, "Inter"), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono, "JetBrains Mono"), ui-monospace, monospace;
   --color-bg-canvas: var(--palette-brand-midnight);
   --color-bg-surface: var(--palette-plum-850);
   --color-bg-subtle: var(--palette-brand-vinho);
@@ -212,6 +146,103 @@
   --color-glass-tint-danger: #f0705a3d;
   --color-glass-tint-warning: #f5b84c38;
   --color-glass-tint-accent: #d24fc63d;
+  --color-bg-overlay: #0a050aa8;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  --spacing-0: var(--space-0);
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-5: var(--space-5);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-10: var(--space-10);
+  --spacing-12: var(--space-12);
+  --spacing-16: var(--space-16);
+  --spacing-touch-min: var(--size-touch-min);
+  --spacing-control-sm: var(--size-control-sm);
+  --spacing-control-md: var(--size-control-md);
+  --spacing-control-lg: var(--size-control-lg);
+  --spacing-icon-sm: var(--size-icon-sm);
+  --spacing-icon-md: var(--size-icon-md);
+  --spacing-icon-lg: var(--size-icon-lg);
+  --spacing-icon-glass: var(--size-icon-glass);
+  --spacing-page-content: var(--size-page-content);
+  --spacing-dialog: var(--size-dialog);
+  --shadow-glow-accent: 0 0 24px 0 var(--color-effect-glow);
+  --shadow-focus-ring: 0 0 0 2px var(--color-bg-canvas), 0 0 0 4px var(--color-effect-focus);
+  --shadow-elevation-1: 0 4px 12px -2px #00000029, 0 1px 2px 0 #0000003d;
+  --shadow-elevation-2: 0 12px 32px -8px #00000052;
+  --blur-glass-superficie: 15px;
+  --shadow-glass-superficie: 0 10px 32px -2px var(--color-shadow-glass);
+}
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] {
+  --color-bg-canvas: var(--palette-brand-midnight);
+  --color-bg-surface: var(--palette-plum-850);
+  --color-bg-subtle: var(--palette-brand-vinho);
+  --color-bg-inverse: var(--palette-brand-creme);
+  --color-bg-accent: var(--palette-brand-magenta);
+  --color-bg-accent-hover: var(--palette-magenta-300);
+  --color-bg-accent-subtle: var(--palette-magenta-900);
+  --color-bg-success-subtle: var(--palette-green-900);
+  --color-bg-warning-subtle: var(--palette-amber-900);
+  --color-bg-danger-subtle: var(--palette-red-900);
+  --color-bg-danger: var(--palette-red-400);
+  --color-text-primary: var(--palette-plum-50);
+  --color-text-secondary: var(--palette-plum-300);
+  --color-text-tertiary: var(--palette-plum-500);
+  --color-text-accent: var(--palette-brand-magenta);
+  --color-text-on-accent: var(--palette-brand-midnight);
+  --color-text-on-danger: var(--palette-brand-midnight);
+  --color-text-inverse: var(--palette-brand-tinta);
+  --color-text-success: var(--palette-green-400);
+  --color-text-warning: var(--palette-amber-400);
+  --color-text-danger: var(--palette-red-400);
+  --color-border-subtle: var(--palette-plum-700);
+  --color-border-strong: var(--palette-plum-550);
+  --color-border-accent: var(--palette-brand-magenta);
+  --color-border-danger: var(--palette-red-400);
+  --color-icon-primary: var(--palette-plum-50);
+  --color-icon-secondary: var(--palette-plum-300);
+  --color-icon-accent: var(--palette-brand-magenta);
+  --color-icon-on-accent: var(--palette-brand-midnight);
+  --color-icon-success: var(--palette-green-400);
+  --color-icon-warning: var(--palette-amber-400);
+  --color-icon-danger: var(--palette-red-400);
+  --color-effect-focus: var(--palette-brand-magenta);
+  --color-effect-glow: var(--palette-brand-magenta);
+  --color-bg-danger-hover: var(--palette-red-300);
+  --color-icon-on-danger: var(--palette-brand-midnight);
+  --color-bg-danger-subtle-hover: var(--palette-red-850);
+  --color-border-danger-subtle: var(--palette-red-750);
+  --color-border-hover: var(--palette-plum-500);
+  --color-bg-glow: var(--palette-magenta-800);
+  --color-bg-success: var(--palette-green-400);
+  --color-bg-warning: var(--palette-amber-400);
+  --color-border-success: var(--palette-green-400);
+  --color-border-warning: var(--palette-amber-400);
+  --color-glass-surface: #2a16269e;
+  --color-glass-lens: #ffffff24;
+  --color-glass-rim: #ffffff33;
+  --color-shadow-glass: #00000073;
+  --color-glass-scrim: #140b12eb;
+  --color-glass-clear: #140b1200;
+  --color-glass-tint-success: #4ade9b38;
+  --color-glass-tint-danger: #f0705a3d;
+  --color-glass-tint-warning: #f5b84c38;
+  --color-glass-tint-accent: #d24fc63d;
+  --color-bg-overlay: #0a050aa8;
 }
 
 [data-theme="light"] {
@@ -270,6 +301,7 @@
   --color-glass-tint-danger: #a8321c24;
   --color-glass-tint-warning: #8f540029;
   --color-glass-tint-accent: #a42a9324;
+  --color-bg-overlay: #140b1266;
 }
 
 @media (prefers-color-scheme: light) {
@@ -329,5 +361,130 @@
     --color-glass-tint-danger: #a8321c24;
     --color-glass-tint-warning: #8f540029;
     --color-glass-tint-accent: #a42a9324;
+    --color-bg-overlay: #140b1266;
   }
+}
+
+/* Figma text styles, one utility each. */
+@utility type-display-xl {
+  font: 500 56px/60px var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+@utility type-display-l {
+  font: 500 40px/44px var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+@utility type-heading-h1 {
+  font: 500 32px/36px var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+@utility type-heading-h2 {
+  font: 500 26px/30px var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+@utility type-heading-h3 {
+  font: 500 20px/24px var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+@utility type-heading-h4 {
+  font: 600 18px/24px var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+@utility type-numeric-display {
+  font: 600 36px/40px var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+@utility type-body-l {
+  font: 400 16px/24px var(--font-sans);
+  letter-spacing: 0;
+}
+
+@utility type-body-l-strong {
+  font: 600 16px/24px var(--font-sans);
+  letter-spacing: 0;
+}
+
+@utility type-body-m {
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0;
+}
+
+@utility type-body-m-strong {
+  font: 600 14px/20px var(--font-sans);
+  letter-spacing: 0;
+}
+
+@utility type-body-s {
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0;
+}
+
+@utility type-ui-button-l {
+  font: 600 16px/24px var(--font-sans);
+  letter-spacing: 0;
+}
+
+@utility type-ui-button-m {
+  font: 600 14px/20px var(--font-sans);
+  letter-spacing: 0;
+}
+
+@utility type-label-m {
+  font: 500 12px/16px var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@utility type-label-s {
+  font: 500 11px/16px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@utility type-mono-m {
+  font: 400 14px/20px var(--font-mono);
+  letter-spacing: 0;
+}
+
+@utility type-mono-l {
+  font: 500 18px/24px var(--font-mono);
+  letter-spacing: 0;
+}
+
+@utility type-label-l {
+  font: 500 16px/20px var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@utility type-tab-rotulo {
+  font: 600 10px/12px var(--font-sans);
+  letter-spacing: 0.002em;
+}
+
+@utility type-tab-selo {
+  font: 600 11px/13px var(--font-sans);
+  letter-spacing: 0;
+}
+
+@utility type-badge-s {
+  font: 600 11px/14px var(--font-sans);
+  letter-spacing: 0;
+}
+
+@utility type-badge-m {
+  font: 600 12px/16px var(--font-sans);
+  letter-spacing: 0;
+}
+
+@utility type-resultado-titulo {
+  font: 600 22px/28px var(--font-sans);
+  letter-spacing: -0.003em;
 }

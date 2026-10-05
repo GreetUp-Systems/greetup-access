@@ -1,2 +1,3 @@
 # Generated from packages/ui/tokens/figma-tokens.json; formatting it breaks the staleness check.
 packages/ui/src/styles/tokens.css
+packages/ui/src/lib/merge-theme.ts

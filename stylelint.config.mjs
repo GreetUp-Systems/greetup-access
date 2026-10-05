@@ -1,6 +1,7 @@
 /**
  * No loose values (docs/design/README.md): colors and dimensions come from the tokens generated
- * from Figma. tokens.css is generated and is the only place literal values live.
+ * from Figma. tokens.css is generated and is the only place literal values live. Styling is
+ * Tailwind; CSS files are only the design system's entry (globals.css) and the generated theme.
  */
 export default {
   extends: ["stylelint-config-standard"],
@@ -29,5 +30,17 @@ export default {
     // State selectors (:hover, :active, [data-preview-state]) read better grouped by state.
     "no-descending-specificity": null,
     "keyframes-name-pattern": null,
+    // Tailwind v4 directives (packages/ui/src/styles/globals.css and tokens.css).
+    "at-rule-no-unknown": [
+      true,
+      {
+        ignoreAtRules: ["theme", "utility", "custom-variant", "variant", "source", "apply", "slot"],
+      },
+    ],
+    "at-rule-prelude-no-invalid": [true, { ignoreAtRules: ["apply"] }],
+    // Theme namespaces are reset with a trailing * (--color-*: initial).
+    "custom-property-pattern": ["^[a-z][a-z0-9]*(-[a-z0-9]+)*(-\\*)?$"],
+    // @custom-variant blocks use & for the element the variant applies to.
+    "nesting-selector-no-missing-scoping-root": null,
   },
 };
