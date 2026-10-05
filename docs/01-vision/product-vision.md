@@ -242,6 +242,8 @@ já líquidas da fatura da BlindPay.
 | RN-012 | Gas patrocinado pelo Access via OpenZeppelin Relayer; a reserva mínima de conta e trustline vem de uma conta patrocinadora própria |
 | RN-013 | Taxa do Access cobrada via partner fee nativa da BlindPay, aplicada automaticamente por transação |
 | RN-014 | Cancelamento de evento é tratado por contrato e relacionamento, não por mecanismo financeiro |
+| RN-015 | Todo tipo de ingresso custa ao menos o preço mínimo configurado (R$ 60 em 05/10/2026), que cobre o mínimo do Pix na BlindPay (US$ 10 por pagamento) |
+| RN-016 | Ao definir o preço, o produtor vê a taxa do Access, a do pagamento, o câmbio e quanto recebe; o comprador vê o preço do ingresso e uma única "Taxa de serviço" |
 
 ---
 
@@ -321,7 +323,7 @@ mês seguinte, já líquidas da fatura da BlindPay.
 
 | Questão | Responsável | Prazo |
 |---|---|---|
-| Fee exato do BlindPay por transação Pix | BlindPay / Matheus | Antes da Fase 2 |
+| Fee exato do BlindPay por transação Pix em produção (em desenvolvimento: 0,1% + US$ 0,10, medido em 05/10/2026) | BlindPay / Matheus | Antes da Fase 2 |
 | Taxa do Access por ingresso (define modelo de negócio) | Matheus | Antes da Fase 2 |
 | Regras e prazos de reembolso, com apoio jurídico | Jurídico / Matheus | Antes da Fase 4 |
 | Auditoria externa da extensão do contrato | Matheus | Antes da Fase 5 |

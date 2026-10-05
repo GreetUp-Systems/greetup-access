@@ -2,9 +2,9 @@
 
 > **Status:** 6A a 6D implementadas; smoke ponta a ponta pendente
 >
-> **Versão:** 1.5 (emenda da SPEC-014, parte 9A: reserva e cotação separadas da geração do Pix)
+> **Versão:** 1.6 (limites do Pix em dólar, D-26)
 >
-> **Atualizada em:** 04/10/2026
+> **Atualizada em:** 05/10/2026
 >
 > **Aprovada em:** 03/10/2026
 >
@@ -43,7 +43,8 @@ Verificados na referência oficial e na instância Development em 03/10/2026:
 2. Payin criado não pode ser cancelado; não pago, fica `processing` até a BlindPay limpar. O prazo
    dessa limpeza e a validade do `pix_code` não estão documentados.
 3. A quote expira em 5 minutos e trava valores, taxas e destino.
-4. Valor mínimo de R$ 10 por payin, aplicado na quote; máximo de R$ 100.000.
+4. Limites do payin Pix: de US$ 10 a US$ 10.000, pelo câmbio do momento, aplicados na quote
+   (medido em 05/10/2026; fora da faixa, `400` com o valor em dólar e a faixa).
 5. O produtor com KYC standard recebe até US$ 10 mil por transação, 50 mil por dia e 100 mil por mês.
 6. O Pix aceita a quote sem `payer_rules`: o CPF do pagador não é exigido pelo schema da API.
 7. Estados do payin: `processing`, `on_hold`, `completed`, `failed`, `refunded`; webhooks
@@ -69,7 +70,8 @@ Cada parte é um PR próprio, com testes e validação.
 1. **Nunca vender acima do limite.** Um pedido só cria Pix depois de reservar o estoque, e a reserva
    dura enquanto o payin puder ser pago. A soma das quantidades reservadas e vendidas de um tipo
    nunca excede a quantidade do tipo.
-2. Uma compra é de um tipo de ingresso, de 1 a 10 unidades, com total mínimo de R$ 10.
+2. Uma compra é de um tipo de ingresso, de 1 a 10 unidades. O mínimo do Pix vem do preço mínimo do
+   tipo (SPEC-004 v2.3, D-26); o subtotal tem teto `PURCHASE_MAX_TOTAL_CENTS`.
 3. Só vendem eventos `published`, com `startsAt` no futuro, de produtor `ready`.
 4. `POST /api/purchases` exige `Idempotency-Key`; a mesma chave do mesmo comprador nunca gera um
    segundo payin.
@@ -191,7 +193,8 @@ model Ticket {
 ```
 
 Chaves estrangeiras com `Restrict` para usuário, produtor, evento, tipo e compra. `CHECK` no banco:
-`quantity BETWEEN 1 AND 10`, `subtotal_cents >= 1000`, `unit_price_cents > 0`.
+`quantity BETWEEN 1 AND 10`, `subtotal_cents > 0`, `unit_price_cents > 0`. O mínimo e o máximo do
+Pix não ficam no banco: dependem do câmbio (D-26).
 
 O `pixCode` é instrução de pagamento, não dado pessoal; fica salvo para o comprador reabrir o Pix.
 
@@ -265,9 +268,15 @@ libera a reserva (`422 payment_rejected`). Erro retryable da BlindPay deixa a co
 responde `503 payment_provider_unavailable`; repetir a chamada retoma o pedido. Uma quote cujo
 `sender_amount` fique abaixo do subtotal é recusada.
 
+Quando a quote recusa o valor por estar fora da faixa do Pix (o câmbio passou da folga do preço
+mínimo, D-26), a compra vai a `payment_failed` com `failureCode` `amount_below_minimum` ou
+`amount_above_maximum`, a reserva é liberada e a API responde `422 purchase_below_minimum` ou
+`422 purchase_above_maximum`. O comprador vê "Valor mínimo" (SPEC-014 §6) e escolhe de novo.
+
 Outros erros da criação: `404 ticket_type_not_available`, `409 producer_not_ready_for_sales`,
 `409 event_not_on_sale`, `409 ticket_type_sold_out`, `409 idempotency_key_reused`,
-`422 purchase_below_minimum`, `400 invalid_purchase` e `400 invalid_idempotency_key`; do Pix,
+`422 purchase_above_maximum` (subtotal acima de `PURCHASE_MAX_TOTAL_CENTS`, antes da quote),
+`400 invalid_purchase` e `400 invalid_idempotency_key`; do Pix,
 `400 invalid_purchase_pix` para corpo inválido.
 
 `GET /api/purchases/:id` devolve a mesma visão para o comprador dono; compra de outro usuário
@@ -430,6 +439,8 @@ direitos de quem chama: a reserva e a edição de quantidade do produtor usam a 
 ```dotenv
 STELLAR_TICKET_CONTRACT_ID=CBCO3MQGVHKJ5WRAEGWYI3E3TF4T6L5PNCXSK4MPGVDITIRNRZDPODNT
 BLINDPAY_PARTNER_FEE_ID=
+# Teto do subtotal de um pedido, em centavos de BRL (D-26): abaixo dos US$ 10.000 do Pix com folga.
+PURCHASE_MAX_TOTAL_CENTS=4000000
 DATABASE_URL_WORKER=
 ```
 

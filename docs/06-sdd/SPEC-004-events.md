@@ -2,9 +2,9 @@
 
 > **Status:** implementação automatizada validada localmente
 >
-> **Versão:** 2.2 (emenda da SPEC-014, parte 9A: término, local em duas partes e disponibilidade)
+> **Versão:** 2.3 (preço mínimo do tipo de ingresso, D-26)
 >
-> **Atualizada em:** 04/10/2026
+> **Atualizada em:** 05/10/2026
 >
 > **Aprovada em:** 02/10/2026
 >
@@ -78,6 +78,8 @@ Ao final desta SPEC, a API deve conseguir:
 9. Publicar, editar e apagar não geram evento de domínio.
 10. A leitura pública nunca expõe rascunho, `producerId`, dados do produtor além do necessário à
     página nem campos internos.
+11. Todo tipo de ingresso custa ao menos `TICKET_MIN_PRICE_CENTS` (D-26, RN-015): o preço de um
+    único ingresso já passa do mínimo do Pix na BlindPay, com folga para o câmbio.
 
 ## 5. Estados e regras de edição
 
@@ -312,7 +314,9 @@ Schemas zod, como em `producer-onboarding.schemas.ts`:
 - `endsAt`: opcional, ISO 8601 com offset, depois de `startsAt`;
 - `startsAt`: ISO 8601 com offset; na criação, na edição e na publicação, precisa estar no futuro;
 - `capacity`, `quantity`: inteiros ≥ 1;
-- `priceCents`: inteiro ≥ 1;
+- `priceCents`: inteiro ≥ 1 no schema; na criação e na edição de preço, abaixo de
+  `TICKET_MIN_PRICE_CENTS` retorna `422 ticket_price_below_minimum` com `minimumCents`. Tipos já
+  existentes abaixo do mínimo continuam valendo até o produtor editar o preço;
 - campos desconhecidos são rejeitados;
 - corpo inválido retorna `400 invalid_event` ou `400 invalid_ticket_type`, com a lista de campos;
 - `:id` e `:ticketTypeId` que não sejam UUID retornam `400`; evento ou tipo inexistente, de outro
@@ -320,6 +324,13 @@ Schemas zod, como em `producer-onboarding.schemas.ts`:
   `producer_not_found`).
 
 A exibição em horário de Brasília é responsabilidade do frontend; a API trabalha em UTC.
+
+### Configuração
+
+```dotenv
+# Preço mínimo de um tipo de ingresso, em centavos de BRL (D-26): cobre os US$ 10 do Pix com folga.
+TICKET_MIN_PRICE_CENTS=6000
+```
 
 ## 9. Slug
 
@@ -382,7 +393,9 @@ packages/database/prisma/migrations/<timestamp>_events/migration.sql
   capacidade;
 - edição respeita a tabela da seção 5 em cada estado;
 - cancelamento grava um único Outbox, com payload sem dados do evento além dos IDs;
-- schemas rejeitam campos desconhecidos, preço zero, capacidade zero e datas sem offset.
+- schemas rejeitam campos desconhecidos, preço zero, capacidade zero e datas sem offset;
+- criar e editar tipo com preço abaixo de `TICKET_MIN_PRICE_CENTS` retorna
+  `422 ticket_price_below_minimum` com o mínimo; no mínimo exato, aceita.
 
 ### Integração
 

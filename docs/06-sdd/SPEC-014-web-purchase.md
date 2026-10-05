@@ -82,19 +82,19 @@ das telas existentes e só com componentes e variáveis do Design System (linhas
 y = 4700), e foram revisados no mesmo dia. Os três últimos (código incorreto, reenviar e falha)
 vieram na 9B, ao implementar a identificação.
 
-| Estado                  | Celular    | Desktop    | Como aparece                                                                                   |
-| ----------------------- | ---------- | ---------- | ---------------------------------------------------------------------------------------------- |
-| Evento indisponível     | `176:2096` | `176:5567` | Selo "Cancelado" no título; a barra (ou o cartão) diz "Vendas encerradas", sem botão de compra |
-| Valor mínimo            | `175:1777` | `176:4873` | Toast de atenção no lugar da nota da taxa; "Continuar"/"Comprar ingresso" desabilitado         |
-| Esgotou                 | `175:2013` | `176:5075` | Toast de erro na revisão ("Nada foi cobrado"); ação "Escolher outro"                           |
-| Total mudou             | `175:4622` | `176:5200` | Toast de atenção na revisão com o novo total; ação "Gerar Pix"                                 |
-| Pagamento não concluído | `175:4806` | `176:5451` | Componente Pix no estado Falhou, com "Tentar novamente" (nova compra)                          |
-| Erro de conexão         | `175:4714` | `176:5324` | Toast de erro ("seu pedido continua reservado"); ação "Tentar de novo"                         |
-| Seus ingressos vazio    | `176:2209` | `176:5667` | "Nenhum ingresso por aqui" e a explicação                                                      |
-| Entrar                  | `176:2292` | `176:5744` | A identificação sem o resumo do pedido, título "Entre no Access"                               |
-| Código incorreto        | `188:2785` | `188:2849` | Caixas com borda de erro e "Código incorreto ou expirado." com ícone, como o Campo de texto    |
-| Reenviar o código       | `190:2901` | `190:3039` | Depois do contador, Botão/Fantasma S "Reenviar o código", centralizado sob as caixas           |
-| Falha na identificação  | `190:2973` | `190:3236` | Toast de erro "Não deu para continuar", no envio do código ou na confirmação                   |
+| Estado                  | Celular    | Desktop    | Como aparece                                                                                    |
+| ----------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------- |
+| Evento indisponível     | `176:2096` | `176:5567` | Selo "Cancelado" no título; a barra (ou o cartão) diz "Vendas encerradas", sem botão de compra  |
+| Valor mínimo            | `175:1777` | `176:4873` | Só quando o câmbio passa da folga (D-26): toast de atenção na escolha; "Continuar" desabilitado |
+| Esgotou                 | `175:2013` | `176:5075` | Toast de erro na revisão ("Nada foi cobrado"); ação "Escolher outro"                            |
+| Total mudou             | `175:4622` | `176:5200` | Toast de atenção na revisão com o novo total; ação "Gerar Pix"                                  |
+| Pagamento não concluído | `175:4806` | `176:5451` | Componente Pix no estado Falhou, com "Tentar novamente" (nova compra)                           |
+| Erro de conexão         | `175:4714` | `176:5324` | Toast de erro ("seu pedido continua reservado"); ação "Tentar de novo"                          |
+| Seus ingressos vazio    | `176:2209` | `176:5667` | "Nenhum ingresso por aqui" e a explicação                                                       |
+| Entrar                  | `176:2292` | `176:5744` | A identificação sem o resumo do pedido, título "Entre no Access"                                |
+| Código incorreto        | `188:2785` | `188:2849` | Caixas com borda de erro e "Código incorreto ou expirado." com ícone, como o Campo de texto     |
+| Reenviar o código       | `190:2901` | `190:3039` | Depois do contador, Botão/Fantasma S "Reenviar o código", centralizado sob as caixas            |
+| Falha na identificação  | `190:2973` | `190:3236` | Toast de erro "Não deu para continuar", no envio do código ou na confirmação                    |
 
 ## 7. Arquitetura do app
 
@@ -126,7 +126,7 @@ Tiradas da tabela "Regras de negócio em cada etapa" do FigJam, com a origem.
 | Evento        | Só evento publicado e com data futura é vendido; cancelado é definitivo e mostra "Evento indisponível"           | SPEC-004      |
 | Escolha       | De 1 a 10 ingressos de um tipo por pedido; o contador não passa da disponibilidade                               | SPEC-005      |
 | Escolha       | Tipo sem disponibilidade aparece "Esgotado" e não pode ser escolhido                                             | SPEC-004 v2.2 |
-| Pedido        | Subtotal mínimo de R$ 10, avisado antes de continuar                                                             | SPEC-005      |
+| Pedido        | O preço mínimo do ingresso cobre o mínimo do Pix; se o câmbio passar da folga, a escolha mostra "Valor mínimo"   | D-26          |
 | Identificação | Código por e-mail antes do Pix; não há conta de convidado                                                        | D-21          |
 | Revisão       | Uma única linha "Taxa de serviço", paga pelo comprador; sem CPF                                                  | SPEC-005      |
 | Revisão       | O total exibido é o que será cobrado; se a cotação mudar, o novo total é mostrado antes de gerar o Pix           | A1            |
