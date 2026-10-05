@@ -80,21 +80,23 @@ login acontece no "Entrar" do cabeçalho, na 9C.
 O fluxo previa estes estados sem tela. Foram desenhados em 04/10/2026 na página "Compra", a partir
 das telas existentes e só com componentes e variáveis do Design System (linhas em y = 3700 e
 y = 4700), e foram revisados no mesmo dia. Os três últimos (código incorreto, reenviar e falha)
-vieram na 9B, ao implementar a identificação.
+vieram na 9B, ao implementar a identificação. O "Evento já começou" e a seção "Política de reembolso" da página do
+evento (`138:322`, `140:931`; RN-008) vieram na 9C.1.
 
-| Estado                  | Celular    | Desktop    | Como aparece                                                                                    |
-| ----------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------- |
-| Evento indisponível     | `176:2096` | `176:5567` | Selo "Cancelado" no título; a barra (ou o cartão) diz "Vendas encerradas", sem botão de compra  |
-| Valor mínimo            | `175:1777` | `176:4873` | Só quando o câmbio passa da folga (D-26): toast de atenção na escolha; "Continuar" desabilitado |
-| Esgotou                 | `175:2013` | `176:5075` | Toast de erro na revisão ("Nada foi cobrado"); ação "Escolher outro"                            |
-| Total mudou             | `175:4622` | `176:5200` | Toast de atenção na revisão com o novo total; ação "Gerar Pix"                                  |
-| Pagamento não concluído | `175:4806` | `176:5451` | Componente Pix no estado Falhou, com "Tentar novamente" (nova compra)                           |
-| Erro de conexão         | `175:4714` | `176:5324` | Toast de erro ("seu pedido continua reservado"); ação "Tentar de novo"                          |
-| Seus ingressos vazio    | `176:2209` | `176:5667` | "Nenhum ingresso por aqui" e a explicação                                                       |
-| Entrar                  | `176:2292` | `176:5744` | A identificação sem o resumo do pedido, título "Entre no Access"                                |
-| Código incorreto        | `188:2785` | `188:2849` | Caixas com borda de erro e "Código incorreto ou expirado." com ícone, como o Campo de texto     |
-| Reenviar o código       | `190:2901` | `190:3039` | Depois do contador, Botão/Fantasma S "Reenviar o código", centralizado sob as caixas            |
-| Falha na identificação  | `190:2973` | `190:3236` | Toast de erro "Não deu para continuar", no envio do código ou na confirmação                    |
+| Estado                  | Celular    | Desktop    | Como aparece                                                                                                    |
+| ----------------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| Evento indisponível     | `176:2096` | `176:5567` | Selo "Cancelado" no título; a barra (ou o cartão) diz "Vendas encerradas", sem botão de compra                  |
+| Valor mínimo            | `175:1777` | `176:4873` | Só quando o câmbio passa da folga (D-26): toast de atenção na escolha; "Continuar" desabilitado                 |
+| Esgotou                 | `175:2013` | `176:5075` | Toast de erro na revisão ("Nada foi cobrado"); ação "Escolher outro"                                            |
+| Total mudou             | `175:4622` | `176:5200` | Toast de atenção na revisão com o novo total; ação "Gerar Pix"                                                  |
+| Pagamento não concluído | `175:4806` | `176:5451` | Componente Pix no estado Falhou, com "Tentar novamente" (nova compra)                                           |
+| Erro de conexão         | `175:4714` | `176:5324` | Toast de erro ("seu pedido continua reservado"); ação "Tentar de novo"                                          |
+| Seus ingressos vazio    | `176:2209` | `176:5667` | "Nenhum ingresso por aqui" e a explicação                                                                       |
+| Entrar                  | `176:2292` | `176:5744` | A identificação sem o resumo do pedido, título "Entre no Access"                                                |
+| Código incorreto        | `188:2785` | `188:2849` | Caixas com borda de erro e "Código incorreto ou expirado." com ícone, como o Campo de texto                     |
+| Reenviar o código       | `190:2901` | `190:3039` | Depois do contador, Botão/Fantasma S "Reenviar o código", centralizado sob as caixas                            |
+| Falha na identificação  | `190:2973` | `190:3236` | Toast de erro "Não deu para continuar", no envio do código ou na confirmação                                    |
+| Evento já começou       | `221:3245` | `221:3338` | "O evento já começou · Vendas encerradas", sem selo e sem botão de compra (as vendas param no início, SPEC-004) |
 
 ## 7. Arquitetura do app
 
