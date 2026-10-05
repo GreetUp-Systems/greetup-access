@@ -13,6 +13,7 @@ import {
   ItemTitle,
 } from "@access/ui/components/item";
 import { Logo } from "@access/ui/components/logo";
+import { Status, type StatusState } from "@access/ui/components/status";
 import { TopBar } from "@access/ui/components/top-bar";
 import {
   Check,
@@ -65,6 +66,24 @@ const fieldStates = ["default", "filled", "hover", "focus", "error", "disabled"]
 const fieldSizes: Array<NonNullable<InputProps["size"]>> = ["s", "m", "l"];
 
 const itemStates = ["default", "hover", "focus", "selected", "disabled"] as const;
+
+// Figma: Status (46:85), in the order of its page: ticket, payment, event and producer states.
+const statuses: StatusState[] = [
+  "valid",
+  "used",
+  "transferred",
+  "cancelled",
+  "awaiting",
+  "paid",
+  "expired",
+  "failed",
+  "draft",
+  "published",
+  "in_review",
+  "approved",
+  "pending",
+  "rejected",
+];
 
 const tones = [
   { tone: "success", title: "Código copiado", message: "Cole no app do seu banco para pagar." },
@@ -282,6 +301,18 @@ export function Catalog({
         <div className="grid gap-6">
           <SiteHeader email={null} onSignIn={noop} onAccount={noop} />
           <SiteHeader email="voce@email.com" onSignIn={noop} onAccount={noop} />
+        </div>
+      </Section>
+
+      <Section id="status" title="Status">
+        <div className="grid gap-4">
+          {(["s", "m"] as const).map((size) => (
+            <div key={size} className="flex flex-wrap gap-3">
+              {statuses.map((status) => (
+                <Status key={status} status={status} size={size} />
+              ))}
+            </div>
+          ))}
         </div>
       </Section>
 

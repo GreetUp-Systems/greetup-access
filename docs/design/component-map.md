@@ -100,6 +100,27 @@ O ícone vem do tom. Ação e fechar entram quando uma tela usar; o toast tempor
 | Tipo = Modal     | `70:318` | `<TopBar type="modal" title onClose>`             |
 | Rolagem = Rolado |          | `scrolled`                                        |
 
+### Status · `status.tsx` (estilo do Badge do shadcn/ui)
+
+| Figma               | Nó      | Código                                     |
+| ------------------- | ------- | ------------------------------------------ |
+| Status              | `46:85` | `<Status status="cancelled" size="s">`     |
+| Status = 14 estados |         | `status` (o texto e o ícone vêm do estado) |
+| Tamanho = S · M     |         | `size="s" \| "m"`                          |
+| Mostrar ícone       |         | `showIcon` (desligar só em tabela densa)   |
+
+O texto é fixo por estado, como diz o componente no Figma.
+
+### Folha · `drawer.tsx` (shadcn/ui)
+
+As folhas de vidro do celular ("Folha · Escolha do ingresso", `139:928`): `<Drawer>` com
+`<DrawerContent>`, `<DrawerHeader>` e `<DrawerTitle>`; alça `size/grabber-*`.
+
+### Cartaz · `event-cover.tsx`
+
+A arte padrão da capa do evento (SPEC-014 A2), exportada de `138:322` e `140:931`: tela cheia com
+esmaecimento no celular, cartaz de 740 × 440 com `radius/xl` no desktop.
+
 ### Logo · `logo.tsx`
 
 `<Logo format="horizontal">` ou `format="symbol"` (`3:95`, Versão = Principal), SVG exportado do Figma pelos
@@ -121,7 +142,6 @@ Página "Ícones" (`27:2`): 47 ícones, dos quais 43 são Lucide com o mesmo nom
 | Figma                     | Nó do conjunto     | Variantes                                                                     |
 | ------------------------- | ------------------ | ----------------------------------------------------------------------------- |
 | Botão de ícone/Destrutivo | `42:258`           | Tamanho × Estado                                                              |
-| Status                    | `46:85`            | 14 status × Tamanho                                                           |
 | Card                      | `51:358`           | Tipo × Estado × Espaço                                                        |
 | Ingresso                  | `56:409`           | Estado (Válido, Emitindo, Utilizado, Transferido, Cancelado)                  |
 | Pix                       | `61:678`           | Estado (Aguardando, Copiado, Expirado, Pago, Falhou)                          |

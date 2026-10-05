@@ -71,8 +71,15 @@
   --size-page-content: 1200px;
   --size-dialog: 480px;
   --size-top-bar: 56px;
-  --size-nav: 72px;
+  --size-bar: 72px;
   --space-0-5: 2px;
+  --size-status-s: 22px;
+  --size-status-m: 28px;
+  --size-icon-xs: 12px;
+  --size-icon-status-m: 14px;
+  --space-1-5: 6px;
+  --size-grabber-width: 36px;
+  --size-grabber-height: 5px;
   --icon-current: var(--color-icon-primary);
 }
 
@@ -178,8 +185,15 @@
   --spacing-page-content: var(--size-page-content);
   --spacing-dialog: var(--size-dialog);
   --spacing-top-bar: var(--size-top-bar);
-  --spacing-nav: var(--size-nav);
+  --spacing-bar: var(--size-bar);
   --spacing-0-5: var(--space-0-5);
+  --spacing-status-s: var(--size-status-s);
+  --spacing-status-m: var(--size-status-m);
+  --spacing-icon-xs: var(--size-icon-xs);
+  --spacing-icon-status-m: var(--size-icon-status-m);
+  --spacing-1-5: var(--space-1-5);
+  --spacing-grabber-width: var(--size-grabber-width);
+  --spacing-grabber-height: var(--size-grabber-height);
   --shadow-glow-accent: 0 0 24px 0 var(--color-effect-glow);
   --shadow-focus-ring: 0 0 0 2px var(--color-bg-canvas), 0 0 0 4px var(--color-effect-focus);
   --shadow-elevation-1: 0 4px 12px -2px #00000029, 0 1px 2px 0 #0000003d;

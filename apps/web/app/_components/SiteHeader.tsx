@@ -3,7 +3,7 @@
 import { Button } from "@access/ui/components/button";
 import { Logo } from "@access/ui/components/logo";
 import { TopBar } from "@access/ui/components/top-bar";
-import { CircleUser } from "lucide-react";
+import { User } from "lucide-react";
 
 interface SiteHeaderProps {
   /** The signed-in e-mail; null when signed out; undefined while the session is loading. */
@@ -27,7 +27,7 @@ export function SiteHeader({ email, onSignIn, onAccount }: SiteHeaderProps) {
 
   return (
     <>
-      <header className="hidden h-nav border-b border-border-subtle bg-bg-canvas px-4 md:block">
+      <header className="hidden h-bar border-b border-border-subtle bg-bg-canvas px-4 md:block">
         <div className="mx-auto flex h-full max-w-page-content items-center justify-between gap-3">
           <Logo />
           {known ? (
@@ -45,7 +45,7 @@ export function SiteHeader({ email, onSignIn, onAccount }: SiteHeaderProps) {
             ? [
                 {
                   label: signedIn ? "Seus ingressos" : "Entrar",
-                  icon: <CircleUser />,
+                  icon: <User />,
                   onClick: open,
                 },
               ]
