@@ -71,9 +71,9 @@ pronto), como o FigJam define para "Depois do pagamento". Recarregar a página v
 da compra.
 
 O cabeçalho do desktop tem "Entrar", que abre a mesma identificação com `origin: "login"` e leva a
-"Seus ingressos". "Vender ingressos" fica fora desta SPEC (§12). Na 9B, sem tela de produto ainda, o
-cabeçalho e a identificação rodam na página `/dev/login` (só em desenvolvimento, como o catálogo),
-que serve à conferência visual e à validação real do login; o cabeçalho entra nas rotas da 9C.
+"Seus ingressos". "Vender ingressos" fica fora desta SPEC (§12). Na 9B, sem tela de produto ainda, a
+identificação é conferida no catálogo (`/dev/catalog?identificacao=<estado>`); a validação real do
+login acontece no "Entrar" do cabeçalho, na 9C.
 
 ## 6. Estados desenhados no Figma (B)
 
@@ -103,8 +103,7 @@ vieram na 9B, ao implementar a identificação.
   compra) ou `"login"` (no "Entrar"); no "Entrar", em seguida, `POST /api/me/stellar/activate`, sem
   bloquear a navegação. Sessão ativa pula a identificação.
 - **Identificação:** abaixo de 48em, tela cheia com a Barra superior; a partir de 48em, a janela de
-  480 sobre a película (`bg/overlay`). A janela é composição do web, não componente do Design
-  System. O reenvio do código libera 60 s depois do envio.
+  480 sobre a película (`bg/overlay`). A janela é o `Dialog` do `@access/ui` (shadcn/ui). O reenvio do código libera 60 s depois do envio.
 - **API:** o navegador chama a API direto com `Authorization: Bearer <access token>`. A API libera
   as origens de `API_CORS_ORIGINS`.
 - **Renderização:** `/e/[slug]` é renderizada no servidor (prévia do link compartilhado e conteúdo
