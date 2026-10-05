@@ -89,7 +89,8 @@ export default tseslint.config(
         {
           restrict: [
             {
-              pattern: "\\[([^\\[\\]]*?)\\](?!:)",
+              // A bracket closed by ":" or "/group:" is a variant (data-[size=s]:, group-data-[x]/item:).
+              pattern: "\\[([^\\[\\]]*?)\\](?!(\\/[\\w-]+)?:)",
               message: "Arbitrary values are loose values: use a design system token.",
             },
           ],

@@ -21,13 +21,16 @@
         "name": "next"
       }
     ],
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "types": ["node", "jest"]
   },
   "include": [
     "next-env.d.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "next.config.ts",
+    "jest.config.ts",
+    "jest.setup.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [
