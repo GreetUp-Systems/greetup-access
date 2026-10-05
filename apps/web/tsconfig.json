@@ -31,6 +31,8 @@
     "next.config.ts",
     "jest.config.ts",
     "jest.setup.ts",
+    "playwright.config.ts",
+    "e2e/**/*.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [

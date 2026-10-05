@@ -5,6 +5,7 @@ import type { MouseEventHandler, ReactNode } from "react";
 
 import { Button } from "@access/ui/components/button";
 import { Logo } from "@access/ui/components/logo";
+import { Skeleton } from "@access/ui/components/skeleton";
 import { cn } from "@access/ui/lib/utils";
 
 /**
@@ -13,6 +14,8 @@ import { cn } from "@access/ui/lib/utils";
  * glass capsule) · Marca (logo and the capsule) · Modal (title and close). Rolagem = Rolado adds a
  * fade, glass/scrim down to 68% then glass/clear, from 48 above the bar to one bar below it, so the
  * content scrolling underneath never hits the title. The caller says when it has scrolled.
+ * Actions "loading" holds the capsule's place with an esqueleto while they are not known yet
+ * (Header · Sessão carregando, 231:5834).
  */
 interface TopBarAction {
   label: string;
@@ -20,7 +23,7 @@ interface TopBarAction {
   onClick: MouseEventHandler<HTMLButtonElement>;
 }
 
-type Actions = readonly [TopBarAction] | readonly [TopBarAction, TopBarAction];
+type Actions = readonly [TopBarAction] | readonly [TopBarAction, TopBarAction] | "loading";
 
 interface TopBarBaseProps {
   className?: string;
@@ -84,7 +87,14 @@ function TopBar(props: TopBarProps) {
         </span>
       )}
 
-      {props.type !== "modal" && props.actions !== undefined ? (
+      {props.type !== "modal" && props.actions === "loading" ? (
+        // The capsule's 1 px rim around a 44 action, so nothing moves when the actions arrive.
+        <Skeleton className="shrink-0 rounded-full border border-transparent">
+          <span className="block size-control-md" />
+        </Skeleton>
+      ) : null}
+
+      {props.type !== "modal" && props.actions !== undefined && props.actions !== "loading" ? (
         <span className="flex shrink-0 rounded-full border border-glass-rim bg-glass-surface shadow-glass-superficie backdrop-blur-glass-superficie">
           {props.actions.map((action) => (
             <Button

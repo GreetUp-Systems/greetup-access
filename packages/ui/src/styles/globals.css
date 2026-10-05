@@ -41,8 +41,15 @@
     @apply bg-bg-canvas text-text-primary type-body-l antialiased;
   }
 
-  /* Figma icons are Lucide at a 1.75 stroke (page "Ícones"). */
+  /*
+   * Figma icons are Lucide at a 1.75 stroke (page "Ícones"), and a resized instance keeps that
+   * stroke in pixels: non-scaling-stroke does the same, so a 12 icon is not drawn thinner.
+   */
   svg.lucide {
     stroke-width: 1.75;
+  }
+
+  svg.lucide * {
+    vector-effect: non-scaling-stroke;
   }
 }

@@ -17,15 +17,14 @@ import {
   activateStellarAccount,
   bootstrapAccount,
   type BootstrapOrigin,
-  getAccount,
 } from "./api/account";
 import { ApiError } from "./api/client";
+import { restoreSession } from "./session-restore";
 
 export type SessionState =
   | { status: "loading" }
   | { status: "anonymous" }
-  | { status: "authenticated"; account: AccountView }
-  | { status: "error"; error: ApiError };
+  | { status: "authenticated"; account: AccountView };
 
 interface SessionContextValue {
   state: SessionState;
@@ -72,21 +71,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setState({ status: "loading" });
     void (async () => {
-      try {
-        const account = await restoreAccount(await getToken());
-        if (!cancelled) {
-          setState({ status: "authenticated", account });
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setState({ status: "error", error: toApiError(error) });
-        }
+      const account = await restoreSession(getToken, privyLogout);
+      if (!cancelled) {
+        setState(account === null ? { status: "anonymous" } : { status: "authenticated", account });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [ready, authenticated, hasAccount, getToken]);
+  }, [ready, authenticated, hasAccount, getToken, privyLogout]);
 
   const completeLogin = useCallback(
     async (origin: BootstrapOrigin): Promise<AccountView> => {
@@ -126,23 +119,4 @@ export function useSession(): SessionContextValue {
     throw new Error("useSession must be used inside SessionProvider.");
   }
   return context;
-}
-
-/** The account behind a Privy session; a bootstrap that never finished is finished now. */
-async function restoreAccount(token: string): Promise<AccountView> {
-  try {
-    return await getAccount(token);
-  } catch (error) {
-    if (error instanceof ApiError && error.code === "account_not_bootstrapped") {
-      // "checkout" grants nothing (D-23): a restore must not count as a spontaneous login.
-      return bootstrapAccount(token, "checkout");
-    }
-    throw error;
-  }
-}
-
-function toApiError(error: unknown): ApiError {
-  return error instanceof ApiError
-    ? error
-    : new ApiError(0, "unexpected_error", "Unexpected session failure.", null);
 }

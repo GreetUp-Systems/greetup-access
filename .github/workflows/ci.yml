@@ -147,6 +147,39 @@ jobs:
           path: "**/coverage/**"
           retention-days: 7
 
+  # ─── Stage 3b: End-to-end (web) ───────────────────────────────────────────
+  e2e:
+    name: End-to-end (web, Chromium)
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm --filter @access/web exec playwright install --with-deps chromium
+
+      # The API is simulated (apps/web/e2e/mock-api.mjs); no database or secret is needed.
+      - name: End-to-end tests
+        run: pnpm --filter @access/web test:e2e
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
+          retention-days: 7
+
   # ─── Stage 4: Security (SAST + dependency scan) ────────────────────────────
   security:
     name: Security Scan

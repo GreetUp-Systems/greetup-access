@@ -2,8 +2,9 @@
 
 import { Button } from "@access/ui/components/button";
 import { Logo } from "@access/ui/components/logo";
+import { Skeleton } from "@access/ui/components/skeleton";
 import { TopBar } from "@access/ui/components/top-bar";
-import { CircleUser } from "lucide-react";
+import { User } from "lucide-react";
 
 interface SiteHeaderProps {
   /** The signed-in e-mail; null when signed out; undefined while the session is loading. */
@@ -17,8 +18,9 @@ interface SiteHeaderProps {
 /**
  * From md: Navegação (140:931 signed out, 150:2853 signed in), the logo and "Entrar" or the
  * e-mail as a Fantasma M in the size/page-content column; "Vender ingressos" is out of SPEC-014
- * (§12). Below md: Barra superior/Marca with the account action. Nothing shows while the session
- * is still loading.
+ * (§12). Below md: Barra superior/Marca with the account action. While the session is loading,
+ * an esqueleto holds the action's place (Header · Sessão carregando, 231:5834): on desktop it is
+ * sized by an invisible "Entrar" with the button's border, padding and type, so nothing moves.
  */
 export function SiteHeader({ email, onSignIn, onAccount }: SiteHeaderProps) {
   const signedIn = typeof email === "string";
@@ -27,14 +29,18 @@ export function SiteHeader({ email, onSignIn, onAccount }: SiteHeaderProps) {
 
   return (
     <>
-      <header className="hidden h-nav border-b border-border-subtle bg-bg-canvas px-4 md:block">
+      <header className="hidden h-bar border-b border-border-subtle bg-bg-canvas px-4 md:block">
         <div className="mx-auto flex h-full max-w-page-content items-center justify-between gap-3">
           <Logo />
           {known ? (
             <Button variant="ghost" onClick={open}>
               {signedIn ? email : "Entrar"}
             </Button>
-          ) : null}
+          ) : (
+            <Skeleton className="flex h-control-md items-center rounded-full border border-transparent px-4 type-ui-button-m">
+              <span className="invisible">Entrar</span>
+            </Skeleton>
+          )}
         </div>
       </header>
       <TopBar
@@ -45,11 +51,11 @@ export function SiteHeader({ email, onSignIn, onAccount }: SiteHeaderProps) {
             ? [
                 {
                   label: signedIn ? "Seus ingressos" : "Entrar",
-                  icon: <CircleUser />,
+                  icon: <User />,
                   onClick: open,
                 },
               ]
-            : undefined
+            : "loading"
         }
       />
     </>
