@@ -71,13 +71,16 @@ pronto), como o FigJam define para "Depois do pagamento". Recarregar a página v
 da compra.
 
 O cabeçalho do desktop tem "Entrar", que abre a mesma identificação com `origin: "login"` e leva a
-"Seus ingressos". "Vender ingressos" fica fora desta SPEC (§12).
+"Seus ingressos". "Vender ingressos" fica fora desta SPEC (§12). Na 9B, sem tela de produto ainda, o
+cabeçalho e a identificação rodam na página `/dev/login` (só em desenvolvimento, como o catálogo),
+que serve à conferência visual e à validação real do login; o cabeçalho entra nas rotas da 9C.
 
 ## 6. Estados desenhados no Figma (B)
 
 O fluxo previa estes estados sem tela. Foram desenhados em 04/10/2026 na página "Compra", a partir
 das telas existentes e só com componentes e variáveis do Design System (linhas em y = 3700 e
-y = 4700), e aguardam revisão.
+y = 4700), e foram revisados no mesmo dia. Os três últimos (código incorreto, reenviar e falha)
+vieram na 9B, ao implementar a identificação.
 
 | Estado                  | Celular    | Desktop    | Como aparece                                                                                   |
 | ----------------------- | ---------- | ---------- | ---------------------------------------------------------------------------------------------- |
@@ -89,6 +92,9 @@ y = 4700), e aguardam revisão.
 | Erro de conexão         | `175:4714` | `176:5324` | Toast de erro ("seu pedido continua reservado"); ação "Tentar de novo"                         |
 | Seus ingressos vazio    | `176:2209` | `176:5667` | "Nenhum ingresso por aqui" e a explicação                                                      |
 | Entrar                  | `176:2292` | `176:5744` | A identificação sem o resumo do pedido, título "Entre no Access"                               |
+| Código incorreto        | `188:2785` | `188:2849` | Caixas com borda de erro e "Código incorreto ou expirado." com ícone, como o Campo de texto    |
+| Reenviar o código       | `190:2901` | `190:3039` | Depois do contador, Botão/Fantasma S "Reenviar o código", centralizado sob as caixas           |
+| Falha na identificação  | `190:2973` | `190:3236` | Toast de erro "Não deu para continuar", no envio do código ou na confirmação                   |
 
 ## 7. Arquitetura do app
 
@@ -96,6 +102,9 @@ y = 4700), e aguardam revisão.
   código são as do Figma. Depois do código, `POST /api/auth/bootstrap` com `origin: "checkout"` (na
   compra) ou `"login"` (no "Entrar"); no "Entrar", em seguida, `POST /api/me/stellar/activate`, sem
   bloquear a navegação. Sessão ativa pula a identificação.
+- **Identificação:** abaixo de 48em, tela cheia com a Barra superior; a partir de 48em, a janela de
+  480 sobre a película (`bg/overlay`). A janela é composição do web, não componente do Design
+  System. O reenvio do código libera 60 s depois do envio.
 - **API:** o navegador chama a API direto com `Authorization: Bearer <access token>`. A API libera
   as origens de `API_CORS_ORIGINS`.
 - **Renderização:** `/e/[slug]` é renderizada no servidor (prévia do link compartilhado e conteúdo
@@ -173,7 +182,7 @@ NEXT_PUBLIC_PRIVY_APP_ID=
 ## 13. Definição de pronto
 
 - [x] 9A: dois passos, página pública ampliada, código do ingresso e CORS, com testes.
-- [ ] Telas do §6 desenhadas no Figma (feito em 04/10/2026) e revisadas pelo Matheus.
+- [x] Telas do §6 desenhadas no Figma e revisadas pelo Matheus (04/10/2026).
 - [ ] 9B: login, identificação e base do app, com conferência visual.
 - [ ] 9C: compra de ponta a ponta com a API simulada e conferência visual.
 - [ ] 9D: área do comprador com conferência visual.
