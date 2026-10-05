@@ -257,7 +257,7 @@ packages/
 ├── contracts/   Rust + Soroban — TicketContract (extensão do NFT OpenZeppelin, D-03)
 ├── database/    Prisma schema + migrations
 ├── shared/      Tipos TypeScript compartilhados
-├── ui/          Design System: tokens gerados do Figma e componentes React
+├── ui/          Design System: tema do Tailwind gerado do Figma e componentes shadcn/ui adaptados
 └── config/      Configuração de ambiente validada
 ```
 
@@ -279,7 +279,10 @@ O design mora no Figma e é decidido aqui, junto com as SPECs. Detalhes em
 - **Faltou no Figma (tela, estado, componente, token): resolve no Figma.** Avise o Matheus, ou crie
   seguindo o padrão do arquivo. Nunca invente no código.
 - **Nenhum valor solto:** cor, espaço, raio, tamanho, tipografia e efeito vêm dos tokens gerados
-  (`packages/ui`). O lint barra hex, `rgb()` e `px` fora do arquivo gerado.
+  (`packages/ui`), que são o tema inteiro do Tailwind: fora dele a classe não existe. O ESLint barra
+  classe fora do tema, valor arbitrário (`p-[13px]`) e cor literal.
+- **Componentes partem do shadcn/ui**, adaptados ao Figma (variantes, tamanhos e classes do tema).
+  Nunca escrever do zero o que o shadcn resolve; o passo a passo está em `docs/design/README.md`.
 - **Componentes em inglês**, ligados ao nome do Figma pelo mapa. Variantes viram props tipadas;
   Hover, Foco e Pressionado são estados de CSS. Componente novo entra no mapa no mesmo PR.
 - **Conferência visual obrigatória:** implementar, capturar em 360 e 1440, comparar lado a lado com a

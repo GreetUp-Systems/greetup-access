@@ -1,0 +1,48 @@
+/*
+ * Access design system for Tailwind v4 (docs/design/README.md). tokens.css is generated from
+ * Figma and is the whole theme; this file only wires it and sets the page defaults.
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./tokens.css";
+
+/* The design system's components; the app's own files are found from its working directory. */
+@source "../";
+
+/* One breakpoint: phone layouts below, desktop from 768 (SPEC-014 §7). */
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-md: 768px; /* stylelint-disable-line unit-disallowed-list -- the SPEC breakpoint */
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Hover, pressed and focus also answer to data-preview-state, which only the dev catalog sets, so
+ * one static page shows every state next to Figma. Hover keeps Tailwind's (hover: hover) guard.
+ */
+@custom-variant hover {
+  @media (hover: hover) {
+    &:hover {
+      @slot;
+    }
+  }
+
+  &[data-preview-state="hover"] {
+    @slot;
+  }
+}
+
+@custom-variant active (&:active, &[data-preview-state="pressed"]);
+@custom-variant focus-visible (&:focus-visible, &[data-preview-state="focus"]);
+
+@layer base {
+  body {
+    @apply bg-bg-canvas text-text-primary type-body-l antialiased;
+  }
+
+  /* Figma icons are Lucide at a 1.75 stroke (page "Ícones"). */
+  svg.lucide {
+    stroke-width: 1.75;
+  }
+}

@@ -592,6 +592,12 @@
           "type": "COLOR",
           "web": "var(--color-glass-tint-accent)",
           "values": { "Dark": "#d24fc63d", "Light": "#a42a9324" }
+        },
+        {
+          "name": "bg/overlay",
+          "type": "COLOR",
+          "web": "var(--color-bg-overlay)",
+          "values": { "Dark": "#0a050aa8", "Light": "#140b1266" }
         }
       ]
     },
@@ -714,6 +720,30 @@
           "type": "FLOAT",
           "web": "var(--size-icon-lg)",
           "values": { "Value": 24 }
+        },
+        {
+          "name": "size/icon-glass",
+          "type": "FLOAT",
+          "web": "var(--size-icon-glass)",
+          "values": { "Value": 22 }
+        },
+        {
+          "name": "stroke/indicator",
+          "type": "FLOAT",
+          "web": "var(--stroke-indicator)",
+          "values": { "Value": 3 }
+        },
+        {
+          "name": "size/page-content",
+          "type": "FLOAT",
+          "web": "var(--size-page-content)",
+          "values": { "Value": 1200 }
+        },
+        {
+          "name": "size/dialog",
+          "type": "FLOAT",
+          "web": "var(--size-dialog)",
+          "values": { "Value": 480 }
         }
       ]
     },

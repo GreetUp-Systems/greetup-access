@@ -1,6 +1,16 @@
 /**
- * Turns the Figma token snapshot (figma-tokens.json) into tokens.css. Variable names come from
- * each variable's Figma code syntax, so the CSS matches what the Figma MCP emits for a node.
+ * Turns the Figma token snapshot (figma-tokens.json) into tokens.css, the Tailwind theme of the
+ * design system. Variable names come from each variable's Figma code syntax, so the CSS matches
+ * what the Figma MCP emits for a node; Tailwind utilities are built from the same variables:
+ *
+ * - `Color` (Dark and Light) is the `--color-*` theme: `bg-bg-canvas`, `text-text-primary`…
+ *   Dark is the default; Light applies by system preference or by data-theme="light".
+ * - `space/*` and `size/*` feed `--spacing-*`: `p-4` is space/4, `h-control-md` is size/control-md.
+ * - `radius/*` is the `--radius-*` theme: `rounded-md`.
+ * - Text styles are `type-*` utilities (`type-body-m`) and effect styles are `shadow-*` and
+ *   `backdrop-blur-*` theme values.
+ *
+ * Tailwind's default scales are reset, so a value outside the design system has no utility.
  */
 
 export type TokenValue = string | number | { alias: string };
@@ -44,8 +54,6 @@ export interface TokenSnapshot {
   effectStyles: Array<{ name: string; effects: EffectToken[] }>;
 }
 
-// Color modes of the "Color" collection: Dark is the default and the fallback without a system
-// preference; Light applies by system preference or by data-theme="light".
 const darkMode = "Dark";
 const lightMode = "Light";
 
@@ -62,6 +70,24 @@ const fontWeights: Record<string, number> = {
   "Semi Bold": 600,
   Bold: 700,
 };
+
+// Tailwind namespaces whose defaults are dropped: only the design system's values remain.
+const resetNamespaces = [
+  "--color-*",
+  "--font-*",
+  "--font-weight-*",
+  "--text-*",
+  "--tracking-*",
+  "--leading-*",
+  "--spacing",
+  "--spacing-*",
+  "--radius-*",
+  "--shadow-*",
+  "--inset-shadow-*",
+  "--drop-shadow-*",
+  "--text-shadow-*",
+  "--blur-*",
+];
 
 export class TokenSnapshotError extends Error {}
 
@@ -118,30 +144,47 @@ export function generateTokensCss(snapshot: TokenSnapshot): string {
     return value;
   };
 
-  const declarations = (collection: TokenCollection, mode: string): string[] =>
-    collection.variables.map(
-      (variable) => `  ${cssName(variable)}: ${literal(variable, variable.values[mode])};`,
-    );
+  const declaration = (variable: TokenVariable, mode: string): string =>
+    `  ${cssName(variable)}: ${literal(variable, variable.values[mode])};`;
 
-  const root: string[] = [
+  const raw: string[] = [];
+  const theme: string[] = [
+    ...resetNamespaces.map((namespace) => `  ${namespace}: initial;`),
     '  --font-display: var(--font-unbounded, "Unbounded"), system-ui, sans-serif;',
     '  --font-sans: var(--font-inter, "Inter"), system-ui, sans-serif;',
     '  --font-mono: var(--font-jetbrains-mono, "JetBrains Mono"), ui-monospace, monospace;',
   ];
+  const spacing: string[] = [];
   let darkBlock: string[] = [];
   let lightBlock: string[] = [];
 
   for (const collection of snapshot.collections) {
     if (collection.modes.includes(darkMode) && collection.modes.includes(lightMode)) {
-      darkBlock = declarations(collection, darkMode);
-      lightBlock = declarations(collection, lightMode);
-    } else {
-      // Single-mode collections, and contextual ones such as the icon context, use their first
-      // mode; in code an icon takes the color of its context through currentColor.
-      root.push(...declarations(collection, collection.modes[0]!));
+      darkBlock = collection.variables.map((variable) => declaration(variable, darkMode));
+      lightBlock = collection.variables.map((variable) => declaration(variable, lightMode));
+      theme.push(...darkBlock);
+      continue;
+    }
+    // Single-mode collections, and contextual ones such as the icon context, use their first
+    // mode; in code an icon takes the color of its context through currentColor.
+    const mode = collection.modes[0]!;
+    for (const variable of collection.variables) {
+      const name = cssName(variable);
+      if (name.startsWith("--radius-")) {
+        theme.push(declaration(variable, mode));
+        continue;
+      }
+      raw.push(declaration(variable, mode));
+      if (name.startsWith("--space-")) {
+        spacing.push(`  --spacing-${name.slice("--space-".length)}: var(${name});`);
+      } else if (name.startsWith("--size-")) {
+        spacing.push(`  --spacing-${name.slice("--size-".length)}: var(${name});`);
+      }
     }
   }
+  theme.push(...spacing);
 
+  const utilities: string[] = [];
   for (const style of snapshot.textStyles) {
     const family = fontFamilies[style.family];
     const weight = fontWeights[style.style];
@@ -150,20 +193,24 @@ export function generateTokensCss(snapshot: TokenSnapshot): string {
         `Text style ${style.name} uses an unmapped font or line height.`,
       );
     }
-    const name = `--text-${slug(style.name)}`;
-    root.push(`  ${name}: ${weight} ${px(style.size)}/${px(style.lineHeight)} ${family};`);
     const tracking = style.letterSpacingPercent ?? 0;
-    root.push(`  ${name}-tracking: ${tracking === 0 ? "0" : `${tracking / 100}em`};`);
-    root.push(`  ${name}-case: ${style.textCase === "UPPER" ? "uppercase" : "none"};`);
+    utilities.push(
+      `@utility type-${slug(style.name)} {`,
+      `  font: ${weight} ${px(style.size)}/${px(style.lineHeight)} ${family};`,
+      `  letter-spacing: ${tracking === 0 ? "0" : `${tracking / 100}em`};`,
+      ...(style.textCase === "UPPER" ? ["  text-transform: uppercase;"] : []),
+      "}",
+      "",
+    );
   }
 
   for (const style of snapshot.effectStyles) {
-    const name = `--effect-${slug(style.name)}`;
+    const name = slug(style.name);
     const shadows: string[] = [];
     for (const effect of style.effects) {
       if (effect.type === "BACKGROUND_BLUR") {
         // Figma's blur radius is twice the CSS blur() radius.
-        root.push(`  ${name}-blur: blur(${px(effect.radius / 2)});`);
+        theme.push(`  --blur-${name}: ${px(effect.radius / 2)};`);
         continue;
       }
       if (effect.type !== "DROP_SHADOW" && effect.type !== "INNER_SHADOW") {
@@ -177,7 +224,7 @@ export function generateTokensCss(snapshot: TokenSnapshot): string {
     }
     if (shadows.length > 0) {
       // Figma lists effects bottom to top; CSS paints the first shadow on top.
-      root.push(`  ${name}: ${shadows.reverse().join(", ")};`);
+      theme.push(`  --shadow-${name}: ${shadows.reverse().join(", ")};`);
     }
   }
 
@@ -185,12 +232,22 @@ export function generateTokensCss(snapshot: TokenSnapshot): string {
     `/* Generated from tokens/figma-tokens.json (Figma file ${snapshot.file}). Do not edit: run`,
     "   `pnpm --filter @access/ui tokens` after exporting a new snapshot. */",
     "",
+    "/* Figma variables that are not utilities by themselves: palette, sizes, strokes, contexts. */",
     ":root {",
-    ...root,
+    ...raw,
     "}",
     "",
-    ':root,\n[data-theme="dark"] {',
+    "/* The Tailwind theme: Dark colors by default, spacing, radius, fonts and effects. */",
+    "@theme static {",
+    ...theme,
+    "}",
+    "",
+    ":root,",
+    '[data-theme="dark"] {',
     "  color-scheme: dark;",
+    "}",
+    "",
+    '[data-theme="dark"] {',
     ...darkBlock,
     "}",
     "",
@@ -205,6 +262,59 @@ export function generateTokensCss(snapshot: TokenSnapshot): string {
     ...lightBlock.map((line) => `  ${line}`),
     "  }",
     "}",
+    "",
+    "/* Figma text styles, one utility each. */",
+    ...utilities,
+  ].join("\n");
+}
+
+/**
+ * The theme keys tailwind-merge needs to resolve conflicts between design system classes
+ * (`h-control-md` vs `h-control-lg`, `type-body-m` vs `type-body-l`) in `cn()`.
+ */
+export function generateMergeTheme(snapshot: TokenSnapshot): string {
+  const spacing: string[] = [];
+  const radius: string[] = [];
+  for (const collection of snapshot.collections) {
+    if (collection.modes.length !== 1) {
+      continue;
+    }
+    for (const variable of collection.variables) {
+      const name = cssName(variable);
+      for (const [prefix, list] of [
+        ["--space-", spacing],
+        ["--size-", spacing],
+        ["--radius-", radius],
+      ] as const) {
+        if (name.startsWith(prefix)) {
+          list.push(name.slice(prefix.length));
+        }
+      }
+    }
+  }
+  const shadow: string[] = [];
+  const blur: string[] = [];
+  for (const style of snapshot.effectStyles) {
+    for (const effect of style.effects) {
+      const list = effect.type === "BACKGROUND_BLUR" ? blur : shadow;
+      if (!list.includes(slug(style.name))) {
+        list.push(slug(style.name));
+      }
+    }
+  }
+  const typography = snapshot.textStyles.map((style) => slug(style.name));
+  const constant = (name: string, values: string[]): string =>
+    `export const ${name} = [${values.map((value) => `"${value}"`).join(", ")}];`;
+
+  return [
+    `// Generated from tokens/figma-tokens.json (Figma file ${snapshot.file}). Do not edit: run`,
+    "// `pnpm --filter @access/ui tokens` after exporting a new snapshot.",
+    "",
+    constant("spacing", spacing),
+    constant("radius", radius),
+    constant("shadow", shadow),
+    constant("blur", blur),
+    constant("typography", typography),
     "",
   ].join("\n");
 }
