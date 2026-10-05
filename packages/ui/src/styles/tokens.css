@@ -70,6 +70,9 @@
   --stroke-indicator: 3px;
   --size-page-content: 1200px;
   --size-dialog: 480px;
+  --size-top-bar: 56px;
+  --size-nav: 72px;
+  --space-0-5: 2px;
   --icon-current: var(--color-icon-primary);
 }
 
@@ -174,6 +177,9 @@
   --spacing-icon-glass: var(--size-icon-glass);
   --spacing-page-content: var(--size-page-content);
   --spacing-dialog: var(--size-dialog);
+  --spacing-top-bar: var(--size-top-bar);
+  --spacing-nav: var(--size-nav);
+  --spacing-0-5: var(--space-0-5);
   --shadow-glow-accent: 0 0 24px 0 var(--color-effect-glow);
   --shadow-focus-ring: 0 0 0 2px var(--color-bg-canvas), 0 0 0 4px var(--color-effect-focus);
   --shadow-elevation-1: 0 4px 12px -2px #00000029, 0 1px 2px 0 #0000003d;

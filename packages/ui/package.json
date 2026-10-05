@@ -7,7 +7,8 @@
     "./globals.css": "./src/styles/globals.css",
     "./components/*": "./src/components/*.tsx",
     "./lib/*": "./src/lib/*.ts",
-    "./hooks/*": "./src/hooks/*.ts"
+    "./hooks/*": "./src/hooks/*.ts",
+    "./assets/*": "./src/assets/*"
   },
   "scripts": {
     "tokens": "tsx tokens/build-tokens.ts",
@@ -18,6 +19,7 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "input-otp": "^1.5.0",
     "lucide-react": "^1.52.0",
     "radix-ui": "^1.6.7",
     "tailwind-merge": "^3.7.0",

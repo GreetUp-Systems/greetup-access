@@ -35,6 +35,80 @@ link) recebe o visual do botão.
 Validado em 04/10/2026, já sobre o shadcn/ui: catálogo em 1440 comparado com Primário, Secundário,
 Fantasma, Destrutivo e Inverso no Figma (todos os estados).
 
+### Botão de ícone · `button.tsx` (mesmo componente)
+
+| Figma                                           | Nó                          | Código                                                         |
+| ----------------------------------------------- | --------------------------- | -------------------------------------------------------------- |
+| Botão de ícone/Primário · Secundário · Fantasma | `42:63`, `42:124`, `42:197` | `<Button variant="…" size="icon-s \| icon-m \| icon-l">`       |
+| Botão de ícone/Vidro, Forma = Círculo           | `91:176`                    | `<Button variant="glass" size="icon-glass">`                   |
+| Botão de ícone/Vidro, Forma = Sem fundo         | `91:176`                    | `<Button variant="glass-bare" size="icon-glass">` (na cápsula) |
+
+O ícone vai como filho e o `aria-label` é obrigatório. O Destrutivo (`42:258`) entra quando uma tela
+precisar.
+
+### Campo de texto · `field.tsx` + `input.tsx` (shadcn/ui)
+
+| Figma                 | Nó       | Código                                                  |
+| --------------------- | -------- | ------------------------------------------------------- |
+| Campo de texto        | `44:232` | `<Field>` com `<FieldLabel>`, `<Input>` e ajuda ou erro |
+| Tamanho = S · M · L   |          | `<Input size="s" \| "m" \| "l">`                        |
+| Texto de ajuda        |          | `<FieldDescription>`                                    |
+| Estado = Erro         |          | `aria-invalid` no `Input` + `<FieldError>` (com ícone)  |
+| Estado = Desabilitado |          | `disabled` no `Field` e no `Input`                      |
+
+Ícones dentro do campo (Ícone à esquerda/direita) entram com o `input-group` do shadcn quando uma
+tela usar.
+
+### Código de 6 dígitos · `input-otp.tsx` (shadcn/ui)
+
+As caixas de "Identificação · Código" (`145:1506`, `148:2183`): `<InputOTP>` com `<InputOTPGroup>` e
+seis `<InputOTPSlot>`. Aceita colar e o preenchimento automático do sistema.
+
+### Item de lista · `item.tsx` (shadcn/ui)
+
+| Figma                               | Nó       | Código                                                       |
+| ----------------------------------- | -------- | ------------------------------------------------------------ |
+| Item de lista                       | `66:322` | `<Item>` com `<ItemMedia>`, `<ItemContent>`, `<ItemActions>` |
+| Densidade = Confortável · Compacto  |          | `size="comfortable" \| "compact"`                            |
+| Título · Subtítulo                  |          | `<ItemTitle>` · `<ItemDescription>`                          |
+| Estado = Selecionado · Desabilitado |          | `selected` · `aria-disabled`                                 |
+| Mostrar divisor                     |          | `divider`                                                    |
+
+Com `asChild`, o filho (um botão ou link) vira o item, com hover e foco.
+
+### Janela · `dialog.tsx` (shadcn/ui)
+
+As janelas sobre a película (`148:1945`, `148:2183`, `176:5744`): `<Dialog>` com `<DialogContent>`,
+`<DialogHeader>`, `<DialogTitle>` e `<DialogDescription>`. Abaixo de `md` o mesmo diálogo é tela
+cheia, e a tela traz a sua Barra superior.
+
+### Toast · `alert.tsx` (shadcn/ui)
+
+| Figma                                              | Nó       | Código                                                             |
+| -------------------------------------------------- | -------- | ------------------------------------------------------------------ |
+| Toast no fluxo da tela                             | `77:527` | `<Alert tone="…">` com `<AlertTitle>` e `<AlertDescription>`       |
+| Tom = Sucesso · Neutro · Destaque · Erro · Atenção |          | `tone="success" \| "neutral" \| "accent" \| "danger" \| "warning"` |
+
+O ícone vem do tom. Ação e fechar entram quando uma tela usar; o toast temporário (Sonner) também.
+
+### Barra superior · `top-bar.tsx` (composição)
+
+| Figma            | Nó       | Código                                            |
+| ---------------- | -------- | ------------------------------------------------- |
+| Tipo = Navegação | `70:318` | `<TopBar type="navigation" title onBack actions>` |
+| Tipo = Marca     | `70:318` | `<TopBar type="brand" actions>`                   |
+| Tipo = Modal     | `70:318` | `<TopBar type="modal" title onClose>`             |
+| Rolagem = Rolado |          | `scrolled`                                        |
+
+### Logo · `logo.tsx`
+
+`<Logo format="horizontal">` ou `format="symbol"` (`3:95`, Versão = Principal), SVG exportado do Figma pelos
+limites do nó.
+
+Validado em 04/10/2026: catálogo em 1440 comparado no Figma com Botão de ícone/Secundário e Vidro,
+Campo de texto, Item de lista, Barra superior e Toast; janela e código nas telas de identificação
+(SPEC-014 §5 e §6) em 360 e 1440.
+
 ## Ícones
 
 Página "Ícones" (`27:2`): 47 ícones, dos quais 43 são Lucide com o mesmo nome (`Ícone/ticket` →
@@ -44,24 +118,18 @@ Página "Ícones" (`27:2`): 47 ícones, dos quais 43 são Lucide com o mesmo nom
 
 ## Ainda não implementados
 
-| Figma                                                       | Nó do conjunto                        | Variantes                                                                     |
-| ----------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------- |
-| Logo                                                        | `3:95`                                | Formato × Versão                                                              |
-| Botão de ícone (Primário, Secundário, Fantasma, Destrutivo) | `42:63`, `42:124`, `42:197`, `42:258` | Tamanho × Estado                                                              |
-| Botão de ícone/Vidro                                        | `91:176`                              | Forma × Estado                                                                |
-| Campo de texto                                              | `44:232`                              | Tamanho × Estado                                                              |
-| Status                                                      | `46:85`                               | 14 status × Tamanho                                                           |
-| Card                                                        | `51:358`                              | Tipo × Estado × Espaço                                                        |
-| Ingresso                                                    | `56:409`                              | Estado (Válido, Emitindo, Utilizado, Transferido, Cancelado)                  |
-| Pix                                                         | `61:678`                              | Estado (Aguardando, Copiado, Expirado, Pago, Falhou)                          |
-| Item de lista                                               | `66:322`                              | Estado × Densidade                                                            |
-| Barra superior                                              | `70:318`                              | Tipo × Rolagem                                                                |
-| Aba · Barra de abas                                         | `73:39` · `73:376`                    | Estado · Abas × Selecionada                                                   |
-| Toast                                                       | `77:527`                              | Tom                                                                           |
-| Stat Card                                                   | `114:184`                             | Estado × Variação × Tamanho                                                   |
-| Controle segmentado                                         | `154:520`                             | Selecionada                                                                   |
-| Cartão de evento                                            | `154:601`                             | Tipo × Estado                                                                 |
-| Resultado do leitor (UX)                                    | `119:447`                             | Estado (Verificando, Válido, Já utilizado, Inválido, Cancelado, Outro evento) |
+| Figma                     | Nó do conjunto     | Variantes                                                                     |
+| ------------------------- | ------------------ | ----------------------------------------------------------------------------- |
+| Botão de ícone/Destrutivo | `42:258`           | Tamanho × Estado                                                              |
+| Status                    | `46:85`            | 14 status × Tamanho                                                           |
+| Card                      | `51:358`           | Tipo × Estado × Espaço                                                        |
+| Ingresso                  | `56:409`           | Estado (Válido, Emitindo, Utilizado, Transferido, Cancelado)                  |
+| Pix                       | `61:678`           | Estado (Aguardando, Copiado, Expirado, Pago, Falhou)                          |
+| Aba · Barra de abas       | `73:39` · `73:376` | Estado · Abas × Selecionada                                                   |
+| Stat Card                 | `114:184`          | Estado × Variação × Tamanho                                                   |
+| Controle segmentado       | `154:520`          | Selecionada                                                                   |
+| Cartão de evento          | `154:601`          | Tipo × Estado                                                                 |
+| Resultado do leitor (UX)  | `119:447`          | Estado (Verificando, Válido, Já utilizado, Inválido, Cancelado, Outro evento) |
 
 ## Telas
 

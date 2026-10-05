@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
-    "start": "next start --port 3000",
+    "dev": "dotenv -e ../../.env -- next dev --port 3000",
+    "build": "dotenv -e ../../.env -- next build",
+    "start": "dotenv -e ../../.env -- next start --port 3000",
     "lint": "eslint \"app/**/*.{ts,tsx}\" \"scripts/**/*.mjs\" --max-warnings=0 && stylelint \"app/**/*.css\" --allow-empty-input",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "capture": "node scripts/capture.mjs"
+    "capture": "node scripts/capture.mjs",
+    "test": "jest --config jest.config.ts --runInBand"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
@@ -19,6 +20,8 @@
   },
   "dependencies": {
     "@access/ui": "workspace:^",
+    "@privy-io/react-auth": "^3.47.0",
+    "lucide-react": "^1.52.0",
     "next": "^15",
     "react": "^19",
     "react-dom": "^19"

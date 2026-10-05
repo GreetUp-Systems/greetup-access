@@ -744,6 +744,24 @@
           "type": "FLOAT",
           "web": "var(--size-dialog)",
           "values": { "Value": 480 }
+        },
+        {
+          "name": "size/top-bar",
+          "type": "FLOAT",
+          "web": "var(--size-top-bar)",
+          "values": { "Value": 56 }
+        },
+        {
+          "name": "size/nav",
+          "type": "FLOAT",
+          "web": "var(--size-nav)",
+          "values": { "Value": 72 }
+        },
+        {
+          "name": "space/0-5",
+          "type": "FLOAT",
+          "web": "var(--space-0-5)",
+          "values": { "Value": 2 }
         }
       ]
     },
