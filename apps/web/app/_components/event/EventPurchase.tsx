@@ -35,7 +35,11 @@ export interface TicketSelection {
 // 221:3245/221:3338).
 const closed = {
   cancelled: { label: "Vendas encerradas", mobile: "Cancelado", desktop: "Evento cancelado" },
-  started: { label: "O evento já começou", mobile: "Vendas encerradas", desktop: "Vendas encerradas" },
+  started: {
+    label: "O evento já começou",
+    mobile: "Vendas encerradas",
+    desktop: "Vendas encerradas",
+  },
 } as const;
 
 /**
@@ -80,7 +84,11 @@ export function EventPurchase({
 
   const chooser = (layout: "sheet" | "card") => (
     <>
-      <TicketTypeList types={event.ticketTypes} selectedId={selected?.id ?? null} onSelect={select} />
+      <TicketTypeList
+        types={event.ticketTypes}
+        selectedId={selected?.id ?? null}
+        onSelect={select}
+      />
       <div
         className={cn(
           "flex h-16 items-center justify-between",
@@ -97,14 +105,7 @@ export function EventPurchase({
         )}
       >
         <span className="type-body-m text-text-secondary">Subtotal</span>
-        <span
-          className={cn(
-            "text-text-primary",
-            layout === "sheet" ? "type-body-m-strong" : "type-heading-h4",
-          )}
-        >
-          {formatPrice(subtotal)}
-        </span>
+        <span className="type-mono-l text-text-primary">{formatPrice(subtotal)}</span>
       </div>
     </>
   );

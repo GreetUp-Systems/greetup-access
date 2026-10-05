@@ -100,6 +100,9 @@ O ícone vem do tom. Ação e fechar entram quando uma tela usar; o toast tempor
 | Tipo = Modal     | `70:318` | `<TopBar type="modal" title onClose>`             |
 | Rolagem = Rolado |          | `scrolled`                                        |
 
+Com `actions="loading"`, um esqueleto ocupa o lugar da cápsula enquanto as ações não são
+conhecidas (Header · Sessão carregando, `231:5834`).
+
 ### Status · `status.tsx` (estilo do Badge do shadcn/ui)
 
 | Figma               | Nó      | Código                                     |
@@ -110,6 +113,13 @@ O ícone vem do tom. Ação e fechar entram quando uma tela usar; o toast tempor
 | Mostrar ícone       |         | `showIcon` (desligar só em tabela densa)   |
 
 O texto é fixo por estado, como diz o componente no Figma.
+
+### Esqueleto · `skeleton.tsx` (shadcn/ui)
+
+O padrão de esqueleto do Figma (Stat Card · Estado = Carregando, `114:74`; Header · Sessão
+carregando, `231:5834`): `<Skeleton>` é um bloco `bg/subtle` que pulsa no lugar do que está
+carregando. Tamanho e raio vêm de quem usa e são os da coisa substituída, para nada se mover quando
+ela chega; sem medida própria, o esqueleto envolve um texto invisível com o mesmo espaço e tipografia.
 
 ### Folha · `drawer.tsx` (shadcn/ui)
 
