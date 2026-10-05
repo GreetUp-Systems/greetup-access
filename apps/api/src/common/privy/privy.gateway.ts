@@ -1,3 +1,5 @@
+import { Logger } from "@nestjs/common";
+
 import {
   type PrivyGateway,
   type PrivyIdentity,
@@ -7,6 +9,8 @@ import {
 } from "./privy.types";
 
 const STELLAR_ADDRESS_PATTERN = /^G[A-Z2-7]{55}$/;
+// A JWT anywhere in a provider message, so a token never reaches the logs (CLAUDE.md §6.5).
+const JWT_PATTERN = /eyJ[\w-]+\.[\w-]+\.[\w-]*/g;
 
 interface PrivyUserResponse {
   id: string;
@@ -70,6 +74,7 @@ export interface PrivySdkGatewayOptions {
 }
 
 export class PrivySdkGateway implements PrivyGateway {
+  private readonly logger = new Logger("PrivyGateway");
   private clientPromise: Promise<PrivyClientLike> | undefined;
   private readonly timeoutMs: number;
 
@@ -224,6 +229,8 @@ export class PrivySdkGateway implements PrivyGateway {
         throw error;
       }
 
+      // The callers only see the operation; Privy's own answer stays here for diagnosis.
+      this.logger.warn(`Privy ${operation} failed: ${describePrivyError(error)}`);
       throw new PrivyProviderUnavailableError(operation);
     } finally {
       if (timeout !== undefined) {
@@ -248,4 +255,14 @@ export class PrivySdkGateway implements PrivyGateway {
 
     return this.clientPromise;
   }
+}
+
+/** Privy's answer as the SDK words it ("400 Invalid JWT token provided"), without any token. */
+export function describePrivyError(error: unknown): string {
+  // Duck-typed: an error built in another realm (the SDK's dynamic import) fails instanceof.
+  const message =
+    typeof error === "object" && error !== null && "message" in error
+      ? String(error.message)
+      : "non-error thrown";
+  return message.replace(JWT_PATTERN, "[jwt]").slice(0, 300);
 }
