@@ -1,6 +1,6 @@
 # SPEC-014 — App web · Compra
 
-> **Status:** 9A implementada; 9B a 9D pendentes
+> **Status:** 9A e 9B implementadas; 9C e 9D pendentes
 >
 > **Versão:** 1.0
 >
@@ -182,7 +182,7 @@ NEXT_PUBLIC_PRIVY_APP_ID=
 
 - [x] 9A: dois passos, página pública ampliada, código do ingresso e CORS, com testes.
 - [x] Telas do §6 desenhadas no Figma e revisadas pelo Matheus (04/10/2026).
-- [ ] 9B: login, identificação e base do app, com conferência visual.
+- [x] 9B: login, identificação e base do app, com conferência visual (PR #22; a validação real do login vai para a 9C).
 - [ ] 9C: compra de ponta a ponta com a API simulada e conferência visual.
 - [ ] 9D: área do comprador com conferência visual.
 - [ ] Build, lint, typecheck, unitários, integração e ponta a ponta passam.
