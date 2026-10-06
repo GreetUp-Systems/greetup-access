@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rimraf dist coverage *.tsbuildinfo",
-    "dev": "dotenv -e ../../.env -- node --watch --require ts-node/register src/main.ts",
+    "dev": "dotenv -e ../../.env -- node --watch-path=src --require ts-node/register src/main.ts",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --max-warnings=0",
     "start": "dotenv -e ../../.env -- node dist/main.js",
     "test": "jest --config jest.config.ts --runInBand --passWithNoTests",
