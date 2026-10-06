@@ -143,8 +143,9 @@ evento (`138:322`, `140:931`; RN-008) vieram na 9C.1.
   aparelho) abre a identificação com `origin: "checkout"`, sem resumo, e carrega o pedido depois.
   Pedido de outra pessoa responde a página 404.
 - **Acompanhamento:** `GET /api/purchases/:id/stream` com `@microsoft/fetch-event-source`; ao ver
-  `payment_confirmed`, faz a ativação da conta uma vez, sem bloquear; em `timeout`,
-  passa a consultar `GET /api/purchases/:id`.
+  `payment_confirmed`, faz a ativação da conta uma vez, sem bloquear; em `timeout`, ou se o stream
+  cair ou for recusado, passa a consultar `GET /api/purchases/:id` a cada 5 s. Em `ticket_issued`,
+  lê o primeiro ingresso (`GET /api/me/tickets/:id`) para o QR do "Ingresso pronto" (9C.3).
 - **QR Code:** o do Pix (a partir de `pixCode`) e o do ingresso (a partir de `qrToken`) gerados no
   cliente com `qrcode`, em SVG.
 - **Formatação:** valores em real e datas em pt-BR, fuso `America/Sao_Paulo`, por `Intl`.
