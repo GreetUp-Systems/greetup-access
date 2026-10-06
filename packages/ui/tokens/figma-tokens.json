@@ -804,6 +804,30 @@
           "type": "FLOAT",
           "web": "var(--size-grabber-height)",
           "values": { "Value": 5 }
+        },
+        {
+          "name": "size/thumbnail-s",
+          "type": "FLOAT",
+          "web": "var(--size-thumbnail-s)",
+          "values": { "Value": 56 }
+        },
+        {
+          "name": "size/thumbnail-m",
+          "type": "FLOAT",
+          "web": "var(--size-thumbnail-m)",
+          "values": { "Value": 64 }
+        },
+        {
+          "name": "size/qr-plate",
+          "type": "FLOAT",
+          "web": "var(--size-qr-plate)",
+          "values": { "Value": 200 }
+        },
+        {
+          "name": "size/qr",
+          "type": "FLOAT",
+          "web": "var(--size-qr)",
+          "values": { "Value": 168 }
         }
       ]
     },

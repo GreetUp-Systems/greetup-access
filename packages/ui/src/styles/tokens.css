@@ -80,6 +80,10 @@
   --space-1-5: 6px;
   --size-grabber-width: 36px;
   --size-grabber-height: 5px;
+  --size-thumbnail-s: 56px;
+  --size-thumbnail-m: 64px;
+  --size-qr-plate: 200px;
+  --size-qr: 168px;
   --icon-current: var(--color-icon-primary);
 }
 
@@ -194,6 +198,10 @@
   --spacing-1-5: var(--space-1-5);
   --spacing-grabber-width: var(--size-grabber-width);
   --spacing-grabber-height: var(--size-grabber-height);
+  --spacing-thumbnail-s: var(--size-thumbnail-s);
+  --spacing-thumbnail-m: var(--size-thumbnail-m);
+  --spacing-qr-plate: var(--size-qr-plate);
+  --spacing-qr: var(--size-qr);
   --shadow-glow-accent: 0 0 24px 0 var(--color-effect-glow);
   --shadow-focus-ring: 0 0 0 2px var(--color-bg-canvas), 0 0 0 4px var(--color-effect-focus);
   --shadow-elevation-1: 0 4px 12px -2px #00000029, 0 1px 2px 0 #0000003d;
