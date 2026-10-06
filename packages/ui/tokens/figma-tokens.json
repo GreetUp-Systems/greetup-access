@@ -828,6 +828,18 @@
           "type": "FLOAT",
           "web": "var(--size-qr)",
           "values": { "Value": 168 }
+        },
+        {
+          "name": "size/state-circle",
+          "type": "FLOAT",
+          "web": "var(--size-state-circle)",
+          "values": { "Value": 88 }
+        },
+        {
+          "name": "size/icon-xl",
+          "type": "FLOAT",
+          "web": "var(--size-icon-xl)",
+          "values": { "Value": 36 }
         }
       ]
     },
