@@ -2,7 +2,7 @@
 
 > **Status:** 9A, 9B e 9C.1 implementadas; 9C.2, 9C.3 e 9D pendentes
 >
-> **Versão:** 1.1 (ativação assinada no navegador, D-28; restauração da sessão)
+> **Versão:** 1.2 (checkout da 9C.2: erros da criação e do Pix, estados novos da escolha)
 >
 > **Atualizada em:** 05/10/2026
 >
@@ -48,7 +48,10 @@ Privy no navegador, que valida os fluxos adiados (ativação da conta, e-mail de
 | 9C    | Compra: evento, escolha, identificação, revisão, Pix e acompanhamento                         |
 | 9D    | Área do comprador: Seus ingressos (próximos e anteriores) e o ingresso                        |
 
-Cada parte é um PR próprio, com a conferência visual 360/1440 registrada.
+Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. A 9C vem em três:
+9C.1, evento e escolha; 9C.2, do "Continuar" até o Pix na tela (criar o pedido, revisar e gerar o
+Pix, com os estados de cada passo); 9C.3, o acompanhamento depois do Pix (SSE, pagamento
+confirmado, ingresso pronto, pagamento não concluído e a ativação da conta ao confirmar).
 
 ## 5. Telas e rotas
 
@@ -87,6 +90,9 @@ evento (`138:322`, `140:931`; RN-008) vieram na 9C.1.
 | ----------------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | Evento indisponível     | `176:2096` | `176:5567` | Selo "Cancelado" no título; a barra (ou o cartão) diz "Vendas encerradas", sem botão de compra                  |
 | Valor mínimo            | `175:1777` | `176:4873` | Só quando o câmbio passa da folga (D-26): toast de atenção na escolha; "Continuar" desabilitado                 |
+| Valor máximo            | `236:3660` | `236:4345` | Pedido acima do máximo do Pix: toast de atenção na escolha; "Continuar" desabilitado                            |
+| Esgotou na escolha      | `236:3382` | `236:4117` | O tipo acabou ao continuar: o tipo aparece "Esgotado" e um toast de erro pede outro ingresso                    |
+| Falha ao continuar      | `236:3904` | `236:4552` | O pedido não foi criado: toast de erro "Não deu para continuar"; "Continuar" segue ativo                        |
 | Esgotou                 | `175:2013` | `176:5075` | Toast de erro na revisão ("Nada foi cobrado"); ação "Escolher outro"                                            |
 | Total mudou             | `175:4622` | `176:5200` | Toast de atenção na revisão com o novo total; ação "Gerar Pix"                                                  |
 | Pagamento não concluído | `175:4806` | `176:5451` | Componente Pix no estado Falhou, com "Tentar novamente" (nova compra)                                           |
@@ -118,6 +124,24 @@ evento (`138:322`, `140:931`; RN-008) vieram na 9C.1.
   sem JavaScript); as demais telas rodam no cliente.
 - **Dados:** cliente de API tipado e hooks simples, sem biblioteca de cache. Erros da API viram
   estados de tela pelo `code` da resposta.
+- **Criar o pedido (9C.2):** "Continuar" pede o código antes, se não houver sessão; depois,
+  `POST /api/purchases` com uma `Idempotency-Key` por tentativa (a mesma numa repetição) e
+  `/checkout/[purchaseId]`. Os erros ficam na escolha (§6): `purchase_below_minimum` → Valor mínimo;
+  `purchase_above_maximum` → Valor máximo; `ticket_type_sold_out` → Esgotou na escolha, com a
+  disponibilidade relida; `event_not_on_sale` → a página relê o evento e mostra o encerramento; os
+  demais e a falha de rede → Falha ao continuar.
+- **Revisar e gerar o Pix (9C.2):** a revisão lê `GET /api/purchases/:id`; a linha do evento é a
+  data e o local (`venueName`), sem a cidade. "Gerar Pix" chama `POST /api/purchases/:id/pix` com
+  o `totalCents` exibido: `purchase_total_changed` → Total mudou, com o novo total, e "Gerar Pix"
+  confirma; falha de rede ou `payment_provider_unavailable` → Erro de conexão ("Tentar de novo");
+  `purchase_expired` → o app cria um novo pedido com o mesmo tipo e quantidade e segue para ele:
+  esgotado → Esgotou ("Escolher outro" volta ao evento); total igual → gera o Pix; total diferente
+  → Total mudou. `payment_rejected` e `purchase_not_payable` → Pagamento não concluído;
+  `purchase_below_minimum` ou `purchase_above_maximum` → volta ao evento com o aviso da escolha.
+  Com o Pix gerado, a tela mostra o componente Pix "Aguardando" com o QR e o copia e cola.
+- **Checkout sem sessão:** `/checkout/[purchaseId]` aberto sem sessão (expirada ou em outro
+  aparelho) abre a identificação com `origin: "checkout"`, sem resumo, e carrega o pedido depois.
+  Pedido de outra pessoa responde a página 404.
 - **Acompanhamento:** `GET /api/purchases/:id/stream` com `@microsoft/fetch-event-source`; ao ver
   `payment_confirmed`, faz a ativação da conta uma vez, sem bloquear; em `timeout`,
   passa a consultar `GET /api/purchases/:id`.
@@ -191,7 +215,7 @@ NEXT_PUBLIC_PRIVY_APP_ID=
 - [x] 9A: dois passos, página pública ampliada, código do ingresso e CORS, com testes.
 - [x] Telas do §6 desenhadas no Figma e revisadas pelo Matheus (04/10/2026).
 - [x] 9B: login, identificação e base do app, com conferência visual (PR #22). Login real validado no app em 05/10/2026 (mesma conta e wallet); a ativação Stellar, recusada pela Privy no servidor, passa a assinar no navegador (D-28).
-- [ ] 9C: compra de ponta a ponta com a API simulada e conferência visual. 9C.1 (página do evento e escolha do ingresso) no PR #24; 9C.2 e 9C.3 pendentes.
+- [ ] 9C: compra de ponta a ponta com a API simulada e conferência visual. 9C.1 (página do evento e escolha do ingresso) no PR #24; 9C.2 (checkout até o Pix) e 9C.3 (acompanhamento) pendentes.
 - [ ] 9D: área do comprador com conferência visual.
 - [ ] Build, lint, typecheck, unitários, integração e ponta a ponta passam.
 - [ ] Validação real na Testnet executada (§11).

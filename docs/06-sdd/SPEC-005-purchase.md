@@ -2,7 +2,7 @@
 
 > **Status:** 6A a 6D implementadas (6D validada na Testnet pelo app); smoke ponta a ponta pendente
 >
-> **Versão:** 1.7 (ativação assinada no navegador, D-28)
+> **Versão:** 1.8 (evento e tipo de ingresso na visão da compra)
 >
 > **Atualizada em:** 05/10/2026
 >
@@ -236,6 +236,15 @@ Autenticado, com `Idempotency-Key`:
 {
   "id": "uuid",
   "status": "initiated",
+  "event": {
+    "slug": "festival-de-inverno",
+    "name": "Festival de Inverno",
+    "startsAt": "2026-11-07T00:00:00.000Z",
+    "endsAt": null,
+    "venueName": "Casa Fluida",
+    "address": "Rua Augusta, 1200 · São Paulo"
+  },
+  "ticketType": { "id": "uuid", "name": "Pista" },
   "quantity": 2,
   "subtotalCents": 16000,
   "serviceFeeCents": 980,
@@ -280,7 +289,9 @@ Outros erros da criação: `404 ticket_type_not_available`, `409 producer_not_re
 `400 invalid_purchase_pix` para corpo inválido.
 
 `GET /api/purchases/:id` devolve a mesma visão para o comprador dono; compra de outro usuário
-responde `404`.
+responde `404`. A visão traz o evento e o tipo de ingresso (`event`, `ticketType`) para a revisão,
+o Pix e o acompanhamento sobreviverem a um recarregamento ou a outro aparelho (SPEC-014 §5); são
+dados públicos do evento, sem nada do comprador nem do produtor.
 
 ### Boundary BlindPay
 
