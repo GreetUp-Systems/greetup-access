@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { expect, type Page, test } from "@playwright/test";
 
-// The checkout of SPEC-014 9C.2, signed in through the test session, against the simulated API.
+// The checkout of SPEC-014 9C.2 and 9C.3, signed in through the test session, against the
+// simulated API.
 // Every test opens its own scenario event (e2e/mock-api.mjs), so tests never share a state.
 const isPhone = (page: Page): boolean => (page.viewportSize()?.width ?? 0) < 768;
 
@@ -177,6 +178,85 @@ test("a payment that did not complete starts a new order", async ({ page }) => {
   await page.getByRole("button", { name: "Tentar novamente" }).click();
   await expect(page).not.toHaveURL(first);
   await expect(primaryAction(page, "Gerar Pix")).toBeVisible();
+});
+
+// --- Following the paid order (9C.3). The tests move the order forward on the simulated API, as
+// the BlindPay webhook and the mint would.
+// The simulated API (playwright.config.ts).
+const mockApi = "http://localhost:3101";
+
+const purchaseId = (page: Page): string => new URL(page.url()).pathname.split("/").pop() ?? "";
+
+type Step = "pay" | "issue" | "fail" | "timeout";
+
+const controlUrl = (page: Page, step: Step): string =>
+  `${mockApi}/__test/purchases/${purchaseId(page)}/${step}`;
+
+async function advance(page: Page, step: Exclude<Step, "timeout">): Promise<void> {
+  const response = await page.request.post(controlUrl(page, step));
+  expect(response.ok()).toBe(true);
+}
+
+async function toPix(page: Page, ticketType: string, quantity = 1): Promise<void> {
+  await openScenarios(page);
+  await toReview(page, ticketType, quantity);
+  await primaryAction(page, "Gerar Pix").click();
+  await expect(page.getByRole("region", { name: "Pague com Pix" })).toBeVisible();
+}
+
+test("follows the paid order until the tickets are ready, across a reload", async ({ page }) => {
+  await toPix(page, "Pista", 2);
+
+  await advance(page, "pay");
+  await expect(page.getByRole("heading", { name: "Pix confirmado" })).toBeVisible();
+  await expect(visible(page, "Estamos emitindo seus 2 ingressos.")).toBeVisible();
+  await expect(visible(page, "Emitindo")).toBeVisible();
+  if (!isPhone(page)) {
+    await expect(visible(page, "Pagamento recebido")).toBeVisible();
+    await expect(visible(page, "Emitindo seus 2 ingressos")).toBeVisible();
+  }
+
+  // A reload while issuing picks the order up where it was.
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Pix confirmado" })).toBeVisible();
+
+  await advance(page, "issue");
+  await expect(page.getByRole("heading", { name: "Ingresso pronto" })).toBeVisible();
+  await expect(visible(page, "Os 2 ingressos estão na sua conta.")).toBeVisible();
+  await expect(page.getByRole("img", { name: "QR Code do ingresso" })).toBeVisible();
+  await expect(visible(page, /^AX-\d{4}$/)).toBeVisible();
+  await expect(visible(page, "Aproxime o código do leitor na entrada.")).toBeVisible();
+  if (isPhone(page)) {
+    await expect(visible(page, "Ingresso 1 de 2")).toBeVisible();
+  } else {
+    await expect(primaryAction(page, "Voltar ao evento")).toBeVisible();
+  }
+  await expect(primaryAction(page, "Ver meus ingressos")).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Ingresso pronto" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "QR Code do ingresso" })).toBeVisible();
+});
+
+test("a payment that does not complete while waiting is shown on the Pix", async ({ page }) => {
+  await toPix(page, "Pista");
+
+  await advance(page, "fail");
+  await expect(visible(page, "Não concluído")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tentar novamente" })).toBeVisible();
+});
+
+test("after the stream times out, the order is still read until it is paid", async ({ page }) => {
+  await toPix(page, "Pista");
+
+  await expect
+    .poll(async () => (await page.request.post(controlUrl(page, "timeout"))).status())
+    .toBe(200);
+  await advance(page, "pay");
+  // No stream anymore: the next read, within a few seconds, finds the payment.
+  await expect(page.getByRole("heading", { name: "Pix confirmado" })).toBeVisible({
+    timeout: 10_000,
+  });
 });
 
 test("an order that is not the buyer's is not found", async ({ page }) => {
