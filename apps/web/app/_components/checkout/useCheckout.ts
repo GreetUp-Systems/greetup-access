@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError } from "../../_lib/api/client";
 import {
@@ -45,6 +45,10 @@ export function useCheckout(purchaseId: string) {
   const [notice, setNotice] = useState<ReviewNotice | null>(null);
   const [busy, setBusy] = useState(false);
   const authenticated = state.status === "authenticated";
+  // Read once per order and session: a token function that changes identity must not reload the
+  // order in the middle of a step (an expired reservation reads as payment_failed).
+  const tokenRef = useRef(getToken);
+  tokenRef.current = getToken;
 
   useEffect(() => {
     if (!authenticated) {
@@ -53,7 +57,7 @@ export function useCheckout(purchaseId: string) {
     let cancelled = false;
     void (async () => {
       try {
-        const purchase = await getPurchase(await getToken(), purchaseId);
+        const purchase = await getPurchase(await tokenRef.current(), purchaseId);
         if (!cancelled) {
           setLoaded({ status: "ready", purchase });
         }
@@ -70,7 +74,7 @@ export function useCheckout(purchaseId: string) {
     return () => {
       cancelled = true;
     };
-  }, [authenticated, getToken, purchaseId]);
+  }, [authenticated, purchaseId]);
 
   const show = useCallback(
     (purchase: PurchaseView) => setLoaded({ status: "ready", purchase }),

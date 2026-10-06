@@ -2,9 +2,12 @@
 // the server, so the browser's request interception would not reach it: both the Next.js server and
 // the browser call this process instead. Fixtures follow the Figma example event.
 import { createServer } from "node:http";
+import { randomUUID } from "node:crypto";
 
 const port = Number(process.env.MOCK_API_PORT ?? 3101);
 const day = 24 * 60 * 60 * 1000;
+// The test session's token (app/_lib/e2e-session.ts).
+const token = "e2e-session-token";
 
 const base = {
   name: "Festival de Inverno",
@@ -16,9 +19,34 @@ const base = {
   producer: { displayName: "Casa Fluida" },
 };
 
+const startsAt = new Date(Date.now() + 30 * day).toISOString();
+
+// Checkout scenarios, one per ticket type of "Festival de Cenários": what creating the order, and
+// then generating its Pix, answers. Each test asks for its own event, "festival-de-cenarios-<id>",
+// whose ticket types are "<id>~<scenario>", so tests running side by side never share a state.
+const scenarioTypes = [
+  { id: "feliz", name: "Pista", priceCents: 12000 },
+  { id: "minimo", name: "Meia", priceCents: 6000, create: [422, "purchase_below_minimum"] },
+  { id: "maximo", name: "Mesa", priceCents: 450000, create: [422, "purchase_above_maximum"] },
+  { id: "esgota", name: "Lote 1", priceCents: 12000, create: [409, "ticket_type_sold_out"] },
+  { id: "falha", name: "Lote 2", priceCents: 12000, create: [409, "producer_not_ready_for_sales"] },
+  { id: "total-muda", name: "Lote 3", priceCents: 12000, pix: ["total_changed"] },
+  { id: "conexao", name: "Lote 4", priceCents: 12000, pix: ["connection"] },
+  { id: "expira", name: "Lote 5", priceCents: 12000, pix: ["expired"] },
+  {
+    id: "expira-esgota",
+    name: "Lote 6",
+    priceCents: 12000,
+    pix: ["expired"],
+    recreate: "sold_out",
+  },
+  { id: "nao-conclui", name: "Lote 7", priceCents: 12000, pix: ["rejected"] },
+];
+const soldOut = new Set();
+
 function event(slug) {
   const now = Date.now();
-  const upcoming = { startsAt: new Date(now + 30 * day).toISOString(), endsAt: null };
+  const upcoming = { startsAt, endsAt: null };
   switch (slug) {
     case "festival-de-inverno":
       return {
@@ -46,24 +74,194 @@ function event(slug) {
         ],
       };
     default:
-      return null;
+      return slug.startsWith("festival-de-cenarios-")
+        ? {
+            ...base,
+            ...upcoming,
+            name: "Festival de Cenários",
+            slug,
+            status: "published",
+            ticketTypes: scenarioTypes.map((type) => {
+              const id = `${slug.slice("festival-de-cenarios-".length)}~${type.id}`;
+              return {
+                id,
+                name: type.name,
+                description: null,
+                priceCents: type.priceCents,
+                available: soldOut.has(id) ? 0 : 50,
+              };
+            }),
+          }
+        : null;
   }
 }
 
-createServer((request, response) => {
+// --- Purchases (SPEC-005 §9), for the test session's buyer only.
+const purchases = new Map();
+const byKey = new Map();
+
+// The API's view: the record without the scenario's bookkeeping.
+function view(record) {
+  const purchase = { ...record };
+  delete purchase.pixPlan;
+  delete purchase.pixAttempts;
+  return purchase;
+}
+
+function newPurchase(ticketTypeId, type, quantity) {
+  // Only the first order of a type follows the scenario: the one the app creates again succeeds.
+  const first = ![...purchases.values()].some((p) => p.ticketTypeId === ticketTypeId);
+  const namespace = ticketTypeId.split("~")[0];
+  const subtotalCents = type.priceCents * quantity;
+  const serviceFeeCents = Math.round(subtotalCents / 10);
+  const record = {
+    id: randomUUID(),
+    status: "initiated",
+    eventId: namespace,
+    ticketTypeId,
+    event: {
+      slug: `festival-de-cenarios-${namespace}`,
+      name: "Festival de Cenários",
+      startsAt,
+      endsAt: null,
+      venueName: base.venueName,
+      address: base.address,
+    },
+    ticketType: { id: ticketTypeId, name: type.name },
+    quantity,
+    unitPriceCents: type.priceCents,
+    subtotalCents,
+    serviceFeeCents,
+    totalCents: subtotalCents + serviceFeeCents,
+    pixCode: null,
+    createdAt: new Date().toISOString(),
+    tickets: [],
+    pixPlan: first ? (type.pix ?? []) : [],
+    pixAttempts: 0,
+  };
+  purchases.set(record.id, record);
+  return record;
+}
+
+function createPurchase(body, key) {
+  const ticketTypeId = String(body.ticketTypeId ?? "");
+  const type = scenarioTypes.find((candidate) => ticketTypeId.endsWith(`~${candidate.id}`));
+  if (type === undefined) {
+    return [404, { code: "ticket_type_not_available", message: "" }];
+  }
+  if (byKey.has(key)) {
+    return [201, view(purchases.get(byKey.get(key)))];
+  }
+  const recreating = [...purchases.values()].some((p) => p.ticketTypeId === ticketTypeId);
+  if (type.recreate === "sold_out" && recreating) {
+    soldOut.add(ticketTypeId);
+    return [409, { code: "ticket_type_sold_out", message: "" }];
+  }
+  if (type.create !== undefined) {
+    if (type.create[1] === "ticket_type_sold_out") {
+      soldOut.add(ticketTypeId);
+    }
+    return [type.create[0], { code: type.create[1], message: "" }];
+  }
+  const record = newPurchase(ticketTypeId, type, body.quantity);
+  byKey.set(key, record.id);
+  return [201, view(record)];
+}
+
+function createPix(record, body) {
+  record.pixAttempts += 1;
+  const outcome = record.pixPlan[record.pixAttempts - 1];
+  if (outcome === "total_changed") {
+    record.serviceFeeCents += 180;
+    record.totalCents += 180;
+    return [409, { code: "purchase_total_changed", message: "", purchase: view(record) }];
+  }
+  if (outcome === "connection") {
+    return [503, { code: "payment_provider_unavailable", message: "" }];
+  }
+  if (outcome === "expired") {
+    record.status = "payment_failed";
+    return [409, { code: "purchase_expired", message: "" }];
+  }
+  if (outcome === "rejected") {
+    record.status = "payment_failed";
+    return [422, { code: "payment_rejected", message: "" }];
+  }
+  if (body.expectedTotalCents !== record.totalCents) {
+    return [409, { code: "purchase_total_changed", message: "", purchase: view(record) }];
+  }
+  record.status = "awaiting_payment";
+  record.pixCode = `00020126580014br.gov.bcb.pix0136${record.id}5204000053039865802BR6304ABCD`;
+  return [200, view(record)];
+}
+
+function readBody(request) {
+  return new Promise((resolve) => {
+    let raw = "";
+    request.on("data", (chunk) => (raw += chunk));
+    request.on("end", () => {
+      try {
+        resolve(raw === "" ? null : JSON.parse(raw));
+      } catch {
+        resolve(null);
+      }
+    });
+  });
+}
+
+function send(response, status, body) {
+  response.writeHead(status, { "Content-Type": "application/json" });
+  response.end(JSON.stringify(body));
+}
+
+createServer(async (request, response) => {
   response.setHeader("Access-Control-Allow-Origin", "*");
-  response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Idempotency-Key");
+  response.setHeader(
+    "Access-Control-Allow-Headers",
+    "Authorization, Content-Type, Idempotency-Key",
+  );
   if (request.method === "OPTIONS") {
     response.writeHead(204).end();
     return;
   }
-  const match = /^\/api\/public\/events\/([^/?]+)/.exec(request.url ?? "");
-  const found = match === null ? null : event(decodeURIComponent(match[1]));
-  if (found === null) {
-    response.writeHead(404, { "Content-Type": "application/json" });
-    response.end(JSON.stringify({ code: "event_not_found", message: "Not found." }));
+  const url = request.url ?? "";
+
+  const publicEvent = /^\/api\/public\/events\/([^/?]+)/.exec(url);
+  if (publicEvent !== null) {
+    const found = event(decodeURIComponent(publicEvent[1]));
+    if (found === null) {
+      send(response, 404, { code: "event_not_found", message: "Not found." });
+    } else {
+      send(response, 200, found);
+    }
     return;
   }
-  response.writeHead(200, { "Content-Type": "application/json" });
-  response.end(JSON.stringify(found));
+
+  if (url.startsWith("/api/purchases")) {
+    if (request.headers.authorization !== `Bearer ${token}`) {
+      send(response, 401, { code: "invalid_auth_token", message: "" });
+      return;
+    }
+    const body = await readBody(request);
+    if (request.method === "POST" && url === "/api/purchases") {
+      const [status, payload] = createPurchase(body ?? {}, request.headers["idempotency-key"]);
+      send(response, status, payload);
+      return;
+    }
+    const match = /^\/api\/purchases\/([^/?]+)(\/pix)?$/.exec(url);
+    const record = match === null ? undefined : purchases.get(match[1]);
+    if (record === undefined) {
+      send(response, 404, { code: "purchase_not_found", message: "" });
+      return;
+    }
+    if (request.method === "POST" && match[2] === "/pix") {
+      const [status, payload] = createPix(record, body ?? {});
+      send(response, status, payload);
+      return;
+    }
+    send(response, 200, view(record));
+    return;
+  }
+
+  send(response, 404, { code: "not_found", message: "Not found." });
 }).listen(port);

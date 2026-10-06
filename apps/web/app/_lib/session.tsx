@@ -16,6 +16,7 @@ import {
 import { activateStellarAccount } from "./account-activation";
 import { type AccountView, bootstrapAccount, type BootstrapOrigin } from "./api/account";
 import { ApiError } from "./api/client";
+import { E2E_TOKEN, e2eAccount, useE2ESession } from "./e2e-session";
 import { restoreSession } from "./session-restore";
 
 export type SessionState =
@@ -39,9 +40,19 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+// The end-to-end build's signed-in buyer (e2e-session.ts): stable functions, no Privy.
+const e2eSessionValue: SessionContextValue = {
+  state: { status: "authenticated", account: e2eAccount },
+  getToken: () => Promise.resolve(E2E_TOKEN),
+  completeLogin: () => Promise.resolve(e2eAccount),
+  abandonLogin: () => Promise.resolve(),
+  logout: () => Promise.resolve(),
+};
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const { ready, authenticated, user, getAccessToken, logout: privyLogout } = usePrivy();
   const { signRawHash } = useSignRawHash();
+  const e2e = useE2ESession();
   const [state, setState] = useState<SessionState>({ status: "loading" });
   const [activationRequested, setActivationRequested] = useState(false);
   // Only a session that existed when the page opened is restored; a login in progress is
@@ -129,8 +140,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [privyLogout]);
 
   const value = useMemo(
-    () => ({ state, getToken, completeLogin, abandonLogin, logout }),
-    [state, getToken, completeLogin, abandonLogin, logout],
+    () => (e2e ? e2eSessionValue : { state, getToken, completeLogin, abandonLogin, logout }),
+    [e2e, state, getToken, completeLogin, abandonLogin, logout],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

@@ -131,6 +131,27 @@ As folhas de vidro do celular ("Folha · Escolha do ingresso", `139:928`): `<Dra
 A arte padrão da capa do evento (SPEC-014 A2), exportada de `138:322` e `140:931`: tela cheia com
 esmaecimento no celular, cartaz de 740 × 440 com `radius/xl` no desktop.
 
+### Pix · `pix.tsx` (composição)
+
+| Figma                                  | Nó       | Código                                                       |
+| -------------------------------------- | -------- | ------------------------------------------------------------ |
+| Pix                                    | `61:678` | `<Pix state total description code onCopy onRetry retrying>` |
+| Estado = Aguardando · Copiado · Falhou |          | `state="awaiting" \| "copied" \| "failed"`                   |
+
+Os textos são do estado e não se reescrevem. Expirado e Pago entram com o acompanhamento (SPEC-014
+9C.3); o tempo da cotação (Tempo) fica oculto até a validade do Pix ser medida (A4). Placa e QR em
+`size/qr-plate` e `size/qr`; o círculo do Falhou em `size/state-circle` com ícone `size/icon-xl`.
+
+### QR Code · `qr-code.tsx`
+
+`<QrCode value label>`: o QR desenhado no navegador com `qrcode` (SPEC-014 §7), módulos em
+`brand/midnight` sobre a placa `brand/creme`. Serve ao Pix e, na 9D, ao ingresso.
+
+### Miniatura · `event-cover.tsx`
+
+`<EventThumbnail>`: a arte padrão no tamanho de uma linha (Miniatura, exportada de `150:2252`),
+`size/thumbnail-s` (56) no celular e `size/thumbnail-m` (64) a partir de `md`, com `radius/md`.
+
 ### Logo · `logo.tsx`
 
 `<Logo format="horizontal">` ou `format="symbol"` (`3:95`, Versão = Principal), SVG exportado do Figma pelos
@@ -154,7 +175,6 @@ Página "Ícones" (`27:2`): 47 ícones, dos quais 43 são Lucide com o mesmo nom
 | Botão de ícone/Destrutivo | `42:258`           | Tamanho × Estado                                                              |
 | Card                      | `51:358`           | Tipo × Estado × Espaço                                                        |
 | Ingresso                  | `56:409`           | Estado (Válido, Emitindo, Utilizado, Transferido, Cancelado)                  |
-| Pix                       | `61:678`           | Estado (Aguardando, Copiado, Expirado, Pago, Falhou)                          |
 | Aba · Barra de abas       | `73:39` · `73:376` | Estado · Abas × Selecionada                                                   |
 | Stat Card                 | `114:184`          | Estado × Variação × Tamanho                                                   |
 | Controle segmentado       | `154:520`          | Selecionada                                                                   |
