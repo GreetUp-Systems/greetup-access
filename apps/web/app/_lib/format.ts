@@ -57,6 +57,12 @@ export function formatEventStart(startsAt: string): string {
   return `${capitalize(p.weekday.slice(0, 3))}, ${p.day} de ${p.month}, ${time(p)}`;
 }
 
+/** "Sáb, 12 out · 21:00": the date and time on a ticket (Figma: Ingresso, 56:409). */
+export function formatTicketDateTime(startsAt: string): string {
+  const p = parts(startsAt);
+  return `${capitalize(p.weekday.slice(0, 3))}, ${p.day} ${p.month.slice(0, 3)} · ${p.hour.padStart(2, "0")}:${p.minute}`;
+}
+
 /**
  * The end under the start: "Até as 23h" on the same day, "Até as 2h de domingo" on the next day,
  * "Até 14 de outubro, 2h" later; null without an end.

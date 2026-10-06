@@ -1,4 +1,10 @@
-import { formatAvailability, formatEventEnd, formatEventStart, formatPrice } from "./format";
+import {
+  formatAvailability,
+  formatEventEnd,
+  formatEventStart,
+  formatTicketDateTime,
+  formatPrice,
+} from "./format";
 
 describe("formatPrice", () => {
   it("formats cents as reais", () => {
@@ -16,6 +22,13 @@ describe("formatEventStart", () => {
 
   it("keeps the minutes when there are any", () => {
     expect(formatEventStart("2026-10-12T22:30:00.000Z")).toBe("Seg, 12 de outubro, 19h30");
+  });
+});
+
+describe("formatTicketDateTime", () => {
+  it("shows the short weekday and month and the 24-hour time in Brasília time", () => {
+    expect(formatTicketDateTime("2026-10-13T00:00:00.000Z")).toBe("Seg, 12 out · 21:00");
+    expect(formatTicketDateTime("2026-10-12T12:05:00.000Z")).toBe("Seg, 12 out · 09:05");
   });
 });
 

@@ -1,6 +1,14 @@
 import { ApiError } from "./api/client";
 import { type PurchaseView } from "./api/purchases";
-import { changedPurchase, creationNotice, orderDescription, pixNotice } from "./checkout";
+import {
+  changedPurchase,
+  creationNotice,
+  issuingLead,
+  issuingStep,
+  orderDescription,
+  pixNotice,
+  readyLead,
+} from "./checkout";
 
 const apiError = (status: number, code: string, body: unknown = null) =>
   new ApiError(status, code, code, body);
@@ -76,5 +84,16 @@ describe("changedPurchase", () => {
 describe("orderDescription", () => {
   it("says the event, the quantity and the ticket type", () => {
     expect(orderDescription(purchase)).toBe("Festival de Inverno · 2 × Pista");
+  });
+});
+
+describe("follow-up texts", () => {
+  it("speak of one ticket or of several", () => {
+    expect(issuingLead(1)).toBe("Estamos emitindo seu ingresso.");
+    expect(issuingLead(2)).toBe("Estamos emitindo seus 2 ingressos.");
+    expect(issuingStep(1)).toBe("Emitindo seu ingresso");
+    expect(issuingStep(3)).toBe("Emitindo seus 3 ingressos");
+    expect(readyLead(1)).toBe("O ingresso está na sua conta.");
+    expect(readyLead(2)).toBe("Os 2 ingressos estão na sua conta.");
   });
 });

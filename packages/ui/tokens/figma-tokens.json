@@ -840,6 +840,12 @@
           "type": "FLOAT",
           "web": "var(--size-icon-xl)",
           "values": { "Value": 36 }
+        },
+        {
+          "name": "size/content-column",
+          "type": "FLOAT",
+          "web": "var(--size-content-column)",
+          "values": { "Value": 520 }
         }
       ]
     },

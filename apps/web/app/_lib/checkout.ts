@@ -69,3 +69,25 @@ export function changedPurchase(error: unknown): PurchaseView | null {
 export function orderDescription(purchase: PurchaseView): string {
   return `${purchase.event.name} · ${purchase.quantity} × ${purchase.ticketType.name}`;
 }
+
+// The follow-up's texts in singular or plural (Figma: Pagamento confirmado 146:2411 / 150:2645,
+// Ingresso pronto 146:2500 / 150:2755).
+
+/** "Estamos emitindo seus 2 ingressos." */
+export function issuingLead(quantity: number): string {
+  return quantity === 1
+    ? "Estamos emitindo seu ingresso."
+    : `Estamos emitindo seus ${quantity} ingressos.`;
+}
+
+/** "Emitindo seus 2 ingressos", the desktop's second step. */
+export function issuingStep(quantity: number): string {
+  return quantity === 1 ? "Emitindo seu ingresso" : `Emitindo seus ${quantity} ingressos`;
+}
+
+/** "Os 2 ingressos estão na sua conta." */
+export function readyLead(quantity: number): string {
+  return quantity === 1
+    ? "O ingresso está na sua conta."
+    : `Os ${quantity} ingressos estão na sua conta.`;
+}
