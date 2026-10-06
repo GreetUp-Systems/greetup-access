@@ -1,5 +1,6 @@
 import desktop from "@access/ui/assets/cover-desktop.svg";
 import mobile from "@access/ui/assets/cover-mobile.svg";
+import thumbnail from "@access/ui/assets/cover-thumbnail.svg";
 
 import { cn } from "@access/ui/lib/utils";
 
@@ -30,4 +31,25 @@ function EventCover({ className }: { className?: string }) {
   );
 }
 
-export { EventCover };
+/**
+ * Figma: Miniatura, the cover art at the size of a row (Revisar pedido 145:1592 and 150:2242),
+ * exported from 150:2252. Below md size/thumbnail-s (56), from md size/thumbnail-m (64), with
+ * radius/md. Decorative, like the cover.
+ */
+function EventThumbnail({ className }: { className?: string }) {
+  return (
+    <img
+      data-slot="event-thumbnail"
+      src={thumbnail.src}
+      alt=""
+      aria-hidden
+      draggable={false}
+      className={cn(
+        "block size-thumbnail-s shrink-0 rounded-md object-cover md:size-thumbnail-m",
+        className,
+      )}
+    />
+  );
+}
+
+export { EventCover, EventThumbnail };

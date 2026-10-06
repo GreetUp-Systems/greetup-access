@@ -13,6 +13,8 @@ interface SiteHeaderProps {
   onSignIn: () => void;
   /** Opens the signed-in buyer's area (Seus ingressos, 9D). */
   onAccount: () => void;
+  /** Off where the screen brings its own Barra superior below md (the checkout). */
+  mobileBar?: boolean;
 }
 
 /**
@@ -22,7 +24,7 @@ interface SiteHeaderProps {
  * an esqueleto holds the action's place (Header · Sessão carregando, 231:5834): on desktop it is
  * sized by an invisible "Entrar" with the button's border, padding and type, so nothing moves.
  */
-export function SiteHeader({ email, onSignIn, onAccount }: SiteHeaderProps) {
+export function SiteHeader({ email, onSignIn, onAccount, mobileBar = true }: SiteHeaderProps) {
   const signedIn = typeof email === "string";
   const known = email !== undefined;
   const open = signedIn ? onAccount : onSignIn;
@@ -43,21 +45,23 @@ export function SiteHeader({ email, onSignIn, onAccount }: SiteHeaderProps) {
           )}
         </div>
       </header>
-      <TopBar
-        className="md:hidden"
-        type="brand"
-        actions={
-          known
-            ? [
-                {
-                  label: signedIn ? "Seus ingressos" : "Entrar",
-                  icon: <User />,
-                  onClick: open,
-                },
-              ]
-            : "loading"
-        }
-      />
+      {mobileBar ? (
+        <TopBar
+          className="md:hidden"
+          type="brand"
+          actions={
+            known
+              ? [
+                  {
+                    label: signedIn ? "Seus ingressos" : "Entrar",
+                    icon: <User />,
+                    onClick: open,
+                  },
+                ]
+              : "loading"
+          }
+        />
+      ) : null}
     </>
   );
 }

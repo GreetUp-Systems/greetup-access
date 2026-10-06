@@ -21,18 +21,23 @@ export interface ApiRequestOptions {
   /** The Privy access token; omitted on public endpoints. */
   token?: string | null;
   body?: unknown;
+  /** Same key for a repeated attempt, so the API answers the first result (SPEC-005 §9). */
+  idempotencyKey?: string;
   signal?: AbortSignal;
 }
 
 /** Calls the API straight from the browser with `Authorization: Bearer` (SPEC-014 §7). */
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const { method = "GET", token, body, signal } = options;
+  const { method = "GET", token, body, idempotencyKey, signal } = options;
   const headers: Record<string, string> = { Accept: "application/json" };
   if (token !== undefined && token !== null) {
     headers.Authorization = `Bearer ${token}`;
   }
   if (body !== undefined) {
     headers["Content-Type"] = "application/json";
+  }
+  if (idempotencyKey !== undefined) {
+    headers["Idempotency-Key"] = idempotencyKey;
   }
 
   let response: Response;

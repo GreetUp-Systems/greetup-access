@@ -11,7 +11,7 @@ import { SiteHeader } from "./SiteHeader";
  * The header with the session: "Entrar" opens the identification with origin "login" (SPEC-014
  * §5); signed in, the e-mail leads to Seus ingressos.
  */
-export function AppHeader() {
+export function AppHeader({ mobileBar = true }: { mobileBar?: boolean }) {
   const { state } = useSession();
   const router = useRouter();
   const [signingIn, setSigningIn] = useState(false);
@@ -29,6 +29,7 @@ export function AppHeader() {
         email={email}
         onSignIn={() => setSigningIn(true)}
         onAccount={() => router.push("/me/tickets")}
+        mobileBar={mobileBar}
       />
       {signingIn ? (
         <Identification

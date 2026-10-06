@@ -18,7 +18,10 @@ export default defineConfig({
   // The two widths the Figma screens are drawn at.
   projects: [
     { name: "phone", use: { ...devices["Desktop Chrome"], viewport: { width: 360, height: 780 } } },
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    {
+      name: "desktop",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
   ],
   webServer: [
     {
@@ -33,8 +36,10 @@ export default defineConfig({
       timeout: 240_000,
       env: {
         NEXT_PUBLIC_API_URL: `http://localhost:${apiPort}/api`,
-        // Privy only checks the length (25); the tests never sign in.
+        // Privy only checks the length (25); the tests never sign in through it.
         NEXT_PUBLIC_PRIVY_APP_ID: "e2e0privy0app0id000000000",
+        // A test that needs a signed-in buyer turns the test session on (app/_lib/e2e-session.ts).
+        NEXT_PUBLIC_E2E_SESSION: "1",
       },
       reuseExistingServer: !process.env.CI,
     },

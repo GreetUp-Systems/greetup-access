@@ -26,7 +26,14 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
+
+// The review sends the buyer back with the chooser's Pix range notice (SPEC-014 §7).
+const returnedNotices = {
+  "valor-minimo": { kind: "below_minimum" },
+  "valor-maximo": { kind: "above_maximum" },
+} as const;
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const event = await getPublicEvent((await params).slug);
@@ -40,8 +47,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 /** Figma: Página do evento (138:322 mobile, 140:931 desktop) and its closed-sales states. */
-export default async function EventPage({ params }: PageProps) {
+export default async function EventPage({ params, searchParams }: PageProps) {
   const event = await getPublicEvent((await params).slug);
+  const aviso = (await searchParams)?.aviso;
   if (event === null) {
     notFound();
   }
@@ -87,7 +95,15 @@ export default async function EventPage({ params }: PageProps) {
               <div className="h-bar md:hidden" aria-hidden />
             </div>
           </div>
-          <EventPurchase event={event} sale={sale} />
+          <EventPurchase
+            event={event}
+            sale={sale}
+            initialNotice={
+              typeof aviso === "string" && aviso in returnedNotices
+                ? returnedNotices[aviso as keyof typeof returnedNotices]
+                : null
+            }
+          />
         </main>
       </div>
     </Providers>
