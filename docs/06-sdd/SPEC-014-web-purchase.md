@@ -1,6 +1,6 @@
 # SPEC-014 — App web · Compra
 
-> **Status:** 9A, 9B e 9C.1 implementadas; 9C.2, 9C.3 e 9D pendentes
+> **Status:** 9A, 9B, 9C.1 e 9C.2 implementadas; 9C.3 e 9D pendentes
 >
 > **Versão:** 1.2 (checkout da 9C.2: erros da criação e do Pix, estados novos da escolha)
 >
@@ -215,7 +215,7 @@ NEXT_PUBLIC_PRIVY_APP_ID=
 - [x] 9A: dois passos, página pública ampliada, código do ingresso e CORS, com testes.
 - [x] Telas do §6 desenhadas no Figma e revisadas pelo Matheus (04/10/2026).
 - [x] 9B: login, identificação e base do app, com conferência visual (PR #22). Login real validado no app em 05/10/2026 (mesma conta e wallet); a ativação Stellar, recusada pela Privy no servidor, passa a assinar no navegador (D-28).
-- [ ] 9C: compra de ponta a ponta com a API simulada e conferência visual. 9C.1 (página do evento e escolha do ingresso) no PR #24; 9C.2 (checkout até o Pix) e 9C.3 (acompanhamento) pendentes.
+- [ ] 9C: compra de ponta a ponta com a API simulada e conferência visual. 9C.1 (página do evento e escolha do ingresso) no PR #24; 9C.2 (checkout até o Pix) no PR #27, conferida pelo Matheus com a API simulada em 06/10/2026; 9C.3 (acompanhamento) pendente.
 - [ ] 9D: área do comprador com conferência visual.
 - [ ] Build, lint, typecheck, unitários, integração e ponta a ponta passam.
 - [ ] Validação real na Testnet executada (§11).
