@@ -1,6 +1,7 @@
 "use client";
 
 import { usePrivy } from "@privy-io/react-auth";
+import { useSignRawHash } from "@privy-io/react-auth/extended-chains";
 import {
   createContext,
   type ReactNode,
@@ -12,12 +13,8 @@ import {
   useState,
 } from "react";
 
-import {
-  type AccountView,
-  activateStellarAccount,
-  bootstrapAccount,
-  type BootstrapOrigin,
-} from "./api/account";
+import { activateStellarAccount } from "./account-activation";
+import { type AccountView, bootstrapAccount, type BootstrapOrigin } from "./api/account";
 import { ApiError } from "./api/client";
 import { restoreSession } from "./session-restore";
 
@@ -35,17 +32,21 @@ interface SessionContextValue {
    * "Entrar", starts the Stellar activation without waiting for it (SPEC-014 §7).
    */
   completeLogin: (origin: BootstrapOrigin) => Promise<AccountView>;
+  /** Closing the identification midway ends a Privy session that never got its account. */
+  abandonLogin: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const { ready, authenticated, getAccessToken, logout: privyLogout } = usePrivy();
+  const { ready, authenticated, user, getAccessToken, logout: privyLogout } = usePrivy();
+  const { signRawHash } = useSignRawHash();
   const [state, setState] = useState<SessionState>({ status: "loading" });
-  // While a login is completing, the restore below must not race the bootstrap.
-  const completing = useRef(false);
-  const hasAccount = state.status === "authenticated";
+  const [activationRequested, setActivationRequested] = useState(false);
+  // Only a session that existed when the page opened is restored; a login in progress is
+  // completed by its own bootstrap, never by the restore (SPEC-014 §7).
+  const openingChecked = useRef(false);
 
   const getToken = useCallback(async (): Promise<string> => {
     const token = await getAccessToken();
@@ -55,51 +56,72 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return token;
   }, [getAccessToken]);
 
-  // An existing Privy session (a reload, another tab) skips the identification.
   useEffect(() => {
     if (!ready) {
       return;
     }
+    const opening = !openingChecked.current;
+    openingChecked.current = true;
     if (!authenticated) {
       setState({ status: "anonymous" });
       return;
     }
-    if (completing.current || hasAccount) {
+    if (!opening) {
       return;
     }
 
     let cancelled = false;
-    setState({ status: "loading" });
+    let finished = false;
     void (async () => {
       const account = await restoreSession(getToken, privyLogout);
+      finished = true;
       if (!cancelled) {
         setState(account === null ? { status: "anonymous" } : { status: "authenticated", account });
       }
     })();
     return () => {
       cancelled = true;
+      // Interrupted before it finished (React runs effects twice in development): the next run
+      // is still the page opening.
+      if (!finished) {
+        openingChecked.current = false;
+      }
     };
-  }, [ready, authenticated, hasAccount, getToken, privyLogout]);
+  }, [ready, authenticated, getToken, privyLogout]);
+
+  // The activation runs once Privy exposes the signed-in user: signRawHash from the render that
+  // called completeLogin still sees the user signed out.
+  useEffect(() => {
+    if (!activationRequested || state.status !== "authenticated" || user === null) {
+      return;
+    }
+    setActivationRequested(false);
+    const address = state.account.wallet.address;
+    // Activation is by intent and idempotent: if it fails here, the next intent (a confirmed
+    // payment) tries again, so it never blocks the navigation.
+    void activateStellarAccount(getToken, async (hash) => {
+      const { signature } = await signRawHash({ address, chainType: "stellar", hash });
+      return signature;
+    }).catch(() => undefined);
+  }, [activationRequested, state, user, getToken, signRawHash]);
 
   const completeLogin = useCallback(
     async (origin: BootstrapOrigin): Promise<AccountView> => {
-      completing.current = true;
-      try {
-        const token = await getToken();
-        const account = await bootstrapAccount(token, origin);
-        setState({ status: "authenticated", account });
-        if (origin === "login") {
-          // Activation is by intent and idempotent: if it fails here, the next intent (a
-          // confirmed payment) tries again, so it never blocks the navigation.
-          void activateStellarAccount(token).catch(() => undefined);
-        }
-        return account;
-      } finally {
-        completing.current = false;
+      const account = await bootstrapAccount(await getToken(), origin);
+      setState({ status: "authenticated", account });
+      if (origin === "login") {
+        setActivationRequested(true);
       }
+      return account;
     },
     [getToken],
   );
+
+  const abandonLogin = useCallback(async (): Promise<void> => {
+    if (authenticated && state.status !== "authenticated") {
+      await privyLogout().catch(() => undefined);
+    }
+  }, [authenticated, state.status, privyLogout]);
 
   const logout = useCallback(async (): Promise<void> => {
     await privyLogout();
@@ -107,8 +129,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [privyLogout]);
 
   const value = useMemo(
-    () => ({ state, getToken, completeLogin, logout }),
-    [state, getToken, completeLogin, logout],
+    () => ({ state, getToken, completeLogin, abandonLogin, logout }),
+    [state, getToken, completeLogin, abandonLogin, logout],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

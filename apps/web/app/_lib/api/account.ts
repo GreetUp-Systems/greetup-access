@@ -8,10 +8,10 @@ export interface AccountView {
   wallet: { address: string; chainType: "stellar" };
 }
 
-export interface AccountActivationView {
-  status: "signing" | "submitted" | "active";
-  transactionHash: string | null;
-}
+/** "signing" carries the hash the user's wallet signs in the browser (D-28). */
+export type AccountActivationView =
+  | { status: "signing"; hashToSign: string }
+  | { status: "submitted" | "active"; transactionHash: string | null };
 
 /** Where the e-mail code was typed: inside a checkout or on "Entrar" (D-23). */
 export type BootstrapOrigin = "checkout" | "login";
@@ -26,7 +26,19 @@ export function getAccount(token: string): Promise<AccountView> {
   return apiRequest<AccountView>("/me", { token });
 }
 
-/** Activates the Stellar account by intent (D-23); idempotent on the API side. */
-export function activateStellarAccount(token: string): Promise<AccountActivationView> {
+/** Prepares the Stellar account activation by intent (D-23); idempotent on the API side. */
+export function prepareStellarActivation(token: string): Promise<AccountActivationView> {
   return apiRequest<AccountActivationView>("/me/stellar/activate", { method: "POST", token });
+}
+
+/** Sends the wallet's signature of the prepared hash; the API submits it with the sponsor's. */
+export function submitStellarActivationSignature(
+  token: string,
+  body: { hash: string; signature: string },
+): Promise<AccountActivationView> {
+  return apiRequest<AccountActivationView>("/me/stellar/activate/signature", {
+    method: "POST",
+    token,
+    body,
+  });
 }

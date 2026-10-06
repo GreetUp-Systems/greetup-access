@@ -114,10 +114,6 @@ class FakePrivyGateway implements PrivyGateway {
     this.creations.set(idempotencyKey, creation);
     return creation;
   }
-
-  async rawSignStellarHash(): Promise<string> {
-    return `0x${"00".repeat(64)}`;
-  }
 }
 
 describe("identity bootstrap integration", () => {

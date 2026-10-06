@@ -11,7 +11,9 @@ import {
   TransactionBuilder,
 } from "@stellar/stellar-sdk";
 
+import { isStellarHashSignature } from "./stellar-signature";
 import {
+  PROVISIONING_TRANSACTION_TIMEOUT_SECONDS,
   type PreparedStellarProvisioning,
   type StellarAccountState,
   type StellarGateway,
@@ -20,9 +22,7 @@ import {
   type StellarTrustline,
 } from "./stellar.types";
 
-const transactionTimeoutSeconds = 180;
 const stellarAddressPattern = /^G[A-Z2-7]{55}$/;
-const signaturePattern = /^0x[0-9a-fA-F]{128}$/;
 
 export interface StellarHorizonGatewayOptions {
   horizonUrl: string;
@@ -72,7 +72,7 @@ export function buildSponsoredProvisioningTransaction(input: {
 
   return builder
     .addOperation(Operation.endSponsoringFutureReserves({ source: input.producerAddress }))
-    .setTimeout(transactionTimeoutSeconds)
+    .setTimeout(PROVISIONING_TRANSACTION_TIMEOUT_SECONDS)
     .build();
 }
 
@@ -150,9 +150,6 @@ export class StellarHorizonGateway implements StellarGateway {
     producerSignature: string,
   ): Promise<{ transactionHash: string }> {
     this.assertAddress(producerAddress, "submit_provisioning");
-    if (!signaturePattern.test(producerSignature)) {
-      throw new StellarProviderError("producer_signature_invalid", false);
-    }
 
     try {
       const parsed = TransactionBuilder.fromXDR(prepared.transactionXdr, Networks.TESTNET);
@@ -165,11 +162,13 @@ export class StellarHorizonGateway implements StellarGateway {
         throw new StellarProviderError("provisioning_hash_mismatch", false);
       }
 
-      const rawSignature = Buffer.from(producerSignature.slice(2), "hex");
-      if (!Keypair.fromPublicKey(producerAddress).verify(parsed.hash(), rawSignature)) {
+      if (!isStellarHashSignature(actualHash, producerAddress, producerSignature)) {
         throw new StellarProviderError("producer_signature_invalid", false);
       }
-      parsed.addSignature(producerAddress, rawSignature.toString("base64"));
+      parsed.addSignature(
+        producerAddress,
+        Buffer.from(producerSignature.slice(2), "hex").toString("base64"),
+      );
       parsed.sign(this.sponsor);
 
       const submitted = await this.server.submitTransaction(parsed);

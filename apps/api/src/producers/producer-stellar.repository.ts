@@ -57,7 +57,12 @@ export class ProducerStellarRepository {
             { status: "SIGNING", updatedAt: { lt: staleBefore } },
           ],
         },
-        data: { status: "SIGNING", transactionHash: null, failureCode: null },
+        data: {
+          status: "SIGNING",
+          transactionHash: null,
+          preparedEnvelopeXdr: null,
+          failureCode: null,
+        },
       });
 
       if (claimed.count === 0) {
@@ -70,18 +75,40 @@ export class ProducerStellarRepository {
     });
   }
 
-  markSubmitted(
+  /** Keeps the prepared transaction, without signatures, for the browser to sign (D-28). */
+  savePrepared(
     userId: string,
     provisioningId: string,
     transactionHash: string,
+    preparedEnvelopeXdr: string,
   ): Promise<StellarProvisioningRecord> {
     return this.tenantContext.withProducerContext(userId, async (transaction, producerId) => {
-      const updated = await transaction.stellarAccountProvisioning.updateMany({
+      await transaction.stellarAccountProvisioning.updateMany({
         where: { id: provisioningId, producerId, status: "SIGNING" },
-        data: { status: "SUBMITTED", transactionHash, failureCode: null },
+        data: { transactionHash, preparedEnvelopeXdr },
       });
-      if (updated.count !== 1) {
-        throw new Error("stellar_provisioning_state_conflict");
+      return transaction.stellarAccountProvisioning.findUniqueOrThrow({
+        where: { id: provisioningId },
+      });
+    });
+  }
+
+  /**
+   * SIGNING → SUBMITTED for the prepared hash only, so two signatures never submit twice. Null
+   * when another request already moved it.
+   */
+  claimSubmission(
+    userId: string,
+    provisioningId: string,
+    transactionHash: string,
+  ): Promise<StellarProvisioningRecord | null> {
+    return this.tenantContext.withProducerContext(userId, async (transaction, producerId) => {
+      const claimed = await transaction.stellarAccountProvisioning.updateMany({
+        where: { id: provisioningId, producerId, status: "SIGNING", transactionHash },
+        data: { status: "SUBMITTED", preparedEnvelopeXdr: null, failureCode: null },
+      });
+      if (claimed.count === 0) {
+        return null;
       }
       return transaction.stellarAccountProvisioning.findUniqueOrThrow({
         where: { id: provisioningId },
@@ -93,7 +120,12 @@ export class ProducerStellarRepository {
     return this.tenantContext.withProducerContext(userId, async (transaction, producerId) => {
       await transaction.stellarAccountProvisioning.updateMany({
         where: { id: provisioningId, producerId },
-        data: { status: "ACTIVE", activatedAt: new Date(), failureCode: null },
+        data: {
+          status: "ACTIVE",
+          activatedAt: new Date(),
+          preparedEnvelopeXdr: null,
+          failureCode: null,
+        },
       });
       return transaction.stellarAccountProvisioning.findUniqueOrThrow({
         where: { id: provisioningId },
@@ -105,7 +137,11 @@ export class ProducerStellarRepository {
     return this.tenantContext.withProducerContext(userId, async (transaction, producerId) => {
       await transaction.stellarAccountProvisioning.updateMany({
         where: { id: provisioningId, producerId },
-        data: { status: "FAILED", failureCode: failureCode.slice(0, 80) },
+        data: {
+          status: "FAILED",
+          preparedEnvelopeXdr: null,
+          failureCode: failureCode.slice(0, 80),
+        },
       });
     });
   }

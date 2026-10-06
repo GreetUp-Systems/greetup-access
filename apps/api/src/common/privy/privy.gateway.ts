@@ -1,3 +1,5 @@
+import { Logger } from "@nestjs/common";
+
 import {
   type PrivyGateway,
   type PrivyIdentity,
@@ -7,6 +9,8 @@ import {
 } from "./privy.types";
 
 const STELLAR_ADDRESS_PATTERN = /^G[A-Z2-7]{55}$/;
+// A JWT anywhere in a provider message, so a token never reaches the logs (CLAUDE.md §6.5).
+const JWT_PATTERN = /eyJ[\w-]+\.[\w-]+\.[\w-]*/g;
 
 interface PrivyUserResponse {
   id: string;
@@ -51,14 +55,6 @@ interface PrivyClientLike {
       entity: { id: string; type: "user" };
       idempotency_key: string;
     }): Promise<PrivyWalletResponse>;
-    rawSign(
-      walletId: string,
-      input: {
-        params: { hash: string };
-        authorization_context: { user_jwts: string[] };
-        idempotency_key: string;
-      },
-    ): Promise<{ signature: string; encoding: "hex" }>;
   };
 }
 
@@ -70,6 +66,7 @@ export interface PrivySdkGatewayOptions {
 }
 
 export class PrivySdkGateway implements PrivyGateway {
+  private readonly logger = new Logger("PrivyGateway");
   private clientPromise: Promise<PrivyClientLike> | undefined;
   private readonly timeoutMs: number;
 
@@ -132,32 +129,6 @@ export class PrivySdkGateway implements PrivyGateway {
     });
 
     return this.toStellarWallet(wallet, privyUserId, true);
-  }
-
-  async rawSignStellarHash(
-    walletId: string,
-    hash: string,
-    userJwt: string,
-    idempotencyKey: string,
-  ): Promise<string> {
-    if (!/^[0-9a-f]{64}$/.test(hash) || userJwt.length === 0 || idempotencyKey.length === 0) {
-      throw new PrivyProviderUnavailableError("raw_sign_invalid_input");
-    }
-
-    const result = await this.execute("raw_sign_stellar", async () => {
-      const client = await this.getClient();
-      return client.wallets().rawSign(walletId, {
-        params: { hash: `0x${hash}` },
-        authorization_context: { user_jwts: [userJwt] },
-        idempotency_key: idempotencyKey,
-      });
-    });
-
-    if (result.encoding !== "hex" || !/^0x[0-9a-fA-F]{128}$/.test(result.signature)) {
-      throw new PrivyProviderUnavailableError("raw_sign_stellar_invalid_response");
-    }
-
-    return result.signature;
   }
 
   private getVerifiedEmail(user: PrivyUserResponse): string | null {
@@ -224,6 +195,8 @@ export class PrivySdkGateway implements PrivyGateway {
         throw error;
       }
 
+      // The callers only see the operation; Privy's own answer stays here for diagnosis.
+      this.logger.warn(`Privy ${operation} failed: ${describePrivyError(error)}`);
       throw new PrivyProviderUnavailableError(operation);
     } finally {
       if (timeout !== undefined) {
@@ -248,4 +221,14 @@ export class PrivySdkGateway implements PrivyGateway {
 
     return this.clientPromise;
   }
+}
+
+/** Privy's answer as the SDK words it ("400 Invalid JWT token provided"), without any token. */
+export function describePrivyError(error: unknown): string {
+  // Duck-typed: an error built in another realm (the SDK's dynamic import) fails instanceof.
+  const message =
+    typeof error === "object" && error !== null && "message" in error
+      ? String(error.message)
+      : "non-error thrown";
+  return message.replace(JWT_PATTERN, "[jwt]").slice(0, 300);
 }

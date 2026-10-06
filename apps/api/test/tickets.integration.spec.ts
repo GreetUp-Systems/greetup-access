@@ -71,7 +71,6 @@ const privy: PrivyGateway = {
   getIdentity: notUsed,
   findStellarWallet: notUsed,
   createStellarWallet: notUsed,
-  rawSignStellarHash: notUsed,
 };
 
 describe("buyer tickets integration", () => {

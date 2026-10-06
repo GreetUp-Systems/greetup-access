@@ -8,6 +8,7 @@ import {
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from "@nestjs/common";
 
 import { type AuthenticatedPrincipal } from "../auth/auth.types";
@@ -21,11 +22,12 @@ import {
   type PrivyGateway,
   PrivyProviderUnavailableError,
 } from "../common/privy/privy.types";
+import { isStellarHashSignature } from "../common/stellar/stellar-signature";
 import {
   isStellarAccountProvisioned,
+  PROVISIONING_TRANSACTION_TIMEOUT_SECONDS,
   STELLAR_GATEWAY,
   STELLAR_ACTIVATION_CONFIG,
-  type PreparedStellarProvisioning,
   type StellarAccountState,
   type StellarGateway,
   StellarProviderError,
@@ -38,16 +40,29 @@ import {
 } from "./producer-stellar.repository";
 import { type ProducerProfileRecord, ProducersRepository } from "./producers.repository";
 
-const signingLeaseMs = 4 * 60 * 1_000;
+// A prepared transaction is handed out for signing only while it still has time on the network.
+const preparedWindowMs = (PROVISIONING_TRANSACTION_TIMEOUT_SECONDS - 30) * 1_000;
+const submittedLeaseMs = 4 * 60 * 1_000;
+// The network refused the prepared transaction itself: it has to be prepared again.
+const staleSubmissionCodes = new Set(["tx_bad_seq", "tx_too_late"]);
 const operationalKycStatuses = new Set(["APPROVED", "APPROVED_RFI"]);
 
 type CurrentBlindPayCustomer = ProducerProfileRecord["blindPayCustomers"][number];
 
-export interface StellarActivationView {
-  status: "signing" | "submitted" | "active";
-  transactionHash: string | null;
+export type StellarActivationView =
+  | { status: "signing"; hashToSign: string }
+  | { status: "submitted" | "active"; transactionHash: string | null };
+
+interface ActivationSignature {
+  hash: string;
+  signature: string;
 }
 
+/**
+ * The producer's Stellar setup — account and trustlines with sponsored reserves — and the
+ * BlindPay wallet registration (SPEC-003 §10). The producer signs in the browser (D-28):
+ * `activate` prepares the transaction and `submitSignature` sends it with the sponsor's.
+ */
 @Injectable()
 export class ProducerStellarActivationService {
   constructor(
@@ -81,70 +96,109 @@ export class ProducerStellarActivationService {
         return this.toView(provisioning);
       }
     }
-    if (provisioning.status === "SIGNING" && !this.isStale(provisioning.updatedAt)) {
+    if (provisioning.status === "SIGNING" && this.isFresh(provisioning.updatedAt)) {
       return this.toView(provisioning);
     }
 
     const claimed = await this.repository.claimSigning(
       user.id,
       provisioning.id,
-      new Date(Date.now() - signingLeaseMs),
+      new Date(Date.now() - preparedWindowMs),
     );
     if (claimed === null) {
       const winner = await this.repository.find(user.id);
       if (winner === null) {
-        throw new ServiceUnavailableException({
-          code: "stellar_activation_unavailable",
-          message: "Stellar activation is temporarily unavailable.",
-        });
+        throw this.unavailable();
       }
       return this.toView(winner);
     }
 
-    let prepared: PreparedStellarProvisioning;
     try {
-      prepared = await this.stellar.buildProvisioningTransaction(
+      const prepared = await this.stellar.buildProvisioningTransaction(
         wallet.stellarAddress,
         initialState,
       );
-      const signature = await this.privy.rawSignStellarHash(
-        wallet.privyWalletId,
-        prepared.transactionHash,
-        principal.accessToken,
-        this.hashKey(`privy:${prepared.transactionHash}`),
+      return this.toView(
+        await this.repository.savePrepared(
+          user.id,
+          claimed.id,
+          prepared.transactionHash,
+          prepared.transactionXdr,
+        ),
       );
-      provisioning = await this.repository.markSubmitted(
-        user.id,
-        claimed.id,
-        prepared.transactionHash,
-      );
-
-      try {
-        await this.stellar.submitProvisioningTransaction(
-          prepared,
-          wallet.stellarAddress,
-          signature,
-        );
-      } catch (error) {
-        if (error instanceof StellarProviderError && error.retryable) {
-          return this.toView(provisioning);
-        }
-        await this.repository.markFailed(user.id, claimed.id, this.failureCode(error));
-        throw error;
-      }
     } catch (error) {
-      if (provisioning.status !== "SUBMITTED") {
-        await this.repository.markFailed(user.id, claimed.id, this.failureCode(error));
+      await this.repository.markFailed(user.id, claimed.id, this.failureCode(error));
+      throw this.mapActivationError(error);
+    }
+  }
+
+  /** The browser's signature of the prepared hash: verified, joined by the sponsor, submitted. */
+  async submitSignature(
+    principal: AuthenticatedPrincipal,
+    body: unknown,
+  ): Promise<StellarActivationView> {
+    const input = this.parseSignature(body);
+    const { user, wallet, customer } = await this.requireContext(principal);
+    const address = wallet.stellarAddress;
+
+    const provisioning = await this.repository.find(user.id);
+    if (provisioning === null) {
+      throw this.stale();
+    }
+    if (
+      (provisioning.status === "SUBMITTED" || provisioning.status === "ACTIVE") &&
+      provisioning.transactionHash === input.hash
+    ) {
+      return this.toView(provisioning);
+    }
+    if (
+      provisioning.status !== "SIGNING" ||
+      provisioning.transactionHash !== input.hash ||
+      provisioning.preparedEnvelopeXdr === null ||
+      !this.isFresh(provisioning.updatedAt)
+    ) {
+      throw this.stale();
+    }
+    if (!isStellarHashSignature(input.hash, address, input.signature)) {
+      throw this.invalidSignature();
+    }
+
+    const submitted = await this.repository.claimSubmission(user.id, provisioning.id, input.hash);
+    if (submitted === null) {
+      const current = await this.repository.find(user.id);
+      if (current === null || current.transactionHash !== input.hash) {
+        throw this.stale();
+      }
+      return this.toView(current);
+    }
+
+    try {
+      await this.stellar.submitProvisioningTransaction(
+        { transactionXdr: provisioning.preparedEnvelopeXdr, transactionHash: input.hash },
+        address,
+        input.signature,
+      );
+    } catch (error) {
+      if (error instanceof StellarProviderError && error.retryable) {
+        // The outcome is unknown: the next activation call reconciles by hash.
+        return this.toView(submitted);
+      }
+      await this.repository.markFailed(user.id, submitted.id, this.failureCode(error));
+      if (
+        error instanceof StellarProviderError &&
+        staleSubmissionCodes.has(error.providerCode ?? "")
+      ) {
+        throw this.stale();
       }
       throw this.mapActivationError(error);
     }
 
-    const confirmed = await this.getAccountState(wallet.stellarAddress);
+    const confirmed = await this.getAccountState(address);
     if (!isStellarAccountProvisioned(confirmed)) {
-      return this.toView(provisioning);
+      return this.toView(submitted);
     }
 
-    return this.completeActivation(user.id, provisioning, customer, wallet.stellarAddress);
+    return this.completeActivation(user.id, submitted, customer, address);
   }
 
   private async reconcileSubmitted(
@@ -166,7 +220,7 @@ export class ProducerStellarActivationService {
       return { ...provisioning, status: "FAILED", failureCode: "onchain_state_mismatch" };
     }
 
-    if (status === "failed" || this.isStale(provisioning.updatedAt)) {
+    if (status === "failed" || provisioning.updatedAt.getTime() < Date.now() - submittedLeaseMs) {
       const failureCode = status === "failed" ? "transaction_failed" : "transaction_expired";
       await this.repository.markFailed(userId, provisioning.id, failureCode);
       return { ...provisioning, status: "FAILED", failureCode };
@@ -278,6 +332,37 @@ export class ProducerStellarActivationService {
     }
   }
 
+  // Exactly { hash, signature }: the hex hash handed out and the hex signature signRawHash gives.
+  private parseSignature(body: unknown): ActivationSignature {
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      throw this.invalidSignature();
+    }
+    const fields = body as Record<string, unknown>;
+    const { hash, signature } = fields;
+    if (
+      Object.keys(fields).some((key) => key !== "hash" && key !== "signature") ||
+      typeof hash !== "string" ||
+      typeof signature !== "string"
+    ) {
+      throw this.invalidSignature();
+    }
+    return { hash, signature };
+  }
+
+  private stale(): ConflictException {
+    return new ConflictException({
+      code: "activation_signature_stale",
+      message: "The prepared activation is no longer valid; prepare it again.",
+    });
+  }
+
+  private invalidSignature(): UnprocessableEntityException {
+    return new UnprocessableEntityException({
+      code: "invalid_activation_signature",
+      message: "The signature does not match the prepared activation.",
+    });
+  }
+
   private mapActivationError(error: unknown): Error {
     if (error instanceof PrivyProviderUnavailableError) {
       return new ServiceUnavailableException({
@@ -329,18 +414,31 @@ export class ProducerStellarActivationService {
     return createHash("sha256").update(value).digest("hex");
   }
 
-  private isStale(updatedAt: Date): boolean {
-    return updatedAt.getTime() < Date.now() - signingLeaseMs;
+  private isFresh(updatedAt: Date): boolean {
+    return updatedAt.getTime() >= Date.now() - preparedWindowMs;
   }
 
+  // SIGNING without a prepared transaction is another request still building it.
   private toView(provisioning: StellarProvisioningRecord): StellarActivationView {
-    const status = provisioning.status.toLowerCase();
-    if (status !== "signing" && status !== "submitted" && status !== "active") {
-      throw new ServiceUnavailableException({
-        code: "stellar_activation_unavailable",
-        message: "Stellar activation is temporarily unavailable.",
-      });
+    switch (provisioning.status) {
+      case "SIGNING":
+        if (provisioning.transactionHash === null || provisioning.preparedEnvelopeXdr === null) {
+          throw this.unavailable();
+        }
+        return { status: "signing", hashToSign: provisioning.transactionHash };
+      case "SUBMITTED":
+        return { status: "submitted", transactionHash: provisioning.transactionHash };
+      case "ACTIVE":
+        return { status: "active", transactionHash: provisioning.transactionHash };
+      default:
+        throw this.unavailable();
     }
-    return { status, transactionHash: provisioning.transactionHash };
+  }
+
+  private unavailable(): ServiceUnavailableException {
+    return new ServiceUnavailableException({
+      code: "stellar_activation_unavailable",
+      message: "Stellar activation is temporarily unavailable.",
+    });
   }
 }
