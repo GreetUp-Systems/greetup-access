@@ -3,9 +3,9 @@
 > **Status:** gates 3A/3B e implementação automatizada de 3C (v1.4) validados localmente; smokes
 > reais BlindPay e Stellar/Privy/BlindPay pendentes
 >
-> **Versão:** 1.5
+> **Versão:** 1.6 (assinatura do produtor no navegador, D-28)
 >
-> **Atualizada em:** 04/10/2026
+> **Atualizada em:** 05/10/2026
 >
 > **Aprovada em:** 30/09/2026
 >
@@ -47,8 +47,9 @@ Pubnet/USDC.
   essa conta também paga a taxa clássica e assina localmente conforme o ADR-010.
 - O fluxo de ativação exige autorização da conta patrocinadora e da wallet do produtor, porque as
   operações possuem fontes diferentes.
-- A assinatura da wallet user-owned pode ser solicitada no backend com o JWT válido do próprio
-  usuário e `raw_sign` do Privy; isso não transforma o Access em owner da wallet.
+- A wallet user-owned assina no navegador do próprio usuário, com o `signRawHash` da Privy (D-28):
+  o backend monta a transação e recebe só a assinatura do hash. O Access nunca pede assinatura em
+  nome do usuário e não vira owner da wallet.
 - Na BlindPay, o produtor é um _customer_. Uma rejeição de KYC não é corrigida no mesmo customer:
   uma nova tentativa deve criar outro `re_...`.
 - USDC na rede pública permanece como configuração futura de produção e não deve ser exercitada
@@ -399,6 +400,12 @@ que estiver pendente: a configuração Stellar, chamada logo após a criação d
 KYC. Retorna o estado atual (`signing`, `submitted` ou `active`) e reconcilia a rede antes de repetir
 uma submissão cujo resultado seja incerto.
 
+Quando a configuração Stellar precisa de transação, a resposta é `signing` com o `hashToSign`, e o
+navegador a conclui em `POST /api/producers/onboarding/stellar/activate/signature`, com o mesmo
+contrato da ativação do comprador (SPEC-005 §12): `{ hash, signature }` no body, assinatura
+conferida contra o endereço da wallet, `409 activation_signature_stale` quando a transação venceu
+ou a sequência da conta patrocinadora andou. O registro `bw_...` continua no endpoint de ativação.
+
 ## 9. Boundary da BlindPay
 
 Controllers não conhecem URLs, headers ou DTOs crus do provider. O adapter expõe operações do
@@ -447,10 +454,12 @@ configurado. O KYC não é pré-condição da configuração Stellar (D-23).
    - um `changeTrust` para cada ativo configurado ainda sem trustline (USDB e USDC), fonte
      produtor;
    - `endSponsoringFutureReserves`, fonte produtor;
-3. calcular o hash da transação interna;
-4. solicitar a assinatura Ed25519 da wallet user-owned via Privy `raw_sign`, autorizada pelo JWT do
-   usuário atual mantido apenas no contexto efêmero da request;
-5. assinar localmente com a conta patrocinadora dedicada à Testnet;
+3. guardar o envelope sem assinaturas, com prazo (`timebounds`), e responder `signing` com o hash
+   da transação; uma transação em `signing` ainda no prazo é devolvida de novo, sem montar outra;
+4. no navegador, o produtor assina o hash com a wallet dele (`signRawHash`, D-28), e o app envia a
+   assinatura;
+5. conferir a assinatura Ed25519 contra o endereço da wallet e juntar a assinatura local da conta
+   patrocinadora dedicada à Testnet;
 6. submeter diretamente, com taxa paga pelo sponsor, e persistir somente hash/estado/código
    sanitizado;
 7. confirmar conta e trustlines via Horizon;
@@ -458,7 +467,8 @@ configurado. O KYC não é pré-condição da configuração Stellar (D-23).
    caso contrário, encerrar com o produtor em `compliance_pending`;
 9. derivar o produtor como `ready` quando as duas trilhas estiverem concluídas.
 
-Não persistir XDR assinado, assinatura, JWT ou chave privada. Timeout após submissão exige consulta
+Persistir só o envelope sem assinaturas da transação preparada; nunca o XDR assinado, a assinatura,
+JWT ou chave privada. Timeout após submissão exige consulta
 por hash/estado antes de montar outra transação.
 
 ## 11. Outbox e idempotência
@@ -677,6 +687,11 @@ para test account quanto para usuário real, com os dois tokens emitidos pela AP
 app está em `user-controlled-server-wallets-only`, sem JWT customizado. Falta testar com token
 emitido pelo SDK no navegador: os itens do gate 3C serão validados pelo front, fluxo a fluxo. Se o
 token do navegador também for recusado, a alternativa é signer delegado, com ADR.
+
+Em 05/10/2026 o token do navegador também foi recusado (`400 Invalid JWT token provided`, na ativação
+do comprador pelo app). Decisão: a assinatura do usuário passa para o navegador (D-28), com o
+`signRawHash` da Privy; a wallet criada pelo servidor já aparece como embedded wallet do usuário. O
+signer delegado não é necessário.
 
 ## 18. Decisões adiadas
 
