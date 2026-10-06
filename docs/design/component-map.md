@@ -138,14 +138,29 @@ esmaecimento no celular, cartaz de 740 × 440 com `radius/xl` no desktop.
 | Pix                                    | `61:678` | `<Pix state total description code onCopy onRetry retrying>` |
 | Estado = Aguardando · Copiado · Falhou |          | `state="awaiting" \| "copied" \| "failed"`                   |
 
-Os textos são do estado e não se reescrevem. Expirado e Pago entram com o acompanhamento (SPEC-014
-9C.3); o tempo da cotação (Tempo) fica oculto até a validade do Pix ser medida (A4). Placa e QR em
-`size/qr-plate` e `size/qr`; o círculo do Falhou em `size/state-circle` com ícone `size/icon-xl`.
+Os textos são do estado e não se reescrevem. Expirado e Pago não aparecem no fluxo (SPEC-014 9C.3):
+o pagamento confirmado troca o Pix pela tela Pagamento confirmado, e um Pix vencido chega como
+pagamento não concluído (Falhou). O tempo da cotação (Tempo) fica oculto até a validade do Pix ser
+medida (A4). Placa e QR em `size/qr-plate` e `size/qr`; o círculo do Falhou em `size/state-circle`
+com ícone `size/icon-xl`.
+
+### Ingresso · `ticket.tsx` (composição)
+
+| Figma                      | Nó       | Código                                                                         |
+| -------------------------- | -------- | ------------------------------------------------------------------------------ |
+| Ingresso                   | `56:409` | `<Ticket state eventName dateTime place ticketTypeName code qrValue>`          |
+| Estado = Válido · Emitindo |          | `state="valid" \| "issuing"` (Utilizado, Transferido e Cancelado vêm com a 9D) |
+
+O Topo usa duas artes exportadas do componente: a luz (`ticket-top.svg`), que estica com a largura,
+e os arcos (`ticket-arcs.svg`), no tamanho e no lugar do Figma a partir da borda esquerda. A placa do
+QR é sempre `brand/creme` com módulos escuros, em qualquer modo; Emitindo mostra o esqueleto
+(`ticket-qr-skeleton.svg`) com a Sobreposição (`59:385`). Nas telas de acompanhamento, a coluna
+principal do desktop usa `size/content-column` (520).
 
 ### QR Code · `qr-code.tsx`
 
 `<QrCode value label>`: o QR desenhado no navegador com `qrcode` (SPEC-014 §7), módulos em
-`brand/midnight` sobre a placa `brand/creme`. Serve ao Pix e, na 9D, ao ingresso.
+`brand/midnight` sobre a placa `brand/creme`. Serve ao Pix e ao ingresso.
 
 ### Miniatura · `event-cover.tsx`
 
@@ -174,7 +189,7 @@ Página "Ícones" (`27:2`): 47 ícones, dos quais 43 são Lucide com o mesmo nom
 | ------------------------- | ------------------ | ----------------------------------------------------------------------------- |
 | Botão de ícone/Destrutivo | `42:258`           | Tamanho × Estado                                                              |
 | Card                      | `51:358`           | Tipo × Estado × Espaço                                                        |
-| Ingresso                  | `56:409`           | Estado (Válido, Emitindo, Utilizado, Transferido, Cancelado)                  |
+| Ingresso (restante)       | `56:409`           | Estado (Utilizado, Transferido, Cancelado)                                    |
 | Aba · Barra de abas       | `73:39` · `73:376` | Estado · Abas × Selecionada                                                   |
 | Stat Card                 | `114:184`          | Estado × Variação × Tamanho                                                   |
 | Controle segmentado       | `154:520`          | Selecionada                                                                   |
