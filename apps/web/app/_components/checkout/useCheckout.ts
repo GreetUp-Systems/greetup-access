@@ -195,5 +195,5 @@ export function useCheckout(purchaseId: string) {
     setBusy(false);
   }, [busy, loaded, recreate, router, toEvent]);
 
-  return { loaded, notice, busy, generatePix, retryPurchase, toEvent };
+  return { loaded, notice, busy, generatePix, retryPurchase, toEvent, show };
 }

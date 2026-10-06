@@ -35,6 +35,11 @@ interface SessionContextValue {
   completeLogin: (origin: BootstrapOrigin) => Promise<AccountView>;
   /** Closing the identification midway ends a Privy session that never got its account. */
   abandonLogin: () => Promise<void>;
+  /**
+   * Activates the Stellar account, signed in this browser, once the user is known (D-23, D-28):
+   * after "Entrar" and when a checkout sees its payment confirmed. Never blocks the screen.
+   */
+  requestActivation: () => void;
   logout: () => Promise<void>;
 }
 
@@ -46,6 +51,7 @@ const e2eSessionValue: SessionContextValue = {
   getToken: () => Promise.resolve(E2E_TOKEN),
   completeLogin: () => Promise.resolve(e2eAccount),
   abandonLogin: () => Promise.resolve(),
+  requestActivation: () => undefined,
   logout: () => Promise.resolve(),
 };
 
@@ -134,14 +140,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [authenticated, state.status, privyLogout]);
 
+  const requestActivation = useCallback(() => setActivationRequested(true), []);
+
   const logout = useCallback(async (): Promise<void> => {
     await privyLogout();
     setState({ status: "anonymous" });
   }, [privyLogout]);
 
   const value = useMemo(
-    () => (e2e ? e2eSessionValue : { state, getToken, completeLogin, abandonLogin, logout }),
-    [e2e, state, getToken, completeLogin, abandonLogin, logout],
+    () =>
+      e2e
+        ? e2eSessionValue
+        : { state, getToken, completeLogin, abandonLogin, requestActivation, logout },
+    [e2e, state, getToken, completeLogin, abandonLogin, requestActivation, logout],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

@@ -195,6 +195,100 @@ function createPix(record, body) {
   return [200, view(record)];
 }
 
+// --- Following the order (SPEC-008 §7). The tests move it forward through the /__test routes
+// below, as the BlindPay webhook and the MintTicketWorker would, and the streams open for it hear
+// each stage change, closing on a final one, like the API.
+const stages = {
+  initiated: "order_placed",
+  awaiting_payment: "awaiting_payment",
+  payment_confirmed: "payment_confirmed",
+  ticket_issued: "ticket_issued",
+  payment_failed: "not_completed",
+  payment_refunded: "not_completed",
+};
+const finalStages = new Set(["ticket_issued", "not_completed"]);
+const streams = new Map();
+let lastTokenId = 41;
+
+function openStream(record, response) {
+  response.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+  const open = streams.get(record.id) ?? new Set();
+  streams.set(record.id, open);
+  open.add(response);
+  response.on("close", () => open.delete(response));
+  emitStage(record, response);
+}
+
+function emitStage(record, response) {
+  const stage = stages[record.status];
+  const data = { purchaseId: record.id, stage, status: record.status };
+  response.write(`event: status\ndata: ${JSON.stringify(data)}\n\n`);
+  if (finalStages.has(stage)) {
+    response.end();
+  }
+}
+
+function moved(record) {
+  for (const response of streams.get(record.id) ?? []) {
+    emitStage(record, response);
+  }
+}
+
+const advance = {
+  // The payin confirmed: the tickets wait for their mint.
+  pay(record) {
+    record.status = "payment_confirmed";
+    record.tickets = Array.from({ length: record.quantity }, () => ({
+      id: randomUUID(),
+      status: "pending_mint",
+      tokenId: null,
+    }));
+    moved(record);
+  },
+  // Every ticket minted.
+  issue(record) {
+    record.status = "ticket_issued";
+    record.tickets = record.tickets.map((ticket) => {
+      lastTokenId += 1;
+      return { ...ticket, status: "issued", tokenId: lastTokenId };
+    });
+    moved(record);
+  },
+  fail(record) {
+    record.status = "payment_failed";
+    moved(record);
+  },
+  // The stream ran its 15 minutes: it says so and closes; the order stays as it is.
+  timeout(record) {
+    for (const response of streams.get(record.id) ?? []) {
+      response.write(`event: timeout\ndata: ${JSON.stringify({ purchaseId: record.id })}\n\n`);
+      response.end();
+    }
+  },
+};
+
+// The ticket view of SPEC-008 §5, with its QR token once issued.
+function ticketView(record, ticket) {
+  const minted = ticket.status === "issued";
+  return {
+    id: ticket.id,
+    status: ticket.status,
+    code: minted ? `AX-${String(ticket.tokenId).padStart(4, "0")}` : null,
+    event: { id: record.eventId, status: "published", ...record.event },
+    ticketType: record.ticketType,
+    purchaseId: record.id,
+    issuedAt: minted ? new Date().toISOString() : null,
+    onchain: minted
+      ? { contractId: "CTICKET", tokenId: ticket.tokenId, transactionHash: null, explorerUrl: null }
+      : null,
+    qrToken: minted ? `qr.${ticket.id}.e2e` : null,
+  };
+}
+
 function readBody(request) {
   return new Promise((resolve) => {
     let raw = "";
@@ -237,6 +331,40 @@ createServer(async (request, response) => {
     return;
   }
 
+  const control = /^\/__test\/purchases\/([^/?]+)\/(pay|issue|fail|timeout)$/.exec(url);
+  if (control !== null && request.method === "POST") {
+    const record = purchases.get(control[1]);
+    if (record === undefined) {
+      send(response, 404, { code: "purchase_not_found", message: "" });
+      return;
+    }
+    // A timeout needs a stream to end: until the page opens one, the test asks again.
+    if (control[2] === "timeout" && (streams.get(record.id)?.size ?? 0) === 0) {
+      send(response, 409, { code: "no_open_stream", message: "" });
+      return;
+    }
+    advance[control[2]](record);
+    send(response, 200, view(record));
+    return;
+  }
+
+  if (url.startsWith("/api/me/tickets/")) {
+    if (request.headers.authorization !== `Bearer ${token}`) {
+      send(response, 401, { code: "invalid_auth_token", message: "" });
+      return;
+    }
+    const id = decodeURIComponent(url.slice("/api/me/tickets/".length));
+    for (const record of purchases.values()) {
+      const ticket = record.tickets.find((candidate) => candidate.id === id);
+      if (ticket !== undefined) {
+        send(response, 200, ticketView(record, ticket));
+        return;
+      }
+    }
+    send(response, 404, { code: "ticket_not_found", message: "" });
+    return;
+  }
+
   if (url.startsWith("/api/purchases")) {
     if (request.headers.authorization !== `Bearer ${token}`) {
       send(response, 401, { code: "invalid_auth_token", message: "" });
@@ -248,7 +376,7 @@ createServer(async (request, response) => {
       send(response, status, payload);
       return;
     }
-    const match = /^\/api\/purchases\/([^/?]+)(\/pix)?$/.exec(url);
+    const match = /^\/api\/purchases\/([^/?]+)(\/pix|\/stream)?$/.exec(url);
     const record = match === null ? undefined : purchases.get(match[1]);
     if (record === undefined) {
       send(response, 404, { code: "purchase_not_found", message: "" });
@@ -257,6 +385,10 @@ createServer(async (request, response) => {
     if (request.method === "POST" && match[2] === "/pix") {
       const [status, payload] = createPix(record, body ?? {});
       send(response, status, payload);
+      return;
+    }
+    if (request.method === "GET" && match[2] === "/stream") {
+      openStream(record, response);
       return;
     }
     send(response, 200, view(record));

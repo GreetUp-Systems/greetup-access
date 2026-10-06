@@ -36,9 +36,9 @@ describe("saleState", () => {
 
 describe("startingPrice", () => {
   it("uses the cheapest available type", () => {
-    expect(startingPrice([type("vip", 9_000, 30), type("meia", 6_000, 0), type("pista", 8_000, 1)])).toBe(
-      8_000,
-    );
+    expect(
+      startingPrice([type("vip", 9_000, 30), type("meia", 6_000, 0), type("pista", 8_000, 1)]),
+    ).toBe(8_000);
   });
 
   it("falls back to every type when all are sold out, and is null without types", () => {

@@ -5,9 +5,11 @@ import { notFound, useRouter } from "next/navigation";
 import { useSession } from "../../_lib/session";
 import { AppHeader } from "../AppHeader";
 import { Identification } from "../identification/Identification";
+import { FollowUpView } from "./FollowUpView";
 import { PixView } from "./PixView";
 import { ReviewView } from "./ReviewView";
 import { useCheckout } from "./useCheckout";
+import { useFollowUp } from "./useFollowUp";
 
 /**
  * `/checkout/[purchaseId]`: one screen that follows the order without reloading (SPEC-014 §5).
@@ -16,7 +18,9 @@ import { useCheckout } from "./useCheckout";
 export function CheckoutScreen({ purchaseId }: { purchaseId: string }) {
   const router = useRouter();
   const { state } = useSession();
-  const { loaded, notice, busy, generatePix, retryPurchase, toEvent } = useCheckout(purchaseId);
+  const { loaded, notice, busy, generatePix, retryPurchase, toEvent, show } =
+    useCheckout(purchaseId);
+  const { ticket } = useFollowUp(loaded.status === "ready" ? loaded.purchase : null, show);
 
   if (loaded.status === "missing") {
     notFound();
@@ -58,7 +62,20 @@ export function CheckoutScreen({ purchaseId }: { purchaseId: string }) {
     );
   }
 
-  // Confirmed and issued orders are followed by SPEC-014 9C.3.
+  if (purchase.status === "payment_confirmed" || purchase.status === "ticket_issued") {
+    return (
+      <>
+        {header}
+        <FollowUpView
+          purchase={purchase}
+          ticket={purchase.status === "ticket_issued" ? ticket : null}
+          onTickets={() => router.push("/me/tickets")}
+          onBack={back}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       {header}
