@@ -40,9 +40,10 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const { ready, authenticated, getAccessToken, logout: privyLogout } = usePrivy();
+  const { ready, authenticated, user, getAccessToken, logout: privyLogout } = usePrivy();
   const { signRawHash } = useSignRawHash();
   const [state, setState] = useState<SessionState>({ status: "loading" });
+  const [activationRequested, setActivationRequested] = useState(false);
   // Only a session that existed when the page opened is restored; a login in progress is
   // completed by its own bootstrap, never by the restore (SPEC-014 §7).
   const openingChecked = useRef(false);
@@ -88,25 +89,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [ready, authenticated, getToken, privyLogout]);
 
+  // The activation runs once Privy exposes the signed-in user: signRawHash from the render that
+  // called completeLogin still sees the user signed out.
+  useEffect(() => {
+    if (!activationRequested || state.status !== "authenticated" || user === null) {
+      return;
+    }
+    setActivationRequested(false);
+    const address = state.account.wallet.address;
+    // Activation is by intent and idempotent: if it fails here, the next intent (a confirmed
+    // payment) tries again, so it never blocks the navigation.
+    void activateStellarAccount(getToken, async (hash) => {
+      const { signature } = await signRawHash({ address, chainType: "stellar", hash });
+      return signature;
+    }).catch(() => undefined);
+  }, [activationRequested, state, user, getToken, signRawHash]);
+
   const completeLogin = useCallback(
     async (origin: BootstrapOrigin): Promise<AccountView> => {
       const account = await bootstrapAccount(await getToken(), origin);
       setState({ status: "authenticated", account });
       if (origin === "login") {
-        // Activation is by intent and idempotent: if it fails here, the next intent (a
-        // confirmed payment) tries again, so it never blocks the navigation.
-        void activateStellarAccount(getToken, async (hash) => {
-          const { signature } = await signRawHash({
-            address: account.wallet.address,
-            chainType: "stellar",
-            hash,
-          });
-          return signature;
-        }).catch(() => undefined);
+        setActivationRequested(true);
       }
       return account;
     },
-    [getToken, signRawHash],
+    [getToken],
   );
 
   const abandonLogin = useCallback(async (): Promise<void> => {
