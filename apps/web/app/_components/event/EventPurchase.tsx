@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert, AlertDescription, AlertTitle } from "@access/ui/components/alert";
 import { Button } from "@access/ui/components/button";
 import {
   Drawer,
@@ -10,7 +11,7 @@ import {
 } from "@access/ui/components/drawer";
 import { cn } from "@access/ui/lib/utils";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { PublicEvent, PublicTicketType } from "../../_lib/api/events";
 import { formatPrice } from "../../_lib/format";
@@ -25,11 +26,7 @@ import {
 import { Identification } from "../identification/Identification";
 import { QuantityStepper } from "./QuantityStepper";
 import { TicketTypeList } from "./TicketTypeList";
-
-export interface TicketSelection {
-  ticketType: PublicTicketType;
-  quantity: number;
-}
+import { type ChooserNotice, useStartCheckout } from "./useStartCheckout";
 
 // Figma: the closed-sales texts (Evento indisponível 176:2096/176:5567; evento já começou
 // 221:3245/221:3338).
@@ -42,33 +39,102 @@ const closed = {
   },
 } as const;
 
+// Figma: the chooser notices (Valor mínimo 175:1777, Valor máximo 236:3660, Esgotou na escolha
+// 236:3382, Falha ao continuar 236:3904); each takes the place of the footnote.
+function ChooserNoticeAlert({ notice }: { notice: ChooserNotice }) {
+  switch (notice.kind) {
+    case "below_minimum":
+      return (
+        <Alert tone="warning">
+          <AlertDescription>
+            O Pix não aceita um pedido tão baixo agora. Aumente a quantidade ou escolha outro
+            ingresso.
+          </AlertDescription>
+        </Alert>
+      );
+    case "above_maximum":
+      return (
+        <Alert tone="warning">
+          <AlertDescription>
+            O Pix não aceita um pedido tão alto. Diminua a quantidade ou escolha outro ingresso.
+          </AlertDescription>
+        </Alert>
+      );
+    case "sold_out":
+      return (
+        <Alert tone="danger">
+          <AlertTitle>Ingressos esgotados</AlertTitle>
+          <AlertDescription>
+            Os ingressos de {notice.ticketTypeName} acabaram. Escolha outro ingresso.
+          </AlertDescription>
+        </Alert>
+      );
+    case "failed":
+      return (
+        <Alert tone="danger">
+          <AlertTitle>Não deu para continuar</AlertTitle>
+          <AlertDescription>
+            O pedido não foi criado e nada foi cobrado. Tente de novo em instantes.
+          </AlertDescription>
+        </Alert>
+      );
+  }
+}
+
 /**
  * The purchase on the event page (139:928 mobile, 140:931 desktop): a floating glass bar that
  * opens the choice sheet on the phone, and the side card on the desktop. Continuing asks for the
- * e-mail code first (SPEC-014 §7); the checkout itself (creating the purchase) is onCheckout.
+ * e-mail code first, then creates the order and opens the review (SPEC-014 §7).
  */
 export function EventPurchase({
   event,
   sale,
-  onCheckout,
+  initialNotice = null,
 }: {
   event: PublicEvent;
   sale: SaleState;
-  onCheckout?: (selection: TicketSelection) => void;
+  /** A notice the review sent back with ("?aviso="), shown with the sheet open. */
+  initialNotice?: ChooserNotice | null;
 }) {
   const { state } = useSession();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const { start, creating, notice, clearNotice } = useStartCheckout(initialNotice);
+  const [sheetOpen, setSheetOpen] = useState(initialNotice !== null);
   const [identifying, setIdentifying] = useState(false);
   const [selected, setSelected] = useState(() => defaultTicketType(event.ticketTypes));
   const [quantity, setQuantity] = useState(1);
 
+  // The event read again (after "Esgotou na escolha"): keep the choice up to date, or move it to
+  // a type still available.
+  useEffect(() => {
+    setSelected((current) => {
+      const fresh = event.ticketTypes.find((type) => type.id === current?.id);
+      return fresh !== undefined && fresh.available > 0
+        ? fresh
+        : defaultTicketType(event.ticketTypes);
+    });
+  }, [event.ticketTypes]);
+
   const price = startingPrice(event.ticketTypes);
   const count = clampQuantity(quantity, selected);
   const subtotal = selected === null ? 0 : selected.priceCents * count;
+  // The Pix range does not change by trying again: only another choice clears it.
+  const blocked = notice?.kind === "below_minimum" || notice?.kind === "above_maximum";
 
   const select = (type: PublicTicketType): void => {
+    clearNotice();
     setSelected(type);
     setQuantity((current) => clampQuantity(current, type));
+  };
+
+  const changeQuantity = (value: number): void => {
+    clearNotice();
+    setQuantity(value);
+  };
+
+  const checkout = (): void => {
+    if (selected !== null && count > 0) {
+      void start({ ticketTypeId: selected.id, ticketTypeName: selected.name, quantity: count });
+    }
   };
 
   const proceed = (): void => {
@@ -79,7 +145,7 @@ export function EventPurchase({
       setIdentifying(true);
       return;
     }
-    onCheckout?.({ ticketType: selected, quantity: count });
+    checkout();
   };
 
   const chooser = (layout: "sheet" | "card") => (
@@ -96,7 +162,7 @@ export function EventPurchase({
         )}
       >
         <span className="type-body-m-strong text-text-primary">Quantidade</span>
-        <QuantityStepper value={count} max={maxQuantity(selected)} onChange={setQuantity} />
+        <QuantityStepper value={count} max={maxQuantity(selected)} onChange={changeQuantity} />
       </div>
       <div
         className={cn(
@@ -145,15 +211,22 @@ export function EventPurchase({
             </DrawerHeader>
             <div className="flex flex-col overflow-y-auto">
               {chooser("sheet")}
-              <p className="px-4 py-1-5 type-body-s text-text-tertiary">
-                A taxa de serviço aparece antes de você pagar.
-              </p>
+              {notice === null ? (
+                <p className="px-4 py-1-5 type-body-s text-text-tertiary">
+                  A taxa de serviço aparece antes de você pagar.
+                </p>
+              ) : (
+                <div className="px-4">
+                  <ChooserNoticeAlert notice={notice} />
+                </div>
+              )}
               <div className="px-4 pt-3 pb-4">
                 <Button
                   className="w-full"
                   variant="inverse"
                   size="l"
-                  disabled={count === 0}
+                  disabled={count === 0 || blocked}
+                  loading={creating}
                   onClick={proceed}
                 >
                   Continuar
@@ -190,15 +263,22 @@ export function EventPurchase({
                   className="w-full"
                   variant="inverse"
                   size="l"
-                  disabled={count === 0}
+                  disabled={count === 0 || blocked}
+                  loading={creating}
                   onClick={proceed}
                 >
                   Comprar ingresso
                 </Button>
               </div>
-              <p className="px-6 pb-3 type-body-s text-text-tertiary">
-                Pagamento por Pix. A taxa de serviço aparece antes de você pagar.
-              </p>
+              {notice === null ? (
+                <p className="px-6 pb-3 type-body-s text-text-tertiary">
+                  Pagamento por Pix. A taxa de serviço aparece antes de você pagar.
+                </p>
+              ) : (
+                <div className="px-6">
+                  <ChooserNoticeAlert notice={notice} />
+                </div>
+              )}
             </>
           ) : (
             <p className="px-6 pb-3 type-body-s text-text-tertiary">
@@ -218,7 +298,7 @@ export function EventPurchase({
           onClose={() => setIdentifying(false)}
           onDone={() => {
             setIdentifying(false);
-            onCheckout?.({ ticketType: selected, quantity: count });
+            checkout();
           }}
         />
       ) : null}
