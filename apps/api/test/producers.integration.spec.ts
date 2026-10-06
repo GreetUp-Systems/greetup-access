@@ -6,6 +6,7 @@ import { type ApiConfig } from "@access/config";
 import { PrismaClient, PrismaService, TenantContextService } from "@access/database";
 import { type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { Keypair } from "@stellar/stellar-sdk";
 import request from "supertest";
 
 import { AppModule } from "../src/app.module";
@@ -70,39 +71,40 @@ const baseConfig: ApiConfig = {
   ...ticketsTestConfig,
 };
 
+// Wallet keys generated at runtime: the test signs the prepared hash as the browser would (D-28).
+const keyA = Keypair.random();
+const keyB = Keypair.random();
+const sign = (key: Keypair, hash: string): string =>
+  `0x${key.sign(Buffer.from(hash, "hex")).toString("hex")}`;
+
 const users = {
   a: {
     token: "producer-a-token",
     privyUserId: "did:privy:producer-a",
     email: "producer-a@example.com",
     walletId: "producer-a-wallet",
-    address: `G${"A".repeat(55)}`,
+    address: keyA.publicKey(),
+    key: keyA,
   },
   b: {
     token: "producer-b-token",
     privyUserId: "did:privy:producer-b",
     email: "producer-b@example.com",
     walletId: "producer-b-wallet",
-    address: `G${"B".repeat(55)}`,
+    address: keyB.publicKey(),
+    key: keyB,
   },
-} as const;
+};
 
 class FakePrivyGateway implements PrivyGateway {
   readonly tokenPrincipals = new Map<string, VerifiedPrivyPrincipal>();
   readonly identities = new Map<string, PrivyIdentity>();
   readonly wallets = new Map<string, PrivyStellarWallet>();
-  rawSignInputs: Array<{
-    walletId: string;
-    hash: string;
-    userJwt: string;
-    idempotencyKey: string;
-  }> = [];
 
   reset(): void {
     this.tokenPrincipals.clear();
     this.identities.clear();
     this.wallets.clear();
-    this.rawSignInputs = [];
 
     for (const user of Object.values(users)) {
       this.tokenPrincipals.set(user.token, {
@@ -150,16 +152,6 @@ class FakePrivyGateway implements PrivyGateway {
     };
     this.wallets.set(privyUserId, wallet);
     return wallet;
-  }
-
-  async rawSignStellarHash(
-    walletId: string,
-    hash: string,
-    userJwt: string,
-    idempotencyKey: string,
-  ): Promise<string> {
-    this.rawSignInputs.push({ walletId, hash, userJwt, idempotencyKey });
-    return `0x${"00".repeat(64)}`;
   }
 }
 
@@ -1089,15 +1081,29 @@ describe("producer profile and RLS integration", () => {
     });
   });
 
+  // What the browser does: prepare, and when it needs the producer, sign the hash and send it.
+  async function activateStellar(user: (typeof users)[keyof typeof users] = users.a) {
+    const prepared = await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${user.token}`)
+      .expect(200);
+    if (prepared.body.status !== "signing") {
+      return prepared;
+    }
+    const hash = prepared.body.hashToSign as string;
+    return request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate/signature")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({ hash, signature: sign(user.key, hash) })
+      .expect(200);
+  }
+
   it("activates a Testnet wallet once and completes producer onboarding", async () => {
     await createProducer();
     blindPay.nextCustomerKycStatus = "approved";
     expect((await createBlindPayCustomer()).status).toBe(200);
 
-    const first = await request(app.getHttpServer())
-      .post("/api/producers/onboarding/stellar/activate")
-      .set("Authorization", `Bearer ${users.a.token}`)
-      .expect(200);
+    const first = await activateStellar();
 
     expect(first.body).toMatchObject({
       status: "active",
@@ -1106,13 +1112,14 @@ describe("producer profile and RLS integration", () => {
     expect(stellar.buildInputs).toEqual([
       { producerAddress: users.a.address, state: unfundedState },
     ]);
-    expect(stellar.submissionInputs).toHaveLength(1);
-    expect(privy.rawSignInputs).toEqual([
+    expect(stellar.submissionInputs).toEqual([
       {
-        walletId: users.a.walletId,
-        hash: first.body.transactionHash,
-        userJwt: users.a.token,
-        idempotencyKey: expect.stringMatching(/^[a-f0-9]{64}$/),
+        prepared: {
+          transactionXdr: `xdr-${users.a.address}`,
+          transactionHash: first.body.transactionHash,
+        },
+        producerAddress: users.a.address,
+        producerSignature: sign(users.a.key, first.body.transactionHash),
       },
     ]);
     expect(blindPay.walletRegistrations).toEqual([
@@ -1133,13 +1140,13 @@ describe("producer profile and RLS integration", () => {
     expect(repeated.body).toEqual(first.body);
     expect(stellar.buildInputs).toHaveLength(1);
     expect(stellar.submissionInputs).toHaveLength(1);
-    expect(privy.rawSignInputs).toHaveLength(1);
     expect(blindPay.walletRegistrations).toHaveLength(1);
 
     await expect(ownerPrisma.stellarAccountProvisioning.findFirst()).resolves.toMatchObject({
       network: "testnet",
       status: "ACTIVE",
       transactionHash: first.body.transactionHash,
+      preparedEnvelopeXdr: null,
     });
     await expect(ownerPrisma.blindPayCustomer.findFirst()).resolves.toMatchObject({
       externalBlockchainWalletId: "bw_test_1",
@@ -1159,10 +1166,7 @@ describe("producer profile and RLS integration", () => {
   it("configures Stellar right after profile creation and registers the wallet only after KYC", async () => {
     await createProducer();
 
-    const configured = await request(app.getHttpServer())
-      .post("/api/producers/onboarding/stellar/activate")
-      .set("Authorization", `Bearer ${users.a.token}`)
-      .expect(200);
+    const configured = await activateStellar();
     expect(configured.body).toMatchObject({ status: "active" });
     expect(stellar.buildInputs).toEqual([
       { producerAddress: users.a.address, state: unfundedState },
@@ -1195,7 +1199,6 @@ describe("producer profile and RLS integration", () => {
 
     expect(stellar.buildInputs).toHaveLength(1);
     expect(stellar.submissionInputs).toHaveLength(1);
-    expect(privy.rawSignInputs).toHaveLength(1);
     expect(blindPay.walletRegistrations).toHaveLength(1);
 
     const ready = await request(app.getHttpServer())
@@ -1213,10 +1216,7 @@ describe("producer profile and RLS integration", () => {
     };
     stellar.states.set(users.a.address, missingUsdc);
 
-    await request(app.getHttpServer())
-      .post("/api/producers/onboarding/stellar/activate")
-      .set("Authorization", `Bearer ${users.a.token}`)
-      .expect(200);
+    await activateStellar();
 
     expect(stellar.buildInputs).toEqual([{ producerAddress: users.a.address, state: missingUsdc }]);
     await expect(ownerPrisma.stellarAccountProvisioning.findFirst()).resolves.toMatchObject({
@@ -1225,10 +1225,7 @@ describe("producer profile and RLS integration", () => {
 
     // A configured trustline missing from the ledger reopens an ACTIVE record.
     stellar.states.set(users.a.address, missingUsdc);
-    await request(app.getHttpServer())
-      .post("/api/producers/onboarding/stellar/activate")
-      .set("Authorization", `Bearer ${users.a.token}`)
-      .expect(200);
+    await activateStellar();
     expect(stellar.buildInputs).toHaveLength(2);
     expect(stellar.submissionInputs).toHaveLength(2);
   });
@@ -1247,7 +1244,6 @@ describe("producer profile and RLS integration", () => {
     expect(activated.body).toEqual({ status: "active", transactionHash: null });
     expect(stellar.buildInputs).toEqual([]);
     expect(stellar.submissionInputs).toEqual([]);
-    expect(privy.rawSignInputs).toEqual([]);
     expect(blindPay.walletRegistrations).toHaveLength(1);
   });
 

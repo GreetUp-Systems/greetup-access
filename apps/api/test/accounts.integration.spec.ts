@@ -6,6 +6,7 @@ import { type ApiConfig } from "@access/config";
 import { PrismaClient, TenantContextService } from "@access/database";
 import { type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { Keypair } from "@stellar/stellar-sdk";
 import request from "supertest";
 
 import { AppModule } from "../src/app.module";
@@ -57,27 +58,33 @@ const config: ApiConfig = {
   ...ticketsTestConfig,
 };
 
+// Wallet keys generated at runtime: the test signs the prepared hash as the browser would (D-28).
+const keyA = Keypair.random();
+const keyB = Keypair.random();
 const users = {
   a: {
     token: "activation-a",
     privyUserId: "did:privy:activation-a",
-    address: `G${"E".repeat(55)}`,
+    address: keyA.publicKey(),
+    key: keyA,
   },
   b: {
     token: "activation-b",
     privyUserId: "did:privy:activation-b",
-    address: `G${"F".repeat(55)}`,
+    address: keyB.publicKey(),
+    key: keyB,
   },
-} as const;
+};
 type TestUser = (typeof users)[keyof typeof users];
+
+const sign = (key: Keypair, hash: string): string =>
+  `0x${key.sign(Buffer.from(hash, "hex")).toString("hex")}`;
 
 class FakePrivyGateway implements PrivyGateway {
   private readonly wallets = new Map<string, PrivyStellarWallet>();
-  signatures: Array<{ walletId: string; userJwt: string }> = [];
 
   reset(): void {
     this.wallets.clear();
-    this.signatures = [];
   }
 
   async verifyAccessToken(token: string): Promise<VerifiedPrivyPrincipal> {
@@ -107,20 +114,17 @@ class FakePrivyGateway implements PrivyGateway {
     this.wallets.set(privyUserId, wallet);
     return wallet;
   }
-
-  async rawSignStellarHash(walletId: string, _hash: string, userJwt: string): Promise<string> {
-    this.signatures.push({ walletId, userJwt });
-    return `0x${"00".repeat(64)}`;
-  }
 }
 
 class FakeStellarGateway implements StellarGateway {
   readonly accounts = new Set<string>();
   builds: Array<{ address: string; state: StellarAccountState }> = [];
+  submissions: Array<{ prepared: PreparedStellarProvisioning; signature: string }> = [];
 
   reset(): void {
     this.accounts.clear();
     this.builds = [];
+    this.submissions = [];
   }
 
   async getAccountState(address: string): Promise<StellarAccountState> {
@@ -141,7 +145,9 @@ class FakeStellarGateway implements StellarGateway {
   async submitProvisioningTransaction(
     prepared: PreparedStellarProvisioning,
     address: string,
+    signature: string,
   ): Promise<{ transactionHash: string }> {
+    this.submissions.push({ prepared, signature });
     this.accounts.add(address);
     return { transactionHash: prepared.transactionHash };
   }
@@ -210,30 +216,83 @@ describe("account activation integration", () => {
       .set("Authorization", `Bearer ${user.token}`);
   }
 
+  function submitSignature(user: TestUser, body: object) {
+    return request(app.getHttpServer())
+      .post("/api/me/stellar/activate/signature")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send(body);
+  }
+
   async function userId(user: TestUser): Promise<string> {
     return (await ownerPrisma.user.findUniqueOrThrow({ where: { privyUserId: user.privyUserId } }))
       .id;
   }
 
-  it("activates the account of a spontaneous login once, signed with the user's JWT", async () => {
+  it("activates the account of a spontaneous login once, signed in the browser", async () => {
     await bootstrap(users.a, { origin: "login" }).expect(200);
     await expect(
       ownerPrisma.user.findUniqueOrThrow({ where: { privyUserId: users.a.privyUserId } }),
     ).resolves.toMatchObject({ spontaneousLoginAt: expect.any(Date) });
 
-    const first = await activate(users.a).expect(200);
-    expect(first.body).toEqual({ status: "active", transactionHash: expect.any(String) });
+    const prepared = await activate(users.a).expect(200);
+    const hash = prepared.body.hashToSign as string;
+    expect(prepared.body).toEqual({
+      status: "signing",
+      hashToSign: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
     expect(stellar.builds).toEqual([
       { address: users.a.address, state: { accountExists: false, missingTrustlines: [] } },
     ]);
-    expect(privy.signatures).toEqual([
-      { walletId: `${users.a.privyUserId}-wallet`, userJwt: users.a.token },
+
+    // Asking again hands out the same transaction instead of building another.
+    await activate(users.a).expect(200, { status: "signing", hashToSign: hash });
+    expect(stellar.builds).toHaveLength(1);
+
+    const signature = sign(users.a.key, hash);
+    await submitSignature(users.a, { hash, signature }).expect(200, {
+      status: "active",
+      transactionHash: hash,
+    });
+    expect(stellar.submissions).toEqual([
+      { prepared: { transactionXdr: `xdr-${users.a.address}`, transactionHash: hash }, signature },
     ]);
 
+    // A repeated signature and a later activation answer the state without new transactions.
+    await submitSignature(users.a, { hash, signature }).expect(200);
     await activate(users.a).expect(200);
     expect(stellar.builds).toHaveLength(1);
+    expect(stellar.submissions).toHaveLength(1);
     await expect(ownerPrisma.walletActivation.findMany()).resolves.toEqual([
-      expect.objectContaining({ status: "ACTIVE", userId: await userId(users.a) }),
+      expect.objectContaining({
+        status: "ACTIVE",
+        userId: await userId(users.a),
+        preparedEnvelopeXdr: null,
+      }),
+    ]);
+  });
+
+  it("refuses a signature by another key and a hash that was not prepared", async () => {
+    await bootstrap(users.a, { origin: "login" }).expect(200);
+    const hash = (await activate(users.a).expect(200)).body.hashToSign as string;
+
+    await submitSignature(users.a, { hash, signature: sign(users.b.key, hash) })
+      .expect(422)
+      .expect(({ body }) => expect(body.code).toBe("invalid_activation_signature"));
+    const other = "f".repeat(64);
+    await submitSignature(users.a, { hash: other, signature: sign(users.a.key, other) })
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe("activation_signature_stale"));
+    await submitSignature(users.a, { hash, signature: sign(users.a.key, hash), extra: 1 }).expect(
+      422,
+    );
+
+    expect(stellar.submissions).toEqual([]);
+    await expect(ownerPrisma.walletActivation.findMany()).resolves.toEqual([
+      expect.objectContaining({
+        status: "SIGNING",
+        transactionHash: hash,
+        preparedEnvelopeXdr: `xdr-${users.a.address}`,
+      }),
     ]);
   });
 

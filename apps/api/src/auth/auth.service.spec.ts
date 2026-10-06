@@ -56,7 +56,6 @@ describe("AuthService", () => {
       getIdentity: jest.fn(),
       findStellarWallet: jest.fn(),
       createStellarWallet: jest.fn(),
-      rawSignStellarHash: jest.fn(),
     };
     service = new AuthService(users as unknown as UsersRepository, privy);
   });

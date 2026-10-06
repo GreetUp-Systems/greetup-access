@@ -12,6 +12,12 @@ export function isStellarAccountProvisioned(state: StellarAccountState): boolean
   return state.accountExists && state.missingTrustlines.length === 0;
 }
 
+/**
+ * How long a prepared provisioning transaction stays valid on the network. The browser signs it
+ * within this window (D-28); after it, the transaction is prepared again.
+ */
+export const PROVISIONING_TRANSACTION_TIMEOUT_SECONDS = 180;
+
 export interface PreparedStellarProvisioning {
   transactionXdr: string;
   transactionHash: string;

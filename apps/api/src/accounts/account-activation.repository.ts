@@ -49,7 +49,43 @@ export class AccountActivationRepository {
             { status: "SIGNING", updatedAt: { lt: staleBefore } },
           ],
         },
-        data: { status: "SIGNING", transactionHash: null, failureCode: null },
+        data: {
+          status: "SIGNING",
+          transactionHash: null,
+          preparedEnvelopeXdr: null,
+          failureCode: null,
+        },
+      });
+      if (claimed.count === 0) {
+        return null;
+      }
+      return transaction.walletActivation.findUniqueOrThrow({ where: { id: activationId } });
+    });
+  }
+
+  /** Keeps the prepared transaction, without signatures, for the browser to sign (D-28). */
+  savePrepared(
+    userId: string,
+    activationId: string,
+    transactionHash: string,
+    preparedEnvelopeXdr: string,
+  ): Promise<WalletActivationRecord> {
+    return this.update(userId, activationId, { transactionHash, preparedEnvelopeXdr });
+  }
+
+  /**
+   * SIGNING → SUBMITTED for the prepared hash only, so two signatures never submit twice. Null
+   * when another request already moved it.
+   */
+  claimSubmission(
+    userId: string,
+    activationId: string,
+    transactionHash: string,
+  ): Promise<WalletActivationRecord | null> {
+    return this.tenantContext.withUserContext(userId, async (transaction) => {
+      const claimed = await transaction.walletActivation.updateMany({
+        where: { id: activationId, userId, status: "SIGNING", transactionHash },
+        data: { status: "SUBMITTED", preparedEnvelopeXdr: null },
       });
       if (claimed.count === 0) {
         return null;
@@ -64,18 +100,11 @@ export class AccountActivationRepository {
     );
   }
 
-  markSubmitted(
-    userId: string,
-    activationId: string,
-    transactionHash: string,
-  ): Promise<WalletActivationRecord> {
-    return this.update(userId, activationId, { status: "SUBMITTED", transactionHash });
-  }
-
   markActive(userId: string, activationId: string): Promise<WalletActivationRecord> {
     return this.update(userId, activationId, {
       status: "ACTIVE",
       activatedAt: new Date(),
+      preparedEnvelopeXdr: null,
       failureCode: null,
     });
   }
@@ -87,6 +116,7 @@ export class AccountActivationRepository {
   ): Promise<WalletActivationRecord> {
     return this.update(userId, activationId, {
       status: "FAILED",
+      preparedEnvelopeXdr: null,
       failureCode: failureCode.slice(0, 80),
     });
   }

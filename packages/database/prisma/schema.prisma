@@ -146,16 +146,18 @@ model WalletAccount {
 }
 
 model StellarAccountProvisioning {
-  id              String                    @id @default(uuid()) @db.Uuid
-  producerId      String                    @unique @map("producer_id") @db.Uuid
-  walletAccountId String                    @unique @map("wallet_account_id") @db.Uuid
-  network         String                    @db.VarChar(32)
-  status          StellarProvisioningStatus @default(PENDING)
-  transactionHash String?                   @unique @map("transaction_hash") @db.VarChar(64)
-  failureCode     String?                   @map("failure_code") @db.VarChar(80)
-  activatedAt     DateTime?                 @map("activated_at")
-  createdAt       DateTime                  @default(now()) @map("created_at")
-  updatedAt       DateTime                  @updatedAt @map("updated_at")
+  id                  String                    @id @default(uuid()) @db.Uuid
+  producerId          String                    @unique @map("producer_id") @db.Uuid
+  walletAccountId     String                    @unique @map("wallet_account_id") @db.Uuid
+  network             String                    @db.VarChar(32)
+  status              StellarProvisioningStatus @default(PENDING)
+  transactionHash     String?                   @unique @map("transaction_hash") @db.VarChar(64)
+  // The prepared transaction without signatures while SIGNING waits for the browser (D-28).
+  preparedEnvelopeXdr String?                   @map("prepared_envelope_xdr")
+  failureCode         String?                   @map("failure_code") @db.VarChar(80)
+  activatedAt         DateTime?                 @map("activated_at")
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
 
   producer ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Restrict)
   wallet   WalletAccount   @relation(fields: [walletAccountId], references: [id], onDelete: Restrict)
@@ -297,16 +299,18 @@ model Ticket {
 
 // Sponsored activation of a user's Stellar account outside the producer flow (SPEC-005 §12).
 model WalletActivation {
-  id              String                    @id @default(uuid()) @db.Uuid
-  userId          String                    @unique @map("user_id") @db.Uuid
-  walletAccountId String                    @unique @map("wallet_account_id") @db.Uuid
-  network         String                    @db.VarChar(32)
-  status          StellarProvisioningStatus @default(PENDING)
-  transactionHash String?                   @unique @map("transaction_hash") @db.VarChar(64)
-  failureCode     String?                   @map("failure_code") @db.VarChar(80)
-  activatedAt     DateTime?                 @map("activated_at")
-  createdAt       DateTime                  @default(now()) @map("created_at")
-  updatedAt       DateTime                  @updatedAt @map("updated_at")
+  id                  String                    @id @default(uuid()) @db.Uuid
+  userId              String                    @unique @map("user_id") @db.Uuid
+  walletAccountId     String                    @unique @map("wallet_account_id") @db.Uuid
+  network             String                    @db.VarChar(32)
+  status              StellarProvisioningStatus @default(PENDING)
+  transactionHash     String?                   @unique @map("transaction_hash") @db.VarChar(64)
+  // The prepared transaction without signatures while SIGNING waits for the browser (D-28).
+  preparedEnvelopeXdr String?                   @map("prepared_envelope_xdr")
+  failureCode         String?                   @map("failure_code") @db.VarChar(80)
+  activatedAt         DateTime?                 @map("activated_at")
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
 
   user   User          @relation(fields: [userId], references: [id], onDelete: Restrict)
   wallet WalletAccount @relation(fields: [walletAccountId], references: [id], onDelete: Restrict)

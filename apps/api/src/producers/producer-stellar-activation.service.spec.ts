@@ -1,8 +1,9 @@
 import { ConflictException } from "@nestjs/common";
+import { Keypair } from "@stellar/stellar-sdk";
 
 import { type BlindPayGateway } from "../common/blindpay/blindpay.types";
 import { type PrivyGateway } from "../common/privy/privy.types";
-import { type StellarGateway } from "../common/stellar/stellar.types";
+import { type StellarGateway, StellarProviderError } from "../common/stellar/stellar.types";
 import { type UserWithWallet, UsersRepository } from "../users/users.repository";
 import { ProducerStellarActivationService } from "./producer-stellar-activation.service";
 import {
@@ -11,6 +12,13 @@ import {
 } from "./producer-stellar.repository";
 import { ProducersRepository, type ProducerProfileRecord } from "./producers.repository";
 
+// The producer's wallet, generated at runtime: it signs hashes the way signRawHash does (D-28).
+const producerKey = Keypair.random();
+const otherKey = Keypair.random();
+const sign = (key: Keypair, hash: string): string =>
+  `0x${key.sign(Buffer.from(hash, "hex")).toString("hex")}`;
+
+const hash = "b".repeat(64);
 const now = new Date();
 const principal = {
   privyUserId: "did:privy:producer",
@@ -21,7 +29,7 @@ const wallet = {
   id: "00000000-0000-4000-8000-000000000002",
   userId: "00000000-0000-4000-8000-000000000001",
   privyWalletId: "wallet-id",
-  stellarAddress: `G${"A".repeat(55)}`,
+  stellarAddress: producerKey.publicKey(),
   createdAt: now,
   updatedAt: now,
 };
@@ -55,10 +63,18 @@ const provisioning: StellarProvisioningRecord = {
   network: "testnet",
   status: "PENDING",
   transactionHash: null,
+  preparedEnvelopeXdr: null,
   failureCode: null,
   activatedAt: null,
   createdAt: now,
   updatedAt: now,
+};
+const prepared: StellarProvisioningRecord = {
+  ...provisioning,
+  status: "SIGNING",
+  transactionHash: hash,
+  preparedEnvelopeXdr: "unsigned-xdr",
+  updatedAt: new Date(),
 };
 const usdb = { code: "USDB", issuer: "GCQSSIMOW5OCGULZATDXKU5MOJBOMFX6G65X6CXZDQ7AIB3SKFUZ67NX" };
 const usdc = { code: "USDC", issuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5" };
@@ -83,13 +99,14 @@ describe("ProducerStellarActivationService", () => {
       | "ensure"
       | "find"
       | "claimSigning"
-      | "markSubmitted"
+      | "savePrepared"
+      | "claimSubmission"
       | "markActive"
       | "markFailed"
       | "markWalletRegistered"
     >
   >;
-  let privy: jest.Mocked<Pick<PrivyGateway, "findStellarWallet" | "rawSignStellarHash">>;
+  let privy: jest.Mocked<Pick<PrivyGateway, "findStellarWallet">>;
   let stellar: jest.Mocked<StellarGateway>;
   let blindPay: jest.Mocked<Pick<BlindPayGateway, "registerExternalStellarWallet">>;
   let service: ProducerStellarActivationService;
@@ -99,15 +116,18 @@ describe("ProducerStellarActivationService", () => {
     producers = { findByUserId: jest.fn().mockResolvedValue(producer) };
     repository = {
       ensure: jest.fn().mockResolvedValue(provisioning),
-      find: jest.fn().mockResolvedValue(provisioning),
+      find: jest.fn().mockResolvedValue(prepared),
       claimSigning: jest
         .fn()
         .mockResolvedValue({ ...provisioning, status: "SIGNING", updatedAt: new Date() }),
-      markSubmitted: jest
+      savePrepared: jest
         .fn()
-        .mockImplementation((_userId, _id, transactionHash: string) =>
-          Promise.resolve({ ...provisioning, status: "SUBMITTED", transactionHash }),
+        .mockImplementation((_userId, _id, transactionHash: string, preparedEnvelopeXdr: string) =>
+          Promise.resolve({ ...prepared, transactionHash, preparedEnvelopeXdr }),
         ),
+      claimSubmission: jest
+        .fn()
+        .mockResolvedValue({ ...prepared, status: "SUBMITTED", preparedEnvelopeXdr: null }),
       markActive: jest
         .fn()
         .mockResolvedValue({ ...provisioning, status: "ACTIVE", activatedAt: new Date() }),
@@ -121,17 +141,14 @@ describe("ProducerStellarActivationService", () => {
         chainType: "stellar",
         ownerPrivyUserId: principal.privyUserId,
       }),
-      rawSignStellarHash: jest.fn().mockResolvedValue(`0x${"01".repeat(64)}`),
     };
     stellar = {
-      getAccountState: jest.fn().mockResolvedValueOnce(unfunded).mockResolvedValueOnce(provisioned),
+      getAccountState: jest.fn().mockResolvedValue(unfunded),
       buildProvisioningTransaction: jest.fn().mockResolvedValue({
         transactionXdr: "unsigned-xdr",
-        transactionHash: "b".repeat(64),
+        transactionHash: hash,
       }),
-      submitProvisioningTransaction: jest
-        .fn()
-        .mockResolvedValue({ transactionHash: "b".repeat(64) }),
+      submitProvisioningTransaction: jest.fn().mockResolvedValue({ transactionHash: hash }),
       getTransactionStatus: jest.fn().mockResolvedValue("not_found"),
     };
     blindPay = {
@@ -152,26 +169,39 @@ describe("ProducerStellarActivationService", () => {
     );
   });
 
-  it("signs with the current user JWT, submits and registers the confirmed wallet", async () => {
+  const signature = () => ({ hash, signature: sign(producerKey, hash) });
+
+  it("prepares the account and trustlines and hands out the hash to sign", async () => {
     await expect(service.activate(principal)).resolves.toEqual({
-      status: "active",
-      transactionHash: null,
+      status: "signing",
+      hashToSign: hash,
     });
 
     expect(stellar.buildProvisioningTransaction).toHaveBeenCalledWith(
       wallet.stellarAddress,
       unfunded,
     );
-    expect(privy.rawSignStellarHash).toHaveBeenCalledWith(
-      wallet.privyWalletId,
-      "b".repeat(64),
-      principal.accessToken,
-      expect.stringMatching(/^[0-9a-f]{64}$/),
+    expect(repository.savePrepared).toHaveBeenCalledWith(
+      user.id,
+      provisioning.id,
+      hash,
+      "unsigned-xdr",
     );
+    expect(stellar.submitProvisioningTransaction).not.toHaveBeenCalled();
+  });
+
+  it("submits the producer's signature and registers the confirmed wallet", async () => {
+    stellar.getAccountState.mockResolvedValue(provisioned);
+    const input = signature();
+
+    await expect(service.submitSignature(principal, input)).resolves.toMatchObject({
+      status: "active",
+    });
+
     expect(stellar.submitProvisioningTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ transactionHash: "b".repeat(64) }),
+      { transactionXdr: "unsigned-xdr", transactionHash: hash },
       wallet.stellarAddress,
-      `0x${"01".repeat(64)}`,
+      input.signature,
     );
     expect(blindPay.registerExternalStellarWallet).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -183,26 +213,47 @@ describe("ProducerStellarActivationService", () => {
     expect(repository.markWalletRegistered).toHaveBeenCalledWith(user.id, customer.id, "bw_test");
   });
 
-  it("reconciles an existing account and trustlines without signing another transaction", async () => {
-    stellar.getAccountState.mockReset().mockResolvedValue(provisioned);
+  it("refuses a signature by another key without submitting", async () => {
+    await expect(
+      service.submitSignature(principal, { hash, signature: sign(otherKey, hash) }),
+    ).rejects.toMatchObject({ response: { code: "invalid_activation_signature" } });
+    expect(repository.claimSubmission).not.toHaveBeenCalled();
+  });
+
+  it("asks to prepare again for a stale transaction or a moved sequence", async () => {
+    repository.find.mockResolvedValueOnce({
+      ...prepared,
+      updatedAt: new Date(Date.now() - 600_000),
+    });
+    await expect(service.submitSignature(principal, signature())).rejects.toMatchObject({
+      response: { code: "activation_signature_stale" },
+    });
+
+    stellar.submitProvisioningTransaction.mockRejectedValue(
+      new StellarProviderError("submit_provisioning", false, "tx_bad_seq"),
+    );
+    await expect(service.submitSignature(principal, signature())).rejects.toMatchObject({
+      response: { code: "activation_signature_stale" },
+    });
+    expect(repository.markFailed).toHaveBeenCalledWith(user.id, provisioning.id, "tx_bad_seq");
+  });
+
+  it("reconciles an existing account and trustlines without preparing another transaction", async () => {
+    stellar.getAccountState.mockResolvedValue(provisioned);
 
     await expect(service.activate(principal)).resolves.toMatchObject({ status: "active" });
 
     expect(repository.markActive).toHaveBeenCalled();
     expect(stellar.buildProvisioningTransaction).not.toHaveBeenCalled();
-    expect(privy.rawSignStellarHash).not.toHaveBeenCalled();
   });
 
   it("keeps a recent unknown submission pending instead of creating a duplicate", async () => {
-    const submitted = {
+    repository.ensure.mockResolvedValue({
       ...provisioning,
-      status: "SUBMITTED" as const,
+      status: "SUBMITTED",
       transactionHash: "c".repeat(64),
       updatedAt: new Date(),
-    };
-    repository.ensure.mockResolvedValue(submitted);
-    stellar.getAccountState.mockReset().mockResolvedValue(unfunded);
-    stellar.getTransactionStatus.mockResolvedValue("not_found");
+    });
 
     await expect(service.activate(principal)).resolves.toEqual({
       status: "submitted",
@@ -229,10 +280,12 @@ describe("ProducerStellarActivationService", () => {
     ["while KYC is still verifying", [{ ...customer, kycStatus: "VERIFYING" as const }]],
   ])("configures Stellar %s and defers the wallet registration", async (_label, customers) => {
     producers.findByUserId.mockResolvedValue({ ...producer, blindPayCustomers: customers });
+    stellar.getAccountState.mockResolvedValue(provisioned);
 
-    await expect(service.activate(principal)).resolves.toMatchObject({ status: "active" });
+    await expect(service.submitSignature(principal, signature())).resolves.toMatchObject({
+      status: "active",
+    });
 
-    expect(stellar.buildProvisioningTransaction).toHaveBeenCalledTimes(1);
     expect(stellar.submitProvisioningTransaction).toHaveBeenCalledTimes(1);
     expect(repository.markActive).toHaveBeenCalled();
     expect(blindPay.registerExternalStellarWallet).not.toHaveBeenCalled();
@@ -241,31 +294,26 @@ describe("ProducerStellarActivationService", () => {
 
   it("registers the wallet after KYC without another Stellar transaction", async () => {
     repository.ensure.mockResolvedValue({ ...provisioning, status: "ACTIVE", activatedAt: now });
-    stellar.getAccountState.mockReset().mockResolvedValue(provisioned);
+    stellar.getAccountState.mockResolvedValue(provisioned);
 
     await expect(service.activate(principal)).resolves.toMatchObject({ status: "active" });
 
     expect(stellar.buildProvisioningTransaction).not.toHaveBeenCalled();
-    expect(privy.rawSignStellarHash).not.toHaveBeenCalled();
     expect(repository.markActive).not.toHaveBeenCalled();
     expect(repository.markWalletRegistered).toHaveBeenCalledWith(user.id, customer.id, "bw_test");
   });
 
-  it("re-provisions an active record when a configured trustline is missing on-chain", async () => {
+  it("prepares only the missing trustline for an active record", async () => {
     const missingUsdc = { accountExists: true, missingTrustlines: [usdc] };
     repository.ensure.mockResolvedValue({ ...provisioning, status: "ACTIVE", activatedAt: now });
-    stellar.getAccountState
-      .mockReset()
-      .mockResolvedValueOnce(missingUsdc)
-      .mockResolvedValueOnce(provisioned);
+    stellar.getAccountState.mockResolvedValue(missingUsdc);
 
-    await expect(service.activate(principal)).resolves.toMatchObject({ status: "active" });
+    await expect(service.activate(principal)).resolves.toMatchObject({ status: "signing" });
 
     expect(repository.claimSigning).toHaveBeenCalledTimes(1);
     expect(stellar.buildProvisioningTransaction).toHaveBeenCalledWith(
       wallet.stellarAddress,
       missingUsdc,
     );
-    expect(stellar.submitProvisioningTransaction).toHaveBeenCalledTimes(1);
   });
 });

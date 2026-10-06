@@ -55,14 +55,6 @@ interface PrivyClientLike {
       entity: { id: string; type: "user" };
       idempotency_key: string;
     }): Promise<PrivyWalletResponse>;
-    rawSign(
-      walletId: string,
-      input: {
-        params: { hash: string };
-        authorization_context: { user_jwts: string[] };
-        idempotency_key: string;
-      },
-    ): Promise<{ signature: string; encoding: "hex" }>;
   };
 }
 
@@ -137,32 +129,6 @@ export class PrivySdkGateway implements PrivyGateway {
     });
 
     return this.toStellarWallet(wallet, privyUserId, true);
-  }
-
-  async rawSignStellarHash(
-    walletId: string,
-    hash: string,
-    userJwt: string,
-    idempotencyKey: string,
-  ): Promise<string> {
-    if (!/^[0-9a-f]{64}$/.test(hash) || userJwt.length === 0 || idempotencyKey.length === 0) {
-      throw new PrivyProviderUnavailableError("raw_sign_invalid_input");
-    }
-
-    const result = await this.execute("raw_sign_stellar", async () => {
-      const client = await this.getClient();
-      return client.wallets().rawSign(walletId, {
-        params: { hash: `0x${hash}` },
-        authorization_context: { user_jwts: [userJwt] },
-        idempotency_key: idempotencyKey,
-      });
-    });
-
-    if (result.encoding !== "hex" || !/^0x[0-9a-fA-F]{128}$/.test(result.signature)) {
-      throw new PrivyProviderUnavailableError("raw_sign_stellar_invalid_response");
-    }
-
-    return result.signature;
   }
 
   private getVerifiedEmail(user: PrivyUserResponse): string | null {

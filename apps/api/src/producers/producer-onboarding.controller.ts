@@ -42,6 +42,16 @@ export class ProducerOnboardingController {
     return this.stellarActivation.activate(principal);
   }
 
+  /** The browser's signature of the prepared hash, submitted with the sponsor's (D-28). */
+  @Post("stellar/activate/signature")
+  @HttpCode(HttpStatus.OK)
+  submitStellarSignature(
+    @CurrentUser() principal: AuthenticatedPrincipal,
+    @Body() body: unknown,
+  ): Promise<StellarActivationView> {
+    return this.stellarActivation.submitSignature(principal, body);
+  }
+
   @Post("tos")
   @HttpCode(HttpStatus.OK)
   createTermsSession(

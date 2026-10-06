@@ -25,7 +25,7 @@ export interface IdentificationProps {
 export function Identification({ origin, summary, onClose, onDone }: IdentificationProps) {
   const { sendCode, loginWithCode } = useLoginWithEmail();
   const { authenticated } = usePrivy();
-  const { completeLogin } = useSession();
+  const { completeLogin, abandonLogin } = useSession();
 
   const [step, setStep] = useState<IdentificationStep>("email");
   const [email, setEmail] = useState("");
@@ -107,6 +107,12 @@ export function Identification({ origin, summary, onClose, onDone }: Identificat
     }
   };
 
+  // Leaving after a failed bootstrap must not keep a Privy session without its account.
+  const close = (): void => {
+    void abandonLogin();
+    onClose();
+  };
+
   return (
     <IdentificationView
       origin={origin}
@@ -135,10 +141,10 @@ export function Identification({ origin, summary, onClose, onDone }: Identificat
           setFailed(false);
           setStep("email");
         } else {
-          onClose();
+          close();
         }
       }}
-      onClose={onClose}
+      onClose={close}
     />
   );
 }

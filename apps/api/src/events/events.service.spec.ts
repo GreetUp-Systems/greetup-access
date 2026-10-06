@@ -100,6 +100,7 @@ function producer(ready: boolean): ProducerProfileRecord {
       network: "testnet",
       status: "ACTIVE",
       transactionHash: "a".repeat(64),
+      preparedEnvelopeXdr: null,
       failureCode: null,
       activatedAt: now,
       createdAt: now,

@@ -20,12 +20,6 @@ export interface PrivyGateway {
   getIdentity(privyUserId: string): Promise<PrivyIdentity>;
   findStellarWallet(privyUserId: string): Promise<PrivyStellarWallet | null>;
   createStellarWallet(privyUserId: string, idempotencyKey: string): Promise<PrivyStellarWallet>;
-  rawSignStellarHash(
-    walletId: string,
-    hash: string,
-    userJwt: string,
-    idempotencyKey: string,
-  ): Promise<string>;
 }
 
 export class PrivyProviderUnavailableError extends Error {

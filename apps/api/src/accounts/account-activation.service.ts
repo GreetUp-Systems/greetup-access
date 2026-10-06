@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import { type ApiConfig } from "@access/config";
 import {
   BadGatewayException,
@@ -8,6 +6,7 @@ import {
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from "@nestjs/common";
 
 import { type AuthenticatedPrincipal } from "../auth/auth.types";
@@ -16,7 +15,9 @@ import {
   type PrivyGateway,
   PrivyProviderUnavailableError,
 } from "../common/privy/privy.types";
+import { isStellarHashSignature } from "../common/stellar/stellar-signature";
 import {
+  PROVISIONING_TRANSACTION_TIMEOUT_SECONDS,
   STELLAR_ACTIVATION_CONFIG,
   STELLAR_GATEWAY,
   type StellarGateway,
@@ -28,17 +29,25 @@ import {
   type WalletActivationRecord,
 } from "./account-activation.repository";
 
-const signingLeaseMs = 4 * 60 * 1_000;
+// A prepared transaction is handed out for signing only while it still has time on the network.
+const preparedWindowMs = (PROVISIONING_TRANSACTION_TIMEOUT_SECONDS - 30) * 1_000;
+const submittedLeaseMs = 4 * 60 * 1_000;
+// The network refused the prepared transaction itself: it has to be prepared again.
+const staleSubmissionCodes = new Set(["tx_bad_seq", "tx_too_late"]);
 
-export interface AccountActivationView {
-  status: "signing" | "submitted" | "active";
-  transactionHash: string | null;
+export type AccountActivationView =
+  | { status: "signing"; hashToSign: string }
+  | { status: "submitted" | "active"; transactionHash: string | null };
+
+interface ActivationSignature {
+  hash: string;
+  signature: string;
 }
 
 /**
  * Activates the user's own Stellar account with sponsored reserves (D-23): created on the
- * ledger only, without trustlines. It needs the user's Privy signature, so it runs on an
- * authenticated request and never in a worker (SPEC-005 §12).
+ * ledger only, without trustlines. The user signs in the browser (D-28): `activate` prepares the
+ * transaction and `submitSignature` sends it with the sponsor's signature (SPEC-005 §12).
  */
 @Injectable()
 export class AccountActivationService {
@@ -77,14 +86,14 @@ export class AccountActivationService {
         return this.toView(activation);
       }
     }
-    if (activation.status === "SIGNING" && !this.isStale(activation.updatedAt)) {
+    if (activation.status === "SIGNING" && this.isFresh(activation.updatedAt)) {
       return this.toView(activation);
     }
 
     const claimed = await this.repository.claimSigning(
       user.id,
       activation.id,
-      new Date(Date.now() - signingLeaseMs),
+      new Date(Date.now() - preparedWindowMs),
     );
     if (claimed === null) {
       const winner = await this.repository.find(user.id);
@@ -94,35 +103,88 @@ export class AccountActivationService {
       return this.toView(winner);
     }
 
-    let submitted: WalletActivationRecord | undefined;
     try {
       const prepared = await this.stellar.buildProvisioningTransaction(wallet.stellarAddress, {
         accountExists: false,
         missingTrustlines: [],
       });
-      const signature = await this.privy.rawSignStellarHash(
-        wallet.privyWalletId,
-        prepared.transactionHash,
-        principal.accessToken,
-        this.hashKey(`privy:${prepared.transactionHash}`),
+      return this.toView(
+        await this.repository.savePrepared(
+          user.id,
+          claimed.id,
+          prepared.transactionHash,
+          prepared.transactionXdr,
+        ),
       );
-      submitted = await this.repository.markSubmitted(
-        user.id,
-        claimed.id,
-        prepared.transactionHash,
-      );
-      await this.stellar.submitProvisioningTransaction(prepared, wallet.stellarAddress, signature);
     } catch (error) {
-      if (submitted !== undefined && error instanceof StellarProviderError && error.retryable) {
-        // The outcome is unknown: the next call reconciles by hash before building again.
-        return this.toView(submitted);
-      }
       await this.repository.markFailed(user.id, claimed.id, this.failureCode(error));
       throw this.mapError(error);
     }
+  }
 
-    if (await this.accountExists(wallet.stellarAddress)) {
-      return this.toView(await this.repository.markActive(user.id, claimed.id));
+  /** The browser's signature of the prepared hash: verified, joined by the sponsor, submitted. */
+  async submitSignature(
+    principal: AuthenticatedPrincipal,
+    body: unknown,
+  ): Promise<AccountActivationView> {
+    const input = this.parseSignature(body);
+    const user = await this.requireUser(principal);
+    const address = user.wallet.stellarAddress;
+
+    const activation = await this.repository.find(user.id);
+    if (activation === null) {
+      throw this.stale();
+    }
+    if (
+      (activation.status === "SUBMITTED" || activation.status === "ACTIVE") &&
+      activation.transactionHash === input.hash
+    ) {
+      return this.toView(activation);
+    }
+    if (
+      activation.status !== "SIGNING" ||
+      activation.transactionHash !== input.hash ||
+      activation.preparedEnvelopeXdr === null ||
+      !this.isFresh(activation.updatedAt)
+    ) {
+      throw this.stale();
+    }
+    if (!isStellarHashSignature(input.hash, address, input.signature)) {
+      throw this.invalidSignature();
+    }
+
+    const submitted = await this.repository.claimSubmission(user.id, activation.id, input.hash);
+    if (submitted === null) {
+      const current = await this.repository.find(user.id);
+      if (current === null || current.transactionHash !== input.hash) {
+        throw this.stale();
+      }
+      return this.toView(current);
+    }
+
+    try {
+      await this.stellar.submitProvisioningTransaction(
+        { transactionXdr: activation.preparedEnvelopeXdr, transactionHash: input.hash },
+        address,
+        input.signature,
+      );
+    } catch (error) {
+      if (error instanceof StellarProviderError && error.retryable) {
+        // The outcome is unknown: the next activation call reconciles by hash.
+        return this.toView(submitted);
+      }
+      await this.repository.markFailed(user.id, submitted.id, this.failureCode(error));
+      if (
+        error instanceof StellarProviderError &&
+        staleSubmissionCodes.has(error.providerCode ?? "")
+      ) {
+        throw this.stale();
+      }
+      throw this.mapError(error);
+    }
+
+    if (await this.accountExists(address)) {
+      return this.toView(await this.repository.markActive(user.id, submitted.id));
     }
     return this.toView(submitted);
   }
@@ -142,7 +204,7 @@ export class AccountActivationService {
       // The ledger was checked just before and holds no account for this address.
       return this.repository.markFailed(userId, activation.id, "onchain_state_mismatch");
     }
-    if (status === "failed" || this.isStale(activation.updatedAt)) {
+    if (status === "failed" || activation.updatedAt.getTime() < Date.now() - submittedLeaseMs) {
       return this.repository.markFailed(
         userId,
         activation.id,
@@ -188,6 +250,23 @@ export class AccountActivationService {
     }
   }
 
+  // Exactly { hash, signature }: the hex hash handed out and the hex signature signRawHash gives.
+  private parseSignature(body: unknown): ActivationSignature {
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      throw this.invalidSignature();
+    }
+    const fields = body as Record<string, unknown>;
+    const { hash, signature } = fields;
+    if (
+      Object.keys(fields).some((key) => key !== "hash" && key !== "signature") ||
+      typeof hash !== "string" ||
+      typeof signature !== "string"
+    ) {
+      throw this.invalidSignature();
+    }
+    return { hash, signature };
+  }
+
   private async call<T>(operation: () => Promise<T>): Promise<T> {
     try {
       return await operation();
@@ -225,6 +304,20 @@ export class AccountActivationService {
     return "activation_failed";
   }
 
+  private stale(): ConflictException {
+    return new ConflictException({
+      code: "activation_signature_stale",
+      message: "The prepared activation is no longer valid; prepare it again.",
+    });
+  }
+
+  private invalidSignature(): UnprocessableEntityException {
+    return new UnprocessableEntityException({
+      code: "invalid_activation_signature",
+      message: "The signature does not match the prepared activation.",
+    });
+  }
+
   private unavailable(): ServiceUnavailableException {
     return new ServiceUnavailableException({
       code: "account_activation_unavailable",
@@ -232,19 +325,24 @@ export class AccountActivationService {
     });
   }
 
-  private hashKey(value: string): string {
-    return createHash("sha256").update(value).digest("hex");
+  private isFresh(updatedAt: Date): boolean {
+    return updatedAt.getTime() >= Date.now() - preparedWindowMs;
   }
 
-  private isStale(updatedAt: Date): boolean {
-    return updatedAt.getTime() < Date.now() - signingLeaseMs;
-  }
-
+  // SIGNING without a prepared transaction is another request still building it.
   private toView(activation: WalletActivationRecord): AccountActivationView {
-    const status = activation.status.toLowerCase();
-    if (status !== "signing" && status !== "submitted" && status !== "active") {
-      throw this.unavailable();
+    switch (activation.status) {
+      case "SIGNING":
+        if (activation.transactionHash === null || activation.preparedEnvelopeXdr === null) {
+          throw this.unavailable();
+        }
+        return { status: "signing", hashToSign: activation.transactionHash };
+      case "SUBMITTED":
+        return { status: "submitted", transactionHash: activation.transactionHash };
+      case "ACTIVE":
+        return { status: "active", transactionHash: activation.transactionHash };
+      default:
+        throw this.unavailable();
     }
-    return { status, transactionHash: activation.transactionHash };
   }
 }
