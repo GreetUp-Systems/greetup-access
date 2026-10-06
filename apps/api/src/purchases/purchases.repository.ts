@@ -5,6 +5,18 @@ import { type BlindPayPayin, type BlindPayPayinQuote } from "../common/blindpay/
 
 const purchaseInclude = {
   tickets: { orderBy: { createdAt: "asc" } },
+  // Public event data for the checkout screens (SPEC-005 v1.8).
+  event: {
+    select: {
+      slug: true,
+      name: true,
+      startsAt: true,
+      endsAt: true,
+      venueName: true,
+      address: true,
+    },
+  },
+  ticketType: { select: { id: true, name: true } },
 } satisfies Prisma.PurchaseInclude;
 
 export type PurchaseRecord = Prisma.PurchaseGetPayload<{ include: typeof purchaseInclude }>;

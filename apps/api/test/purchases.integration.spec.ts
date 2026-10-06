@@ -316,6 +316,20 @@ describe("purchases integration", () => {
     });
     expect(blindPay.payinInputs).toHaveLength(0);
 
+    // Before any ticket exists, the buyer already reads the event of the order (SPEC-005 v1.8).
+    const review = await api(users.buyerA).get(`/api/purchases/${created.body.id}`).expect(200);
+    expect(review.body).toMatchObject({
+      event: {
+        slug: expect.any(String),
+        name: "Show",
+        startsAt: expect.any(String),
+        endsAt: null,
+        venueName: null,
+        address: null,
+      },
+      ticketType: { id: ticketTypeId, name: "Pista" },
+    });
+
     await pay(users.buyerB, created.body.id, 16_500).expect(404);
     const paid = await pay(users.buyerA, created.body.id, 16_500).expect(200);
     expect(paid.body).toMatchObject({

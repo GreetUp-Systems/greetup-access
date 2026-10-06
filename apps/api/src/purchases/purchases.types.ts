@@ -12,12 +12,24 @@ export interface PurchaseTicketView {
   tokenId: number | null;
 }
 
+/** Public event data the checkout screens show (SPEC-005 v1.8). */
+export interface PurchaseEventView {
+  slug: string;
+  name: string;
+  startsAt: string;
+  endsAt: string | null;
+  venueName: string | null;
+  address: string | null;
+}
+
 /** The buyer sees a single service fee; its composition stays in the database (SPEC-005 §5). */
 export interface PurchaseView {
   id: string;
   status: PurchaseStatusView;
   eventId: string;
   ticketTypeId: string;
+  event: PurchaseEventView;
+  ticketType: { id: string; name: string };
   quantity: number;
   unitPriceCents: number;
   subtotalCents: number;

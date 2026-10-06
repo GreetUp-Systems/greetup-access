@@ -92,6 +92,15 @@ function purchase(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
     createdAt: new Date(),
     updatedAt: new Date(),
     tickets: [],
+    event: {
+      slug: "festival-de-inverno",
+      name: "Festival de Inverno",
+      startsAt: readyListing.startsAt,
+      endsAt: null,
+      venueName: "Casa Fluida",
+      address: "Rua Augusta, 1200 · São Paulo",
+    },
+    ticketType: { id: ticketTypeId, name: "Pista" },
     ...overrides,
   };
 }
@@ -154,6 +163,16 @@ describe("PurchasesService", () => {
       serviceFeeCents: 980,
       totalCents: 16_980,
       pixCode: null,
+      // The checkout shows the event and the ticket type after a reload (SPEC-005 v1.8).
+      event: {
+        slug: "festival-de-inverno",
+        name: "Festival de Inverno",
+        startsAt: readyListing.startsAt.toISOString(),
+        endsAt: null,
+        venueName: "Casa Fluida",
+        address: "Rua Augusta, 1200 · São Paulo",
+      },
+      ticketType: { id: ticketTypeId, name: "Pista" },
     });
 
     expect(repository.reserve).toHaveBeenCalledWith(user.id, ticketTypeId, 2, idempotencyKey);
