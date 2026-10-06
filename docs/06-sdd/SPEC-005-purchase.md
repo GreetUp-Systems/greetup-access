@@ -1,8 +1,9 @@
 # SPEC-005 — Compra do ingresso
 
-> **Status:** 6A a 6D implementadas; smoke ponta a ponta pendente
+> **Status:** 6A a 6C implementadas; 6D a refazer com a assinatura no navegador (D-28); smoke ponta a
+> ponta pendente
 >
-> **Versão:** 1.6 (limites do Pix em dólar, D-26)
+> **Versão:** 1.7 (ativação assinada no navegador, D-28)
 >
 > **Atualizada em:** 05/10/2026
 >
@@ -383,23 +384,35 @@ transação.
 - `POST /api/auth/bootstrap` aceita `{ "origin": "login" | "checkout" }`; `login` registra que o
   usuário entrou por vontade própria (D-23). Sem `origin`, vale `checkout`, o lado que não
   patrocina; qualquer outro valor responde `400 invalid_bootstrap`.
-- `POST /api/me/stellar/activate`, autenticado e repetível, ativa a conta do usuário com reserva
-  patrocinada (`beginSponsoringFutureReserves`, `createAccount`, `endSponsoringFutureReserves`), com
-  a assinatura da wallet via Privy usando o JWT do próprio usuário e a da plataforma localmente.
+- A ativação cria a conta do usuário com reserva patrocinada (`beginSponsoringFutureReserves`,
+  `createAccount`, `endSponsoringFutureReserves`). O `endSponsoringFutureReserves` tem a conta do
+  usuário como fonte, então ele assina; a assinatura acontece no navegador (D-28), em dois passos:
+- `POST /api/me/stellar/activate`, autenticado e repetível, prepara: monta a transação (fonte e taxa
+  da conta patrocinadora, `timebounds` curtos), guarda o envelope sem assinaturas e responde
+  `{ status: "signing", hashToSign }`. Uma transação em `signing` ainda no prazo é devolvida de novo,
+  sem montar outra; vencida, é remontada. Conta já ativa ou submetida responde o estado, como antes.
+- `POST /api/me/stellar/activate/signature`, autenticado, com `{ hash, signature }` (hex, como o
+  `signRawHash` devolve), conclui: o `hash` precisa ser o da transação preparada e no prazo; a
+  assinatura é conferida contra o endereço da wallet do usuário; a API junta a assinatura da conta
+  patrocinadora, submete e responde `{ status, transactionHash }`. Repetida depois da submissão,
+  responde o estado sem submeter de novo. Assinatura inválida: `422 invalid_activation_signature`.
+  Transação vencida, ou sequência da conta patrocinadora já usada por outra transação
+  (`tx_bad_seq`): `409 activation_signature_stale`, e o app prepara de novo uma vez.
 - É elegível quem entrou por login espontâneo ou tem compra `payment_confirmed`/`ticket_issued`.
   Inelegível responde `409 account_activation_not_allowed`.
 - A tela de espera chama o endpoint ao ver o pagamento confirmado; se o comprador sair antes, a
   ativação acontece no próximo login ou antes de uma transferência.
-- A ativação não roda em worker: a assinatura do usuário exige o JWT dele.
+- A ativação não roda em worker: a assinatura acontece no navegador do usuário.
 - Produtor continua no fluxo da SPEC-003, que já trata conta ativada no login.
 
-O estado da ativação fica em `wallet_activations` (wallet única, status, hash e código de falha),
+O estado da ativação fica em `wallet_activations` (wallet única, status, hash, código de falha e o
+envelope sem assinaturas da transação em `signing`; nunca a assinatura nem o XDR assinado),
 com a mesma reconciliação on-chain da SPEC-003. A resposta é `{ status, transactionHash }`, com
 `status` em `signing`, `submitted` ou `active`; uma ativação em andamento não gera segunda transação,
 e resultado incerto fica `submitted` até a próxima chamada reconciliar pelo hash.
 
-Sem smoke real nesta parte: a assinatura exige o JWT de um usuário Privy logado, o que entra no smoke
-ponta a ponta.
+Sem smoke real nesta parte: a assinatura exige um usuário Privy logado no navegador, o que entra no
+smoke ponta a ponta.
 
 ## 13. Banco, roles e RLS
 
@@ -478,16 +491,17 @@ Compra real com a `bw_...` de um produtor `ready`, Pix completando sozinho, mint
 confirmação de que a quote Pix sem `payer_rules` é aceita, leitura de `sender_amount` com
 `cover_fees: true` e decodificação da validade do `pix_code`. Depende do smoke da SPEC-003.
 
-Adiado em 04/10/2026 para o front: a ativação da conta do comprador assina com o JWT do usuário, o
-mesmo caminho recusado pela Privy no smoke 3C (SPEC-003 §17). O fluxo será validado pela interface,
-etapa a etapa.
+Adiado em 04/10/2026 para o front: a ativação da conta do comprador assinava com o JWT do usuário,
+o mesmo caminho recusado pela Privy no smoke 3C (SPEC-003 §17). Em 05/10/2026 o token do navegador
+também foi recusado; a assinatura passa para o navegador (D-28) e o fluxo é validado pela interface.
 
 ## 16. Definição de pronto
 
 - [x] 6A: pedido, reserva, quote e payin com testes de concorrência.
 - [x] 6B: webhooks de payin, Outbox e `OutboxRelay`, idempotentes.
 - [x] 6C: `MintTicketWorker` emite na Testnet, idempotente, com capacidade sincronizada.
-- [x] 6D: origem do login e ativação da conta do comprador.
+- [ ] 6D: origem do login e ativação da conta do comprador (origem feita; ativação a refazer com a
+      assinatura no navegador, D-28).
 - [x] Nenhuma venda acima do limite em nenhum teste de concorrência.
 - [x] Build, lint, typecheck, unitários e integração passam.
 - [ ] Smoke ponta a ponta executado.

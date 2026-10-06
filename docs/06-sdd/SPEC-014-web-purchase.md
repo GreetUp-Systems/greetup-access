@@ -2,9 +2,9 @@
 
 > **Status:** 9A, 9B e 9C.1 implementadas; 9C.2, 9C.3 e 9D pendentes
 >
-> **Versão:** 1.0
+> **Versão:** 1.1 (ativação assinada no navegador, D-28; restauração da sessão)
 >
-> **Atualizada em:** 04/10/2026
+> **Atualizada em:** 05/10/2026
 >
 > **Aprovada em:** 04/10/2026
 >
@@ -102,8 +102,14 @@ evento (`138:322`, `140:931`; RN-008) vieram na 9C.1.
 
 - **Login:** `@privy-io/react-auth` sem UI pronta (`useLoginWithEmail`): as telas de e-mail e
   código são as do Figma. Depois do código, `POST /api/auth/bootstrap` com `origin: "checkout"` (na
-  compra) ou `"login"` (no "Entrar"); no "Entrar", em seguida, `POST /api/me/stellar/activate`, sem
-  bloquear a navegação. Sessão ativa pula a identificação.
+  compra) ou `"login"` (no "Entrar"); no "Entrar", em seguida, a ativação da conta, sem bloquear a
+  navegação. Uma sessão que já existia ao abrir a página pula a identificação: só ela é restaurada
+  por `GET /api/me`; um login em andamento é concluído pelo bootstrap, nunca pela restauração.
+- **Ativação da conta (D-28):** `POST /api/me/stellar/activate`; se responder `signing`, o app assina
+  o `hashToSign` com `signRawHash` (`@privy-io/react-auth/extended-chains`, `chainType: "stellar"`,
+  endereço da wallet da conta) e envia a `POST /api/me/stellar/activate/signature`; em
+  `409 activation_signature_stale`, prepara e assina de novo uma vez. Nada aparece na tela: falha
+  fica para a próxima intenção.
 - **Identificação:** abaixo de 48em, tela cheia com a Barra superior; a partir de 48em, a janela de
   480 sobre a película (`bg/overlay`). A janela é o `Dialog` do `@access/ui` (shadcn/ui). O reenvio do código libera 60 s depois do envio.
 - **API:** o navegador chama a API direto com `Authorization: Bearer <access token>`. A API libera
@@ -113,7 +119,7 @@ evento (`138:322`, `140:931`; RN-008) vieram na 9C.1.
 - **Dados:** cliente de API tipado e hooks simples, sem biblioteca de cache. Erros da API viram
   estados de tela pelo `code` da resposta.
 - **Acompanhamento:** `GET /api/purchases/:id/stream` com `@microsoft/fetch-event-source`; ao ver
-  `payment_confirmed`, chama `POST /api/me/stellar/activate` uma vez, sem bloquear; em `timeout`,
+  `payment_confirmed`, faz a ativação da conta uma vez, sem bloquear; em `timeout`,
   passa a consultar `GET /api/purchases/:id`.
 - **QR Code:** o do Pix (a partir de `pixCode`) e o do ingresso (a partir de `qrToken`) gerados no
   cliente com `qrcode`, em SVG.
@@ -184,7 +190,7 @@ NEXT_PUBLIC_PRIVY_APP_ID=
 
 - [x] 9A: dois passos, página pública ampliada, código do ingresso e CORS, com testes.
 - [x] Telas do §6 desenhadas no Figma e revisadas pelo Matheus (04/10/2026).
-- [x] 9B: login, identificação e base do app, com conferência visual (PR #22). Login real validado no app em 05/10/2026 (mesma conta e wallet); a ativação Stellar falhou em `raw_sign_stellar` e está em investigação.
+- [x] 9B: login, identificação e base do app, com conferência visual (PR #22). Login real validado no app em 05/10/2026 (mesma conta e wallet); a ativação Stellar, recusada pela Privy no servidor, passa a assinar no navegador (D-28).
 - [ ] 9C: compra de ponta a ponta com a API simulada e conferência visual. 9C.1 (página do evento e escolha do ingresso) no PR #24; 9C.2 e 9C.3 pendentes.
 - [ ] 9D: área do comprador com conferência visual.
 - [ ] Build, lint, typecheck, unitários, integração e ponta a ponta passam.
