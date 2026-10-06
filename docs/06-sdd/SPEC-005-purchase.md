@@ -1,7 +1,6 @@
 # SPEC-005 — Compra do ingresso
 
-> **Status:** 6A a 6C implementadas; 6D a refazer com a assinatura no navegador (D-28); smoke ponta a
-> ponta pendente
+> **Status:** 6A a 6D implementadas (6D validada na Testnet pelo app); smoke ponta a ponta pendente
 >
 > **Versão:** 1.7 (ativação assinada no navegador, D-28)
 >
@@ -411,8 +410,9 @@ com a mesma reconciliação on-chain da SPEC-003. A resposta é `{ status, trans
 `status` em `signing`, `submitted` ou `active`; uma ativação em andamento não gera segunda transação,
 e resultado incerto fica `submitted` até a próxima chamada reconciliar pelo hash.
 
-Sem smoke real nesta parte: a assinatura exige um usuário Privy logado no navegador, o que entra no
-smoke ponta a ponta.
+Validada em 05/10/2026 pelo app (PR #25), com usuário real: login pelo "Entrar", assinatura no
+navegador e conta criada na Testnet com a reserva patrocinada pela conta do Access (transação com as
+3 operações do patrocínio e as assinaturas do Access e do usuário).
 
 ## 13. Banco, roles e RLS
 
@@ -500,8 +500,8 @@ também foi recusado; a assinatura passa para o navegador (D-28) e o fluxo é va
 - [x] 6A: pedido, reserva, quote e payin com testes de concorrência.
 - [x] 6B: webhooks de payin, Outbox e `OutboxRelay`, idempotentes.
 - [x] 6C: `MintTicketWorker` emite na Testnet, idempotente, com capacidade sincronizada.
-- [ ] 6D: origem do login e ativação da conta do comprador (origem feita; ativação a refazer com a
-      assinatura no navegador, D-28).
+- [x] 6D: origem do login e ativação da conta do comprador, assinada no navegador (D-28; PR #25,
+      validada na Testnet em 05/10/2026).
 - [x] Nenhuma venda acima do limite em nenhum teste de concorrência.
 - [x] Build, lint, typecheck, unitários e integração passam.
 - [ ] Smoke ponta a ponta executado.
