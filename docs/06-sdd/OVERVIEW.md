@@ -137,7 +137,7 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | SPEC-011 withdrawal  | Reescrever: saque é payout da BlindPay — [arquivada](../_archive/06-sdd/SPEC-011-withdrawal.md)                                                                                                                    |
 | SPEC-012 dashboard   | Reduzir: polling em vez de WebSocket                                                                                                                                                                               |
 | SPEC-013 pipeline    | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig                                                                                                                                                            |
-| SPEC-014 web purchase | **Em implementação:** 9A, 9B, 9C.1 e 9C.2 prontas — [nova versão](./SPEC-014-web-purchase.md) |
+| SPEC-014 web purchase | **Em implementação:** 9A, 9B e 9C prontas — [nova versão](./SPEC-014-web-purchase.md) |
 
 As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Identidade e Q-03
 foram fechadas pelo ADR-009; Q-01 e Q-02 foram fechadas em 02/10/2026 pelas D-24 e D-23. Não há
