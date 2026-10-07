@@ -1,6 +1,6 @@
 # SPEC-014 — App web · Compra
 
-> **Status:** 9A, 9B e 9C implementadas; 9D pendente
+> **Status:** 9A, 9B e 9C implementadas; 9D pendente, depois da moldura do site (SPEC-016 16A)
 >
 > **Versão:** 1.2 (checkout da 9C.2: erros da criação e do Pix, estados novos da escolha)
 >
@@ -15,7 +15,7 @@
 
 Entregar o fluxo do comprador no app web responsivo, do link do evento ao ingresso na conta:
 página do evento, escolha do ingresso, identificação por código no e-mail, revisão com a taxa,
-Pix, acompanhamento até o ingresso emitido e "Seus ingressos". É também o primeiro uso real do login
+Pix, acompanhamento até o ingresso emitido e "Meus ingressos". É também o primeiro uso real do login
 Privy no navegador, que valida os fluxos adiados (ativação da conta, e-mail de ingresso pronto).
 
 ## 2. Fontes
@@ -35,7 +35,7 @@ Privy no navegador, que valida os fluxos adiados (ativação da conta, e-mail de
 | A2  | A página pública ganha término, local em duas partes e disponibilidade por tipo (SPEC-004 v2.2). A capa é a arte padrão da marca; upload de imagem fica com o painel do produtor. |
 | A3  | Código legível do ingresso derivado do `tokenId`: `AX-` + 4 dígitos (SPEC-008 v1.3).                                                                                              |
 | A4  | Sem contagem regressiva no Pix até a validade do `pix_code` ser medida: a tela mostra só "Aguardando".                                                                            |
-| A5  | "Seus ingressos" sem a barra de abas, só com a barra superior; a navegação do app entra com Perfil e as telas do produtor.                                                        |
+| A5  | "Meus ingressos" dentro da moldura do site (SPEC-016 16A), com a Barra de abas Início · Ingressos · Conta no celular. Revisto em 06/10/2026: antes, sem a barra de abas.          |
 | B   | Telas que o FigJam prevê e o Figma não tem são desenhadas no Figma, no padrão do arquivo, antes da implementação (§6).                                                            |
 | C   | Login Privy sem UI pronta; API chamada direto do navegador; evento renderizado no servidor; sem biblioteca de cache; SSE com `fetch-event-source`; QR gerado no cliente (§7).     |
 
@@ -46,7 +46,7 @@ Privy no navegador, que valida os fluxos adiados (ativação da conta, e-mail de
 | 9A    | Backend: compra em dois passos, página pública ampliada, código do ingresso, CORS             |
 | 9B    | Base do web: Privy, cliente de API, cabeçalho, identificação, catálogo dos componentes usados |
 | 9C    | Compra: evento, escolha, identificação, revisão, Pix e acompanhamento                         |
-| 9D    | Área do comprador: Seus ingressos (próximos e anteriores) e o ingresso                        |
+| 9D    | Área do comprador: Meus ingressos (próximos e anteriores) e o ingresso                        |
 
 Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. A 9C vem em três:
 9C.1, evento e escolha; 9C.2, do "Continuar" até o Pix na tela (criar o pedido, revisar e gerar o
@@ -65,16 +65,21 @@ confirmado, ingresso pronto, pagamento não concluído e a ativação da conta a
 | Pix                         | `/checkout/[purchaseId]`                                           | `146:2348` | `150:2370` |
 | Pagamento confirmado        | `/checkout/[purchaseId]`                                           | `146:2411` | `150:2645` |
 | Ingresso pronto             | `/checkout/[purchaseId]`                                           | `146:2500` | `150:2755` |
-| Seus ingressos · próximos   | `/me/tickets`                                                      | `146:2582` | `150:2853` |
-| Seus ingressos · anteriores | `/me/tickets?aba=anteriores`                                       | `157:2067` | `157:2232` |
+| Meus ingressos · próximos   | `/me/tickets`                                                      | `146:2582` | `150:2853` |
+| Meus ingressos · anteriores | `/me/tickets?aba=anteriores`                                       | `157:2067` | `157:2232` |
 | Ingresso                    | `/me/tickets/[id]`                                                 | `154:3551` | `156:2434` |
+
+**9D, revista em 06/10/2026:** as telas da área do comprador passaram para a página "Site público"
+(os mesmos nós) e ficam dentro da moldura do site (SPEC-016 16A): cabeçalho do site no desktop e
+Barra de abas Início · Ingressos · Conta no celular. O título é "Meus ingressos", e os cartões mostram
+a capa do evento (`coverUrl`, SPEC-015 15A), com a arte da marca quando não há capa.
 
 `/checkout/[purchaseId]` é uma tela que evolui sem recarregar (revisão → Pix → confirmado →
 pronto), como o FigJam define para "Depois do pagamento". Recarregar a página volta ao estado atual
 da compra.
 
 O cabeçalho do desktop tem "Entrar", que abre a mesma identificação com `origin: "login"` e leva a
-"Seus ingressos". "Vender ingressos" fica fora desta SPEC (§12). Na 9B, sem tela de produto ainda, a
+"Meus ingressos". "Vender ingressos" fica fora desta SPEC (§12). Na 9B, sem tela de produto ainda, a
 identificação é conferida no catálogo (`/dev/catalog?identificacao=<estado>`); a validação real do
 login acontece no "Entrar" do cabeçalho, na 9C.
 
@@ -97,7 +102,7 @@ evento (`138:322`, `140:931`; RN-008) vieram na 9C.1.
 | Total mudou             | `175:4622` | `176:5200` | Toast de atenção na revisão com o novo total; ação "Gerar Pix"                                                  |
 | Pagamento não concluído | `175:4806` | `176:5451` | Componente Pix no estado Falhou, com "Tentar novamente" (nova compra)                                           |
 | Erro de conexão         | `175:4714` | `176:5324` | Toast de erro ("seu pedido continua reservado"); ação "Tentar de novo"                                          |
-| Seus ingressos vazio    | `176:2209` | `176:5667` | "Nenhum ingresso por aqui" e a explicação                                                                       |
+| Meus ingressos vazio    | `176:2209` | `176:5667` | "Nenhum ingresso por aqui" e a explicação                                                                       |
 | Entrar                  | `176:2292` | `176:5744` | A identificação sem o resumo do pedido, título "Entre no Access"                                                |
 | Código incorreto        | `188:2785` | `188:2849` | Caixas com borda de erro e "Código incorreto ou expirado." com ícone, como o Campo de texto                     |
 | Reenviar o código       | `190:2901` | `190:3039` | Depois do contador, Botão/Fantasma S "Reenviar o código", centralizado sob as caixas                            |
