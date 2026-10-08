@@ -2,8 +2,21 @@ import { randomBytes, randomUUID } from "node:crypto";
 
 import { TicketQrService } from "./ticket-qr.service";
 
+const base64url = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
 function service(): TicketQrService {
   return new TicketQrService({ qrSecret: randomBytes(32).toString("base64url") });
+}
+
+/** Replaces the character at `index` of the token with the next one of the alphabet. */
+function respell(token: string, index: number): string {
+  const position = index < 0 ? token.length + index : index;
+  const next = base64url[(base64url.indexOf(token[position]!) + 1) % base64url.length]!;
+  return `${token.slice(0, position)}${next}${token.slice(position + 1)}`;
+}
+
+function signatureBytes(token: string): Buffer {
+  return Buffer.from(token.split(".")[2]!, "base64url");
 }
 
 describe("TicketQrService", () => {
@@ -28,11 +41,25 @@ describe("TicketQrService", () => {
     const qr = service();
     const token = qr.sign(ticketId, ownerUserId);
     const otherTicket = token.replace(/^AT1\.[0-9a-f]{32}/, `AT1.${"0".repeat(32)}`);
-    const lastChar = token.at(-1) === "A" ? "B" : "A";
+    // A character before the last one carries 6 bits of the signature: any change alters it.
+    const tampered = respell(token, -2);
 
+    expect(signatureBytes(tampered)).not.toEqual(signatureBytes(token));
     expect(qr.verify(otherTicket, ownerUserId)).toBe(false);
-    expect(qr.verify(`${token.slice(0, -1)}${lastChar}`, ownerUserId)).toBe(false);
+    expect(qr.verify(tampered, ownerUserId)).toBe(false);
     expect(service().verify(token, ownerUserId)).toBe(false);
+  });
+
+  it("accepts only the spelling of the signature that it signs", () => {
+    const qr = service();
+    const token = qr.sign(ticketId, ownerUserId);
+    // The last character holds 4 bits of the signature and 2 padding bits. Signing leaves the
+    // padding at zero, so the next character spells the same bytes with a padding bit set.
+    const respelled = respell(token, -1);
+
+    expect(signatureBytes(respelled)).toEqual(signatureBytes(token));
+    expect(qr.parse(respelled)).toBeNull();
+    expect(qr.verify(respelled, ownerUserId)).toBe(false);
   });
 
   it("rejects malformed tokens", () => {

@@ -41,7 +41,13 @@ export class TicketQrService {
       hex.slice(16, 20),
       hex.slice(20),
     ].join("-");
-    return { ticketId, signature: Buffer.from(match[2]!, "base64url") };
+    const signature = Buffer.from(match[2]!, "base64url");
+    // The last character carries padding bits that decoding ignores; only the spelling `sign`
+    // produces is accepted, so each ticket has a single valid token.
+    if (signature.toString("base64url") !== match[2]) {
+      return null;
+    }
+    return { ticketId, signature };
   }
 
   verify(token: string, ownerUserId: string): boolean {
