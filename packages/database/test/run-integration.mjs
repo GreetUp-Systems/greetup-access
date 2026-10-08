@@ -10,14 +10,7 @@ const environment = {
 
 for (const args of [
   ["exec", "prisma", "migrate", "deploy", "--schema", "prisma/schema.prisma"],
-  [
-    "exec",
-    "jest",
-    "--config",
-    "jest.integration.config.ts",
-    "--runInBand",
-    "--detectOpenHandles",
-  ],
+  ["exec", "jest", "--config", "jest.integration.config.ts", "--runInBand", "--detectOpenHandles"],
 ]) {
   const result = spawnSync(executable, args, {
     cwd: new URL("..", import.meta.url),

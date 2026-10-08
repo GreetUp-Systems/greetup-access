@@ -34,10 +34,6 @@
       ],
       "outputs": []
     },
-    "format": {
-      "inputs": ["src/**", "*.ts"],
-      "outputs": []
-    },
     "typecheck": {
       "dependsOn": ["^build"],
       "inputs": ["src/**", "app/**", "tokens/**", "tsconfig*.json"],
