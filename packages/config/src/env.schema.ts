@@ -30,6 +30,15 @@ const stellarContractId = z.string().regex(/^C[A-Z2-7]{55}$/);
 const ticketQrSecret = z
   .string()
   .regex(/^[A-Za-z0-9_-]{43,}$/, "must be at least 32 bytes in base64url");
+// Cloudflare R2 for event covers (D-30): all five or none; required in production.
+const optional = <T extends z.ZodTypeAny>(schema: T) => z.union([schema, z.literal("")]).optional();
+const r2Variables = [
+  "R2_ACCOUNT_ID",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_BUCKET",
+  "R2_PUBLIC_BASE_URL",
+] as const;
 const stellarTestnetUsdbIssuer = "GCQSSIMOW5OCGULZATDXKU5MOJBOMFX6G65X6CXZDQ7AIB3SKFUZ67NX";
 const stellarTestnetUsdcIssuer = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 
@@ -65,8 +74,31 @@ export const apiEnvironmentSchema = infrastructureEnvironmentSchema
     STELLAR_SPONSOR_SECRET_KEY: stellarSecretKey.optional(),
     STELLAR_TICKET_CONTRACT_ID: stellarContractId,
     TICKET_QR_SECRET: ticketQrSecret,
+    R2_ACCOUNT_ID: optional(z.string().regex(/^[a-f0-9]{32}$/)),
+    R2_ACCESS_KEY_ID: optional(z.string().min(1)),
+    R2_SECRET_ACCESS_KEY: optional(z.string().min(1)),
+    R2_BUCKET: optional(z.string().regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/)),
+    R2_PUBLIC_BASE_URL: optional(
+      z
+        .string()
+        .url()
+        .refine((value) => new URL(value).protocol === "https:"),
+    ),
   })
   .superRefine((environment, context) => {
+    const r2Configured = r2Variables.filter((name) => Boolean(environment[name]));
+    if (environment.NODE_ENV === "production" || r2Configured.length > 0) {
+      for (const name of r2Variables) {
+        if (!environment[name]) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [name],
+            message: "is required when cover storage is enabled",
+          });
+        }
+      }
+    }
+
     if (environment.NODE_ENV !== "development" && !environment.API_CORS_ORIGINS) {
       context.addIssue({
         code: z.ZodIssueCode.custom,

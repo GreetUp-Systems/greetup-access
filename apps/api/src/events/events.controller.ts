@@ -9,13 +9,19 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from "@nestjs/common";
 
 import { type AuthenticatedPrincipal } from "../auth/auth.types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { EventsService } from "./events.service";
-import { type EventSummaryView, type EventView, type TicketTypeView } from "./events.types";
+import {
+  type CoverUploadView,
+  type EventListItemView,
+  type EventView,
+  type TicketTypeView,
+} from "./events.types";
 
 const uuid = new ParseUUIDPipe({ version: "4" });
 
@@ -35,7 +41,7 @@ export class EventsController {
   list(
     @CurrentUser() principal: AuthenticatedPrincipal,
     @Query() query: unknown,
-  ): Promise<EventSummaryView[]> {
+  ): Promise<EventListItemView[]> {
     return this.eventsService.list(principal, query);
   }
 
@@ -81,6 +87,34 @@ export class EventsController {
     @Param("id", uuid) eventId: string,
   ): Promise<EventView> {
     return this.eventsService.cancel(principal, eventId);
+  }
+
+  @Post(":id/cover/upload-url")
+  @HttpCode(HttpStatus.OK)
+  createCoverUpload(
+    @CurrentUser() principal: AuthenticatedPrincipal,
+    @Param("id", uuid) eventId: string,
+    @Body() body: unknown,
+  ): Promise<CoverUploadView> {
+    return this.eventsService.createCoverUpload(principal, eventId, body);
+  }
+
+  @Put(":id/cover")
+  setCover(
+    @CurrentUser() principal: AuthenticatedPrincipal,
+    @Param("id", uuid) eventId: string,
+    @Body() body: unknown,
+  ): Promise<EventView> {
+    return this.eventsService.setCover(principal, eventId, body);
+  }
+
+  @Delete(":id/cover")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeCover(
+    @CurrentUser() principal: AuthenticatedPrincipal,
+    @Param("id", uuid) eventId: string,
+  ): Promise<void> {
+    return this.eventsService.removeCover(principal, eventId);
   }
 
   @Post(":id/ticket-types")

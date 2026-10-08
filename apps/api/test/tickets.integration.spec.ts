@@ -15,8 +15,10 @@ import {
   type PrivyGateway,
   type VerifiedPrivyPrincipal,
 } from "../src/common/privy/privy.types";
+import { COVER_STORAGE } from "../src/common/storage/cover-storage.types";
 import { PURCHASE_STREAM_TIMING } from "../src/purchases/purchases.types";
 import { TicketQrService } from "../src/tickets/ticket-qr.service";
+import { FakeCoverStorage } from "./fake-cover-storage";
 import { stellarTestConfig } from "./test-stellar-config";
 import { ticketsTestConfig } from "./test-tickets-config";
 
@@ -84,6 +86,8 @@ describe("buyer tickets integration", () => {
       .useValue(privy)
       .overrideProvider(PURCHASE_STREAM_TIMING)
       .useValue({ pollMs: 50, heartbeatMs: 10_000, timeoutMs: 10_000 })
+      .overrideProvider(COVER_STORAGE)
+      .useValue(new FakeCoverStorage())
       .compile();
     app = module.createNestApplication();
     configureApplication(app);
@@ -128,7 +132,7 @@ describe("buyer tickets integration", () => {
     const producer = await ownerPrisma.producerProfile.create({
       data: { userId: seller.id, displayName: "Produtora" },
     });
-    const createEvent = async (name: string, daysAhead: number) =>
+    const createEvent = async (name: string, daysAhead: number, coverKey: string | null) =>
       ownerPrisma.event.create({
         data: {
           producerId: producer.id,
@@ -137,10 +141,11 @@ describe("buyer tickets integration", () => {
           startsAt: new Date(Date.now() + daysAhead * 86_400_000),
           capacity: 10,
           status: "PUBLISHED",
+          coverKey,
         },
       });
-    const later = await createEvent("Later", 20);
-    const sooner = await createEvent("Sooner", 5);
+    const later = await createEvent("Later", 20, `events/${randomUUID()}/${randomUUID()}.webp`);
+    const sooner = await createEvent("Sooner", 5, null);
     const createType = async (eventId: string) =>
       ownerPrisma.ticketType.create({
         data: { eventId, producerId: producer.id, name: "Pista", priceCents: 5_000, quantity: 5 },
@@ -246,13 +251,17 @@ describe("buyer tickets integration", () => {
     ]);
     expect(response.body.tickets[0]).toMatchObject({
       status: "pending_mint",
-      event: { id: seeded.sooner.id, name: "Sooner" },
+      event: { id: seeded.sooner.id, name: "Sooner", coverUrl: null },
       ticketType: { name: "Pista" },
       onchain: null,
     });
     expect(response.body.tickets[1]).toMatchObject({
       status: "issued",
-      event: { id: seeded.later.id, name: "Later" },
+      event: {
+        id: seeded.later.id,
+        name: "Later",
+        coverUrl: `https://covers.test/${seeded.later.coverKey}`,
+      },
       onchain: {
         contractId: config.stellarTicketContractId,
         tokenId: 7,

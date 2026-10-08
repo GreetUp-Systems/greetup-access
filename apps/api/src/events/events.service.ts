@@ -4,6 +4,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
   UnprocessableEntityException,
@@ -11,8 +12,21 @@ import {
 import { type ZodType } from "zod";
 
 import { type AuthenticatedPrincipal } from "../auth/auth.types";
+import { CitiesRepository } from "../cities/cities.repository";
+import { type CityView } from "../cities/cities.types";
+import {
+  COVER_STORAGE,
+  type CoverStorage,
+  CoverStorageError,
+} from "../common/storage/cover-storage.types";
 import { deriveOnboardingStatus } from "../producers/producer-onboarding-status";
 import { UsersRepository } from "../users/users.repository";
+import {
+  coverKeyContentType,
+  coverUploadExpiresInSeconds,
+  isAcceptedCover,
+  newCoverKey,
+} from "./event-cover";
 import { publicSlugPattern, slugCandidates, slugify } from "./event-slug";
 import {
   type EventRecord,
@@ -21,19 +35,26 @@ import {
   EventsRepository,
   type LockedEventScope,
   type PublicEventRecord,
+  type StoredEventCategory,
   type TicketTypeRecord,
 } from "./events.repository";
 import {
+  coverUploadSchema,
   createEventSchema,
   createTicketTypeSchema,
   listEventsQuerySchema,
+  setCoverSchema,
   updateEventSchema,
   updateTicketTypeSchema,
 } from "./events.schemas";
 import {
+  type CoverUploadView,
+  type EventCategoryView,
+  type EventListItemView,
   type EventSummaryView,
   type EventView,
   type PublicEventView,
+  type PublishRequirement,
   TICKET_PRICING,
   type TicketPricing,
   type TicketTypeView,
@@ -43,10 +64,14 @@ const slugAttempts = 5;
 
 @Injectable()
 export class EventsService {
+  private readonly logger = new Logger(EventsService.name);
+
   constructor(
     private readonly users: UsersRepository,
     private readonly events: EventsRepository,
+    private readonly cities: CitiesRepository,
     @Inject(TICKET_PRICING) private readonly pricing: TicketPricing,
+    @Inject(COVER_STORAGE) private readonly coverStorage: CoverStorage | null,
   ) {}
 
   async create(principal: AuthenticatedPrincipal, body: unknown): Promise<EventView> {
@@ -55,13 +80,16 @@ export class EventsService {
     const endsAt = input.endsAt === undefined ? null : new Date(input.endsAt);
     this.assertEndsAfterStart(startsAt, endsAt);
     const userId = await this.requireUserId(principal);
+    await this.assertKnownCity(input.cityCode);
 
     const event = await this.withSlug(input.name, (slug) =>
       this.events.create(userId, {
         slug: slug ?? slugify(input.name),
         name: input.name,
         description: input.description ?? null,
+        category: input.category === undefined ? null : this.toStoredCategory(input.category),
         venueName: input.venueName ?? null,
+        cityCode: input.cityCode ?? null,
         address: input.address ?? null,
         startsAt,
         endsAt,
@@ -72,22 +100,22 @@ export class EventsService {
     return this.toEventView(event);
   }
 
-  async list(principal: AuthenticatedPrincipal, query: unknown): Promise<EventSummaryView[]> {
+  async list(principal: AuthenticatedPrincipal, query: unknown): Promise<EventListItemView[]> {
     const { status } = this.parse(listEventsQuerySchema, query, "invalid_event_query");
     const userId = await this.requireUserId(principal);
     const events = await this.mapErrors(() =>
       this.events.list(userId, status === undefined ? undefined : this.toStoredStatus(status)),
     );
-    return events.map((event) => this.toSummaryView(event));
+    return events.map((event) => ({
+      ...this.toSummaryView(event),
+      soldTickets: event.soldTickets,
+      salesCents: event.salesCents,
+    }));
   }
 
   async get(principal: AuthenticatedPrincipal, eventId: string): Promise<EventView> {
     const userId = await this.requireUserId(principal);
-    const event = await this.mapErrors(() => this.events.find(userId, eventId));
-    if (event === null) {
-      throw this.eventNotFound();
-    }
-    return this.toEventView(event);
+    return this.toEventView(await this.requireEvent(userId, eventId));
   }
 
   async update(
@@ -98,6 +126,7 @@ export class EventsService {
     const input = this.parse(updateEventSchema, body, "invalid_event");
     const startsAt = input.startsAt === undefined ? undefined : this.futureDate(input.startsAt);
     const userId = await this.requireUserId(principal);
+    await this.assertKnownCity(input.cityCode);
 
     const event = await this.withSlug(input.name, (slug) =>
       this.events.withLockedEvent(userId, eventId, async (scope) => {
@@ -126,7 +155,10 @@ export class EventsService {
           name: input.name,
           slug: renamesDraft ? slug : undefined,
           description: input.description,
+          category:
+            input.category === undefined ? undefined : this.toStoredCategory(input.category),
           venueName: input.venueName,
+          cityCode: input.cityCode,
           address: input.address,
           startsAt,
           endsAt,
@@ -164,6 +196,14 @@ export class EventsService {
         throw new ConflictException({
           code: "producer_not_ready",
           message: "The producer must finish onboarding before publishing.",
+        });
+      }
+      const missing = this.missingRequirements(scope.event);
+      if (missing.length > 0) {
+        throw new UnprocessableEntityException({
+          code: "event_not_publishable",
+          message: "The event needs a cover, a category and a city to be published.",
+          missing,
         });
       }
       if (scope.event.ticketTypes.length === 0) {
@@ -282,6 +322,88 @@ export class EventsService {
     });
   }
 
+  async createCoverUpload(
+    principal: AuthenticatedPrincipal,
+    eventId: string,
+    body: unknown,
+  ): Promise<CoverUploadView> {
+    const storage = this.requireCoverStorage();
+    const { contentType } = this.parse(coverUploadSchema, body, "invalid_cover_request");
+    const userId = await this.requireUserId(principal);
+    const event = await this.requireEvent(userId, eventId);
+    this.assertNotCancelled(event);
+
+    const key = newCoverKey(event.id, contentType);
+    const expiresAt = new Date(Date.now() + coverUploadExpiresInSeconds * 1_000);
+    const uploadUrl = await storage.presignUpload(key, contentType, coverUploadExpiresInSeconds);
+    return { uploadUrl, key, expiresAt: expiresAt.toISOString() };
+  }
+
+  async setCover(
+    principal: AuthenticatedPrincipal,
+    eventId: string,
+    body: unknown,
+  ): Promise<EventView> {
+    const storage = this.requireCoverStorage();
+    const { key } = this.parse(setCoverSchema, body, "invalid_cover_request");
+    const userId = await this.requireUserId(principal);
+    const current = await this.requireEvent(userId, eventId);
+    this.assertNotCancelled(current);
+    if (current.coverKey === key) {
+      return this.toEventView(current);
+    }
+
+    // Only a key issued for this event is looked up or deleted; any other key is refused as is.
+    const contentType = coverKeyContentType(current.id, key);
+    if (contentType === null) {
+      throw this.invalidCover();
+    }
+    // Checked before the row lock, so the lock never waits on R2.
+    const stored = await this.storageCall(() => storage.head(key));
+    if (stored === null) {
+      throw this.invalidCover();
+    }
+    if (!isAcceptedCover(contentType, stored)) {
+      await this.discardCover(storage, current.id, key);
+      throw this.invalidCover();
+    }
+
+    const { event, previousKey } = await this.locked(userId, eventId, async (scope) => {
+      this.assertNotCancelled(scope.event);
+      const previousKey = scope.event.coverKey;
+      if (previousKey !== key) {
+        await scope.updateEvent({ coverKey: key });
+      }
+      return { event: await scope.reload(), previousKey };
+    });
+    if (previousKey !== null && previousKey !== key) {
+      await this.discardCover(storage, event.id, previousKey);
+    }
+    return this.toEventView(event);
+  }
+
+  async removeCover(principal: AuthenticatedPrincipal, eventId: string): Promise<void> {
+    const storage = this.requireCoverStorage();
+    const userId = await this.requireUserId(principal);
+    const previousKey = await this.locked(userId, eventId, async (scope) => {
+      this.assertNotCancelled(scope.event);
+      if (scope.event.coverKey === null) {
+        return null;
+      }
+      if (scope.event.status === "PUBLISHED") {
+        throw new ConflictException({
+          code: "event_cover_required",
+          message: "A published event keeps its cover; replace it instead.",
+        });
+      }
+      await scope.updateEvent({ coverKey: null });
+      return scope.event.coverKey;
+    });
+    if (previousKey !== null) {
+      await this.discardCover(storage, eventId, previousKey);
+    }
+  }
+
   async findPublic(slug: string): Promise<PublicEventView> {
     if (slug.length > 100 || !publicSlugPattern.test(slug)) {
       throw this.eventNotFound();
@@ -302,6 +424,71 @@ export class EventsService {
       });
     }
     return user.id;
+  }
+
+  private async requireEvent(userId: string, eventId: string): Promise<EventRecord> {
+    const event = await this.mapErrors(() => this.events.find(userId, eventId));
+    if (event === null) {
+      throw this.eventNotFound();
+    }
+    return event;
+  }
+
+  // The list of cities never shrinks, so checking before the write leaves no race.
+  private async assertKnownCity(cityCode: number | undefined): Promise<void> {
+    if (cityCode !== undefined && !(await this.cities.exists(cityCode))) {
+      throw new BadRequestException({
+        code: "invalid_event",
+        message: "The request body is invalid.",
+        fields: ["cityCode"],
+      });
+    }
+  }
+
+  private missingRequirements(event: EventRecord): PublishRequirement[] {
+    const missing: PublishRequirement[] = [];
+    if (event.coverKey === null) {
+      missing.push("cover");
+    }
+    if (event.category === null) {
+      missing.push("category");
+    }
+    if (event.cityCode === null) {
+      missing.push("city");
+    }
+    return missing;
+  }
+
+  private requireCoverStorage(): CoverStorage {
+    if (this.coverStorage === null) {
+      throw this.coverStorageUnavailable();
+    }
+    return this.coverStorage;
+  }
+
+  private async storageCall<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error instanceof CoverStorageError) {
+        this.logger.warn(`Cover storage ${error.operation} failed.`);
+        throw this.coverStorageUnavailable();
+      }
+      throw error;
+    }
+  }
+
+  // Nothing points at the object any more; a failed delete leaves an orphan in the bucket, which
+  // is accepted like an abandoned upload (SPEC-015 §8).
+  private async discardCover(storage: CoverStorage, eventId: string, key: string): Promise<void> {
+    try {
+      await storage.delete(key);
+    } catch (error) {
+      if (!(error instanceof CoverStorageError)) {
+        throw error;
+      }
+      this.logger.warn(`Cover object of event ${eventId} could not be deleted.`);
+    }
   }
 
   private locked<T>(
@@ -453,8 +640,41 @@ export class EventsService {
     });
   }
 
+  private invalidCover(): UnprocessableEntityException {
+    return new UnprocessableEntityException({
+      code: "invalid_cover",
+      message: "The cover must be a JPG, PNG or WebP image up to 5 MB uploaded for this event.",
+    });
+  }
+
+  private coverStorageUnavailable(): ServiceUnavailableException {
+    return new ServiceUnavailableException({
+      code: "cover_storage_unavailable",
+      message: "Cover storage is temporarily unavailable.",
+    });
+  }
+
   private toStoredStatus(status: "draft" | "published" | "cancelled"): EventRecord["status"] {
     return status.toUpperCase() as EventRecord["status"];
+  }
+
+  private toStoredCategory(category: EventCategoryView): StoredEventCategory {
+    return category.toUpperCase() as StoredEventCategory;
+  }
+
+  private toCategoryView(category: StoredEventCategory | null): EventCategoryView | null {
+    return category === null ? null : (category.toLowerCase() as EventCategoryView);
+  }
+
+  private toCityView(city: EventSummaryRecord["city"]): CityView | null {
+    return city === null ? null : { code: city.ibgeCode, name: city.name, uf: city.uf };
+  }
+
+  // Without storage configured there is no public origin to serve the key from.
+  private coverUrl(coverKey: string | null): string | null {
+    return coverKey === null || this.coverStorage === null
+      ? null
+      : this.coverStorage.publicUrl(coverKey);
   }
 
   private toSummaryView(event: EventSummaryRecord): EventSummaryView {
@@ -463,7 +683,10 @@ export class EventsService {
       slug: event.slug,
       name: event.name,
       description: event.description,
+      category: this.toCategoryView(event.category),
+      coverUrl: this.coverUrl(event.coverKey),
       venueName: event.venueName,
+      city: this.toCityView(event.city),
       address: event.address,
       startsAt: event.startsAt.toISOString(),
       endsAt: event.endsAt?.toISOString() ?? null,
@@ -481,6 +704,7 @@ export class EventsService {
     return {
       ...this.toSummaryView(event),
       ticketTypes: event.ticketTypes.map((ticketType) => this.toTicketTypeView(ticketType)),
+      ticketMinPriceCents: this.pricing.minPriceCents,
     };
   }
 
@@ -502,7 +726,10 @@ export class EventsService {
       slug: event.slug,
       name: event.name,
       description: event.description,
+      category: this.toCategoryView(event.category),
+      coverUrl: this.coverUrl(event.coverKey),
       venueName: event.venueName,
+      city: this.toCityView(event.city),
       address: event.address,
       startsAt: event.startsAt.toISOString(),
       endsAt: event.endsAt?.toISOString() ?? null,

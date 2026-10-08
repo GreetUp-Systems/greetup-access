@@ -65,6 +65,17 @@ export interface ApiConfig extends InfrastructureConfig {
   stellarSponsorSecretKey: string | undefined;
   stellarTicketContractId: string;
   ticketQrSecret: string;
+  /** Cloudflare R2 for event covers (D-30); undefined when off (development and tests only). */
+  coverStorage?: CoverStorageConfig | undefined;
+}
+
+export interface CoverStorageConfig {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucket: string;
+  /** Public origin that serves the bucket, without a trailing slash. */
+  publicBaseUrl: string;
 }
 
 function parseEnvironment<TSchema extends z.ZodTypeAny>(
@@ -145,6 +156,20 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     stellarSponsorSecretKey: parsed.STELLAR_SPONSOR_SECRET_KEY,
     stellarTicketContractId: parsed.STELLAR_TICKET_CONTRACT_ID,
     ticketQrSecret: parsed.TICKET_QR_SECRET,
+    coverStorage:
+      parsed.R2_ACCOUNT_ID &&
+      parsed.R2_ACCESS_KEY_ID &&
+      parsed.R2_SECRET_ACCESS_KEY &&
+      parsed.R2_BUCKET &&
+      parsed.R2_PUBLIC_BASE_URL
+        ? {
+            accountId: parsed.R2_ACCOUNT_ID,
+            accessKeyId: parsed.R2_ACCESS_KEY_ID,
+            secretAccessKey: parsed.R2_SECRET_ACCESS_KEY,
+            bucket: parsed.R2_BUCKET,
+            publicBaseUrl: parsed.R2_PUBLIC_BASE_URL.replace(/\/$/, ""),
+          }
+        : undefined,
   };
 }
 

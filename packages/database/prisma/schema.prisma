@@ -171,31 +171,65 @@ enum EventStatus {
   CANCELLED @map("cancelled")
 }
 
+enum EventCategory {
+  SHOWS     @map("shows")
+  PARTIES   @map("parties")
+  THEATER   @map("theater")
+  STANDUP   @map("standup")
+  SPORTS    @map("sports")
+  FESTIVALS @map("festivals")
+  KIDS      @map("kids")
+  COURSES   @map("courses")
+  FOOD      @map("food")
+}
+
+// Brazilian municipalities from IBGE's Localidades API (SPEC-015 §8, D-30). Reference data shared
+// by every tenant, so it has no RLS.
+model City {
+  ibgeCode   Int    @id @map("ibge_code")
+  name       String @db.VarChar(80)
+  uf         String @db.Char(2)
+  // Lowercase name without accents, filled with the data, for search.
+  searchName String @map("search_name") @db.VarChar(80)
+
+  events Event[]
+
+  @@index([searchName])
+  @@map("cities")
+}
+
 model Event {
-  id           String      @id @default(uuid()) @db.Uuid
-  producerId   String      @map("producer_id") @db.Uuid
-  slug         String      @unique @db.VarChar(100)
-  name         String      @db.VarChar(120)
-  description  String?     @db.VarChar(5000)
-  venueName    String?     @map("venue_name") @db.VarChar(120)
-  address      String?     @db.VarChar(200)
-  startsAt     DateTime    @map("starts_at") @db.Timestamptz(3)
-  endsAt       DateTime?   @map("ends_at") @db.Timestamptz(3)
+  id           String         @id @default(uuid()) @db.Uuid
+  producerId   String         @map("producer_id") @db.Uuid
+  slug         String         @unique @db.VarChar(100)
+  name         String         @db.VarChar(120)
+  description  String?        @db.VarChar(5000)
+  venueName    String?        @map("venue_name") @db.VarChar(120)
+  address      String?        @db.VarChar(200)
+  startsAt     DateTime       @map("starts_at") @db.Timestamptz(3)
+  endsAt       DateTime?      @map("ends_at") @db.Timestamptz(3)
   capacity     Int
-  refundPolicy String?     @map("refund_policy") @db.VarChar(2000)
-  status       EventStatus @default(DRAFT)
-  publishedAt  DateTime?   @map("published_at")
-  cancelledAt  DateTime?   @map("cancelled_at")
-  createdAt    DateTime    @default(now()) @map("created_at")
-  updatedAt    DateTime    @updatedAt @map("updated_at")
+  refundPolicy String?        @map("refund_policy") @db.VarChar(2000)
+  // Required to publish (SPEC-015 E1–E3); optional while the event is a draft.
+  category     EventCategory?
+  cityCode     Int?           @map("city_code")
+  // Object key of the cover in Cloudflare R2 (D-30).
+  coverKey     String?        @map("cover_key") @db.VarChar(200)
+  status       EventStatus    @default(DRAFT)
+  publishedAt  DateTime?      @map("published_at")
+  cancelledAt  DateTime?      @map("cancelled_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
 
   producer    ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Restrict)
+  city        City?           @relation(fields: [cityCode], references: [ibgeCode], onDelete: Restrict)
   ticketTypes TicketType[]
   purchases   Purchase[]
   tickets     Ticket[]
 
   @@unique([id, producerId])
   @@index([producerId, createdAt])
+  @@index([cityCode])
   @@map("events")
 }
 

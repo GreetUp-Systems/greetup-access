@@ -132,6 +132,42 @@ describe("environment configuration", () => {
     ).toEqual([]);
   });
 
+  it("enables cover storage only with all five R2 settings, and always in production", () => {
+    const r2 = {
+      R2_ACCOUNT_ID: "a".repeat(32),
+      R2_ACCESS_KEY_ID: ["r2", "test", "access"].join("-"),
+      R2_SECRET_ACCESS_KEY: ["r2", "test", "credential"].join("-"),
+      R2_BUCKET: "access-covers",
+      R2_PUBLIC_BASE_URL: "https://covers.example.com/",
+    };
+
+    expect(loadApiConfig(validEnvironment).coverStorage).toBeUndefined();
+    expect(loadApiConfig({ ...validEnvironment, ...r2 }).coverStorage).toEqual({
+      accountId: r2.R2_ACCOUNT_ID,
+      accessKeyId: r2.R2_ACCESS_KEY_ID,
+      secretAccessKey: r2.R2_SECRET_ACCESS_KEY,
+      bucket: "access-covers",
+      publicBaseUrl: "https://covers.example.com",
+    });
+    expect(() => loadApiConfig({ ...validEnvironment, R2_BUCKET: "access-covers" })).toThrow(
+      "R2_ACCOUNT_ID",
+    );
+    expect(() =>
+      loadApiConfig({
+        ...validEnvironment,
+        ...r2,
+        R2_PUBLIC_BASE_URL: "http://covers.example.com",
+      }),
+    ).toThrow("R2_PUBLIC_BASE_URL");
+    expect(() =>
+      loadApiConfig({
+        ...validEnvironment,
+        NODE_ENV: "production",
+        STELLAR_SPONSOR_SECRET_KEY: "",
+      }),
+    ).toThrow("R2_ACCOUNT_ID");
+  });
+
   it("defaults the Pix limits to R$ 60 per ticket and R$ 40 mil per order (D-26)", () => {
     expect(loadApiConfig(validEnvironment)).toMatchObject({
       ticketMinPriceCents: 6_000,

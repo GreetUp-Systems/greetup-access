@@ -15,6 +15,7 @@ import { BlindPayWebhookPrismaService } from "../src/common/blindpay/blindpay-we
 import {
   BLINDPAY_GATEWAY,
   type BlindPayCreatedCustomer,
+  type BlindPayCustomerAttempt,
   type BlindPayGateway,
   type BlindPayKycStatusValue,
   BlindPayProviderError,
@@ -175,9 +176,15 @@ class FakeBlindPayGateway implements BlindPayGateway {
   nextCustomerError: BlindPayProviderError | undefined;
   nextCustomerKycStatus: BlindPayKycStatusValue = "verifying";
   nextKycReadError: BlindPayProviderError | undefined;
+  attempt: BlindPayCustomerAttempt | undefined;
+  attemptError: BlindPayProviderError | undefined;
+  attemptReads: string[] = [];
   private customerSequence = 0;
 
   reset(): void {
+    this.attempt = undefined;
+    this.attemptError = undefined;
+    this.attemptReads = [];
     this.termsInputs = [];
     this.uploadInputs = [];
     this.customerInputs = [];
@@ -227,6 +234,17 @@ class FakeBlindPayGateway implements BlindPayGateway {
       throw error;
     }
     return this.nextCustomerKycStatus;
+  }
+
+  async getCustomerAttempt(customerId: string): Promise<BlindPayCustomerAttempt> {
+    this.attemptReads.push(customerId);
+    if (this.attemptError !== undefined) {
+      throw this.attemptError;
+    }
+    if (this.attempt === undefined) {
+      throw new Error("no attempt configured");
+    }
+    return this.attempt;
   }
 
   async getOpenRfi(): Promise<BlindPayRfi | null> {
@@ -462,6 +480,12 @@ describe("producer profile and RLS integration", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ displayName: "Festival Access" })
       .expect(200);
+  }
+
+  function readAttempt() {
+    return request(app.getHttpServer())
+      .get("/api/producers/onboarding/customer")
+      .set("Authorization", `Bearer ${users.a.token}`);
   }
 
   async function createBlindPayCustomer(idempotencyKey = randomUUID()) {
@@ -869,6 +893,53 @@ describe("producer profile and RLS integration", () => {
       isCurrent: false,
     });
     expect(attempts[1]).toMatchObject({ creationStatus: "CREATED", isCurrent: true });
+  });
+
+  it("reads the current attempt live from BlindPay without storing it", async () => {
+    await createProducer();
+    const missing = await readAttempt().expect(404);
+    expect(missing.body).toMatchObject({ code: "blindpay_customer_not_found" });
+
+    await createBlindPayCustomer();
+    const draft = {
+      firstName: "Maria",
+      lastName: "Silva",
+      dateOfBirth: "1990-05-17",
+      taxId: "12345678909",
+      phoneNumber: "+5511999999999",
+      addressLine1: "Rua Augusta, 100",
+      addressLine2: null,
+      city: "São Paulo",
+      stateProvinceRegion: "SP",
+      postalCode: "01304-000",
+      country: "BR",
+      idDocCountry: "BR",
+      idDocType: "ID_CARD" as const,
+    };
+    blindPay.attempt = {
+      status: "rejected",
+      warnings: [{ code: "BIRTH_DATE_MISMATCH", message: "Mismatch between birth dates." }],
+      draft,
+    };
+    const stored = await ownerPrisma.blindPayCustomer.findFirstOrThrow();
+    const outboxBefore = await ownerPrisma.outboxEvent.count();
+
+    const rejected = await readAttempt().expect(200);
+    expect(rejected.body).toEqual({
+      status: "rejected",
+      reasons: [{ code: "BIRTH_DATE_MISMATCH", message: "Mismatch between birth dates." }],
+      draft,
+    });
+    expect(blindPay.attemptReads).toEqual(["re_test_1"]);
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toEqual(stored);
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(outboxBefore);
+
+    blindPay.attemptError = new BlindPayProviderError("get_customer", true, 503);
+    const unavailable = await readAttempt().expect(503);
+    expect(unavailable.body).toMatchObject({ code: "compliance_provider_unavailable" });
+    blindPay.attemptError = new BlindPayProviderError("get_customer", false, 404, "not_found");
+    const failed = await readAttempt().expect(422);
+    expect(failed.body).toMatchObject({ code: "customer_fetch_failed" });
   });
 
   it("keeps a created customer when its status read fails, for the webhook to settle", async () => {

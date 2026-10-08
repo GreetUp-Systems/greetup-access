@@ -36,6 +36,7 @@ import {
 } from "./producer-onboarding.repository";
 import {
   type CreatedCustomerView,
+  type CustomerAttemptView,
   type OpenRfiView,
   type TermsSessionView,
   type UploadedDocumentView,
@@ -211,6 +212,18 @@ export class ProducerOnboardingService {
         );
       }
       throw this.mapProviderError(error, "customer_creation_failed");
+    }
+  }
+
+  async getCustomerAttempt(principal: AuthenticatedPrincipal): Promise<CustomerAttemptView> {
+    const { user } = await this.requireProducer(principal);
+    const customer = await this.requireCreatedCustomer(user.id);
+
+    try {
+      const attempt = await this.blindPay.getCustomerAttempt(customer.externalCustomerId);
+      return { status: attempt.status, reasons: attempt.warnings, draft: attempt.draft };
+    } catch (error) {
+      throw this.mapProviderError(error, "customer_fetch_failed");
     }
   }
 

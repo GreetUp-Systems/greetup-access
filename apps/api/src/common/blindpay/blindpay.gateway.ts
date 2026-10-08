@@ -2,8 +2,13 @@ import {
   BlindPayAmountOutOfRangeError,
   type BlindPayCreatedCustomer,
   type BlindPayBlockchainWallet,
+  type BlindPayCustomerAttempt,
+  type BlindPayCustomerDraft,
+  type BlindPayCustomerStatus,
+  blindPayCustomerStatuses,
   type BlindPayGateway,
   type BlindPayKycStatusValue,
+  type BlindPayKycWarning,
   type BlindPayPayin,
   type BlindPayPayinQuote,
   type BlindPayPayinQuoteInput,
@@ -125,6 +130,25 @@ export class BlindPayHttpGateway implements BlindPayGateway {
     }
 
     return kycStatus as BlindPayKycStatusValue;
+  }
+
+  async getCustomerAttempt(customerId: string): Promise<BlindPayCustomerAttempt> {
+    const response = await this.requestJson(
+      `/instances/${this.options.instanceId}/customers/${encodeURIComponent(customerId)}`,
+      "get_customer",
+      { method: "GET" },
+    );
+    const data = this.unwrap(response, "get_customer");
+    const status = this.requiredString(data, "kyc_status", "get_customer");
+    if (!(blindPayCustomerStatuses as readonly string[]).includes(status)) {
+      throw new BlindPayProviderError("get_customer_invalid_response", true);
+    }
+
+    return {
+      status: status as BlindPayCustomerStatus,
+      warnings: this.toKycWarnings(data.kyc_warnings),
+      draft: this.toCustomerDraft(data),
+    };
   }
 
   async getOpenRfi(customerId: string): Promise<BlindPayRfi | null> {
@@ -406,6 +430,51 @@ export class BlindPayHttpGateway implements BlindPayGateway {
       ...(regex === undefined ? {} : { regex }),
       ...(multiple === undefined ? {} : { multiple }),
       ...(items === undefined ? {} : { items }),
+    };
+  }
+
+  // Only `kyc_warnings` say what to correct. `fraud_warnings` are signals of the provider's risk
+  // model, not reasons to show, so they are never read (SPEC-015 P3).
+  private toKycWarnings(value: unknown): BlindPayKycWarning[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.flatMap((warning: unknown) => {
+      const code = this.optionalString(warning, "code");
+      const message = this.optionalString(warning, "message");
+      const resolution = this.optionalString(warning, "resolution_status");
+      if (code === undefined || message === undefined || resolution?.toUpperCase() === "RESOLVED") {
+        return [];
+      }
+      return [{ code, message }];
+    });
+  }
+
+  // Text fields only: document and selfie files are never copied into the next attempt.
+  private toCustomerDraft(data: Record<string, unknown>): BlindPayCustomerDraft {
+    const text = (key: string) => this.optionalString(data, key) ?? null;
+    const dateOfBirth = text("date_of_birth");
+    const idDocType = text("id_doc_type");
+    return {
+      firstName: text("first_name"),
+      lastName: text("last_name"),
+      dateOfBirth:
+        dateOfBirth !== null && /^\d{4}-\d{2}-\d{2}/.test(dateOfBirth)
+          ? dateOfBirth.slice(0, 10)
+          : null,
+      taxId: text("tax_id"),
+      phoneNumber: text("phone_number"),
+      addressLine1: text("address_line_1"),
+      addressLine2: text("address_line_2"),
+      city: text("city"),
+      stateProvinceRegion: text("state_province_region"),
+      postalCode: text("postal_code"),
+      country: text("country"),
+      idDocCountry: text("id_doc_country"),
+      idDocType:
+        idDocType === "PASSPORT" || idDocType === "ID_CARD" || idDocType === "DRIVERS"
+          ? idDocType
+          : null,
     };
   }
 

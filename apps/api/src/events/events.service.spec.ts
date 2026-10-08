@@ -1,5 +1,7 @@
 import { Prisma, ProducerContextNotFoundError } from "@access/database";
 
+import { CitiesRepository } from "../cities/cities.repository";
+import { type CoverStorage, CoverStorageError } from "../common/storage/cover-storage.types";
 import { type ProducerProfileRecord } from "../producers/producers.repository";
 import { type UserWithWallet, UsersRepository } from "../users/users.repository";
 import {
@@ -31,6 +33,10 @@ const user: UserWithWallet = {
 };
 const producerId = "00000000-0000-4000-8000-000000000003";
 const eventId = "00000000-0000-4000-8000-000000000010";
+const city = { ibgeCode: 3550308, name: "São Paulo", uf: "SP", searchName: "sao paulo" };
+const coverKey = `events/${eventId}/00000000-0000-4000-8000-0000000000c1.jpg`;
+const newKey = `events/${eventId}/00000000-0000-4000-8000-0000000000c2.png`;
+const publicBaseUrl = "https://covers.example.com";
 
 function ticketType(overrides: Partial<TicketTypeRecord> = {}): TicketTypeRecord {
   return {
@@ -54,8 +60,12 @@ function event(overrides: Partial<EventRecord> = {}): EventRecord {
     slug: "festival-access",
     name: "Festival Access",
     description: null,
+    category: "SHOWS",
     venueName: null,
+    cityCode: city.ibgeCode,
+    city,
     address: null,
+    coverKey,
     endsAt: null,
     startsAt: future,
     capacity: 300,
@@ -128,6 +138,8 @@ describe("EventsService", () => {
     >
   >;
   let scope: jest.Mocked<Omit<LockedEventScope, "event">> & { event: EventRecord };
+  let cities: jest.Mocked<Pick<CitiesRepository, "exists">>;
+  let storage: jest.Mocked<CoverStorage>;
   let service: EventsService;
 
   function lock(current: EventRecord, ready = true): void {
@@ -166,10 +178,19 @@ describe("EventsService", () => {
       findPublicBySlug: jest.fn(),
       publicAvailability: jest.fn().mockResolvedValue(new Map()),
     };
+    cities = { exists: jest.fn().mockResolvedValue(true) };
+    storage = {
+      presignUpload: jest.fn().mockResolvedValue("https://r2.example.com/signed"),
+      head: jest.fn().mockResolvedValue({ contentType: "image/png", size: 1_024 }),
+      delete: jest.fn().mockResolvedValue(undefined),
+      publicUrl: jest.fn((key: string) => `${publicBaseUrl}/${key}`),
+    };
     service = new EventsService(
       users as unknown as UsersRepository,
       repository as unknown as EventsRepository,
+      cities as unknown as CitiesRepository,
       { minPriceCents: 6_000 },
+      storage,
     );
     lock(event());
   });
@@ -190,6 +211,33 @@ describe("EventsService", () => {
         user.id,
         expect.objectContaining({ slug: "festival-access", description: null }),
       );
+    });
+
+    it("stores the category and the IBGE city of the draft", async () => {
+      const view = await service.create(principal, {
+        ...validEvent,
+        category: "standup",
+        cityCode: city.ibgeCode,
+      });
+
+      expect(cities.exists).toHaveBeenCalledWith(city.ibgeCode);
+      expect(repository.create).toHaveBeenCalledWith(
+        user.id,
+        expect.objectContaining({ category: "STANDUP", cityCode: city.ibgeCode }),
+      );
+      expect(view).toMatchObject({
+        category: "standup",
+        city: { code: 3550308, name: "São Paulo", uf: "SP" },
+      });
+    });
+
+    it("refuses a city outside the IBGE base as a field error", async () => {
+      cities.exists.mockResolvedValue(false);
+
+      await expect(
+        service.create(principal, { ...validEvent, cityCode: 1_234_567 }),
+      ).rejects.toMatchObject({ response: { code: "invalid_event", fields: ["cityCode"] } });
+      expect(repository.create).not.toHaveBeenCalled();
     });
 
     it("retries with a suffixed slug when the unique index rejects the first one", async () => {
@@ -221,6 +269,8 @@ describe("EventsService", () => {
       [{ ...validEvent, capacity: 0 }, "zero capacity"],
       [{ ...validEvent, startsAt: "2026-12-12T20:00:00" }, "date without offset"],
       [{ ...validEvent, name: "   " }, "blank name"],
+      [{ ...validEvent, category: "Shows" }, "category outside the list"],
+      [{ ...validEvent, cityCode: 35_503 }, "city code without seven digits"],
     ] as Array<[Record<string, unknown>, string]>)("rejects an invalid body (%#)", async (body) => {
       await expect(service.create(principal, body)).rejects.toMatchObject({
         response: { code: "invalid_event" },
@@ -255,6 +305,7 @@ describe("EventsService", () => {
 
     it.each([
       ["producer_not_ready", event(), false],
+      ["event_not_publishable", event({ category: null }), true],
       ["event_without_ticket_types", event({ ticketTypes: [] }), true],
       ["event_starts_in_past", event({ startsAt: new Date(Date.now() - 1_000) }), true],
       [
@@ -270,6 +321,19 @@ describe("EventsService", () => {
 
       await expect(service.publish(principal, eventId)).rejects.toMatchObject({
         response: { code },
+      });
+      expect(scope.updateEvent).not.toHaveBeenCalled();
+    });
+
+    it("names every listing requirement the event still lacks", async () => {
+      lock(event({ coverKey: null, category: null, cityCode: null, city: null }));
+      await expect(service.publish(principal, eventId)).rejects.toMatchObject({
+        response: { code: "event_not_publishable", missing: ["cover", "category", "city"] },
+      });
+
+      lock(event({ coverKey: null }));
+      await expect(service.publish(principal, eventId)).rejects.toMatchObject({
+        response: { code: "event_not_publishable", missing: ["cover"] },
       });
       expect(scope.updateEvent).not.toHaveBeenCalled();
     });
@@ -391,6 +455,20 @@ describe("EventsService", () => {
       });
     });
 
+    it("replaces the category and the city but never clears them", async () => {
+      await service.update(principal, eventId, { category: "food", cityCode: 3_304_557 });
+
+      expect(scope.updateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ category: "FOOD", cityCode: 3_304_557 }),
+      );
+
+      for (const body of [{ category: null }, { cityCode: null }]) {
+        await expect(service.update(principal, eventId, body)).rejects.toMatchObject({
+          response: { code: "invalid_event", fields: [Object.keys(body)[0]] },
+        });
+      }
+    });
+
     it("lets a draft capacity drop below the quantities until publication", async () => {
       await service.update(principal, eventId, { capacity: 10 });
 
@@ -510,6 +588,178 @@ describe("EventsService", () => {
     });
   });
 
+  describe("cover", () => {
+    it("signs a ten-minute upload under a new key of the event", async () => {
+      const before = Date.now();
+
+      const upload = await service.createCoverUpload(principal, eventId, {
+        contentType: "image/webp",
+      });
+
+      expect(upload.uploadUrl).toBe("https://r2.example.com/signed");
+      expect(upload.key).toMatch(new RegExp(`^events/${eventId}/[0-9a-f-]{36}\\.webp$`));
+      expect(storage.presignUpload).toHaveBeenCalledWith(upload.key, "image/webp", 600);
+      const expiresAt = new Date(upload.expiresAt).getTime();
+      expect(expiresAt).toBeGreaterThanOrEqual(before + 600_000);
+      expect(expiresAt).toBeLessThanOrEqual(Date.now() + 600_000);
+    });
+
+    it("refuses an upload of another type, for a missing event or a cancelled one", async () => {
+      await expect(
+        service.createCoverUpload(principal, eventId, { contentType: "image/gif" }),
+      ).rejects.toMatchObject({ response: { code: "invalid_cover_request" } });
+
+      repository.find.mockResolvedValueOnce(null);
+      await expect(
+        service.createCoverUpload(principal, eventId, { contentType: "image/png" }),
+      ).rejects.toMatchObject({ response: { code: "event_not_found" } });
+
+      repository.find.mockResolvedValueOnce(event({ status: "CANCELLED" }));
+      await expect(
+        service.createCoverUpload(principal, eventId, { contentType: "image/png" }),
+      ).rejects.toMatchObject({ response: { code: "event_cancelled" } });
+      expect(storage.presignUpload).not.toHaveBeenCalled();
+    });
+
+    it("confirms an uploaded image and deletes the previous cover after saving", async () => {
+      scope.reload.mockResolvedValue(event({ coverKey: newKey }));
+
+      await expect(service.setCover(principal, eventId, { key: newKey })).resolves.toMatchObject({
+        coverUrl: `${publicBaseUrl}/${newKey}`,
+      });
+
+      expect(storage.head).toHaveBeenCalledWith(newKey);
+      expect(scope.updateEvent).toHaveBeenCalledWith({ coverKey: newKey });
+      expect(storage.delete).toHaveBeenCalledWith(coverKey);
+      expect(storage.delete.mock.invocationCallOrder[0]).toBeGreaterThan(
+        scope.updateEvent.mock.invocationCallOrder[0]!,
+      );
+    });
+
+    it("answers a repeated confirmation of the current cover without touching R2", async () => {
+      await expect(service.setCover(principal, eventId, { key: coverKey })).resolves.toMatchObject({
+        coverUrl: `${publicBaseUrl}/${coverKey}`,
+      });
+
+      expect(storage.head).not.toHaveBeenCalled();
+      expect(storage.delete).not.toHaveBeenCalled();
+      expect(repository.withLockedEvent).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [
+        "another event",
+        `events/00000000-0000-4000-8000-000000000099/00000000-0000-4000-8000-0000000000c2.png`,
+      ],
+      [
+        "a path outside the event",
+        `events/${eventId}/../other/00000000-0000-4000-8000-0000000000c2.png`,
+      ],
+      ["an unsupported extension", `events/${eventId}/00000000-0000-4000-8000-0000000000c2.gif`],
+    ])("refuses the key of %s without looking it up or deleting it", async (_case, key) => {
+      await expect(service.setCover(principal, eventId, { key })).rejects.toMatchObject({
+        response: { code: "invalid_cover" },
+      });
+
+      expect(storage.head).not.toHaveBeenCalled();
+      expect(storage.delete).not.toHaveBeenCalled();
+      expect(repository.withLockedEvent).not.toHaveBeenCalled();
+    });
+
+    it("refuses a key that was never uploaded", async () => {
+      storage.head.mockResolvedValue(null);
+
+      await expect(service.setCover(principal, eventId, { key: newKey })).rejects.toMatchObject({
+        response: { code: "invalid_cover" },
+      });
+      expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["another type", { contentType: "image/jpeg", size: 1_024 }],
+      ["no type", { contentType: null, size: 1_024 }],
+      ["more than 5 MB", { contentType: "image/png", size: 5 * 1024 * 1024 + 1 }],
+      ["no bytes", { contentType: "image/png", size: 0 }],
+    ])("deletes and refuses an upload with %s", async (_case, stored) => {
+      storage.head.mockResolvedValue(stored);
+
+      await expect(service.setCover(principal, eventId, { key: newKey })).rejects.toMatchObject({
+        response: { code: "invalid_cover" },
+      });
+      expect(storage.delete).toHaveBeenCalledWith(newKey);
+      expect(repository.withLockedEvent).not.toHaveBeenCalled();
+    });
+
+    it("answers 503 when R2 cannot be read, and keeps the new cover when the old one stays", async () => {
+      storage.head.mockRejectedValueOnce(new CoverStorageError("head"));
+      await expect(service.setCover(principal, eventId, { key: newKey })).rejects.toMatchObject({
+        response: { code: "cover_storage_unavailable" },
+      });
+
+      storage.delete.mockRejectedValueOnce(new CoverStorageError("delete"));
+      scope.reload.mockResolvedValue(event({ coverKey: newKey }));
+      await expect(service.setCover(principal, eventId, { key: newKey })).resolves.toMatchObject({
+        coverUrl: `${publicBaseUrl}/${newKey}`,
+      });
+      expect(scope.updateEvent).toHaveBeenCalledWith({ coverKey: newKey });
+    });
+
+    it("refuses a cover for a cancelled event", async () => {
+      repository.find.mockResolvedValueOnce(event({ status: "CANCELLED" }));
+
+      await expect(service.setCover(principal, eventId, { key: newKey })).rejects.toMatchObject({
+        response: { code: "event_cancelled" },
+      });
+      expect(storage.head).not.toHaveBeenCalled();
+    });
+
+    it("removes the cover of a draft, and keeps the one of a published event", async () => {
+      await service.removeCover(principal, eventId);
+      expect(scope.updateEvent).toHaveBeenCalledWith({ coverKey: null });
+      expect(storage.delete).toHaveBeenCalledWith(coverKey);
+
+      lock(event({ status: "PUBLISHED" }));
+      storage.delete.mockClear();
+      await expect(service.removeCover(principal, eventId)).rejects.toMatchObject({
+        response: { code: "event_cover_required" },
+      });
+      expect(scope.updateEvent).not.toHaveBeenCalled();
+      expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("treats removing a missing cover as done", async () => {
+      lock(event({ coverKey: null }));
+
+      await service.removeCover(principal, eventId);
+
+      expect(scope.updateEvent).not.toHaveBeenCalled();
+      expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("answers 503 to every cover route and shows no cover URL when storage is off", async () => {
+      const withoutStorage = new EventsService(
+        users as unknown as UsersRepository,
+        repository as unknown as EventsRepository,
+        cities as unknown as CitiesRepository,
+        { minPriceCents: 6_000 },
+        null,
+      );
+
+      for (const call of [
+        () => withoutStorage.createCoverUpload(principal, eventId, { contentType: "image/png" }),
+        () => withoutStorage.setCover(principal, eventId, { key: newKey }),
+        () => withoutStorage.removeCover(principal, eventId),
+      ]) {
+        await expect(call()).rejects.toMatchObject({
+          response: { code: "cover_storage_unavailable" },
+        });
+      }
+      await expect(withoutStorage.get(principal, eventId)).resolves.toMatchObject({
+        coverUrl: null,
+      });
+    });
+  });
+
   describe("public read", () => {
     it("returns 404 for a malformed slug without touching the database", async () => {
       await expect(service.findPublic("../etc")).rejects.toMatchObject({
@@ -531,7 +781,10 @@ describe("EventsService", () => {
         slug: "festival-access",
         name: "Festival Access",
         description: null,
+        category: "shows",
+        coverUrl: `${publicBaseUrl}/${coverKey}`,
         venueName: null,
+        city: { code: 3550308, name: "São Paulo", uf: "SP" },
         address: null,
         endsAt: null,
         startsAt: future.toISOString(),
