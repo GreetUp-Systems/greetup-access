@@ -2,9 +2,9 @@
 
 > **Status:** 7A e 7B implementadas; e-mail real pendente do smoke pelo front
 >
-> **Versão:** 1.3 (emenda da SPEC-014, parte 9A: código legível e dados do evento no ingresso)
+> **Versão:** 1.4 (emenda da SPEC-015, parte 15A: capa do evento no ingresso; grafia única do QR)
 >
-> **Atualizada em:** 04/10/2026
+> **Atualizada em:** 08/10/2026
 >
 > **Aprovada em:** 04/10/2026
 >
@@ -72,7 +72,8 @@ depois pela emissão. Sem paginação no MVP, com teto de 200 itens.
         "startsAt": "ISO-8601",
         "endsAt": "ISO-8601 | null",
         "venueName": "Casa Access | null",
-        "address": "Rua Exemplo, 100 · São Paulo | null"
+        "address": "Rua Exemplo, 100 · São Paulo | null",
+        "coverUrl": "https://<origem pública do R2>/events/<id>/<uuid>.jpg | null"
       },
       "ticketType": { "id": "uuid", "name": "Pista" },
       "purchaseId": "uuid",
@@ -92,6 +93,7 @@ depois pela emissão. Sem paginação no MVP, com teto de 200 itens.
 (`AX-0042`), único no contrato; é `null` enquanto o ingresso estiver `pending_mint`. Serve para
 identificar o ingresso na tela e, no bloco 8, para digitar na entrada quando a câmera falha.
 `event.status` e `event.endsAt` separam "Próximos" de "Anteriores" (encerrado ou cancelado).
+`event.coverUrl` é a capa do evento (SPEC-015, D-30), `null` sem capa.
 
 `onchain` é `null` enquanto o ingresso estiver `pending_mint`. O link do explorer usa a rede de
 `STELLAR_NETWORK`; `contractId` vem de `STELLAR_TICKET_CONTRACT_ID`, que a API passa a ler.
@@ -115,6 +117,8 @@ AT1.<ticket_id sem hífens, 32 hex>.<HMAC-SHA256 em base64url, 43 caracteres>
 
 - mensagem assinada: `access-ticket-qr:v1:<ticket_id>:<owner_user_id>`;
 - chave: `TICKET_QR_SECRET`, com pelo menos 32 bytes de entropia, validada no startup;
+- só vale a grafia que `sign` produz: o último caractere da assinatura tem 2 bits de preenchimento,
+  sempre zero, e `parse` recusa as outras grafias, então cada ingresso tem um único token válido;
 - o token não expira; quem decide a entrada é o check-in online do bloco 8 (o primeiro scan vale);
 - o cliente desenha o QR a partir do token; o backend não gera imagem;
 - `TicketQrService` expõe `sign(ticketId, ownerUserId): string` e

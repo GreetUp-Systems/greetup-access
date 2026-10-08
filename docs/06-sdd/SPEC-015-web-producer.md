@@ -351,7 +351,7 @@ a ponta da SPEC-005.
 ## 13. Definição de pronto
 
 - [ ] Telas do §5 e componentes do §5.3 revisados pelo Matheus.
-- [ ] 15A: endpoints e campos do §8, com testes.
+- [x] 15A: endpoints e campos do §8, com testes (PR #29, 08/10/2026).
 - [ ] 15B: esqueleto com conferência visual (360/1440 e modo claro).
 - [ ] SPEC-016 16A (moldura do site) e SPEC-014 9D (Meus ingressos) no ar, logo depois da 15B.
 - [ ] 15C: Criar perfil e Recebimento com conferência visual.
