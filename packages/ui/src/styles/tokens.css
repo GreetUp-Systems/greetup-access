@@ -87,6 +87,13 @@
   --size-state-circle: 88px;
   --size-icon-xl: 36px;
   --size-content-column: 520px;
+  --size-sidebar: 256px;
+  --size-sidebar-collapsed: 72px;
+  --size-avatar-s: 32px;
+  --size-avatar-m: 40px;
+  --size-kbd: 20px;
+  --space-20: 80px;
+  --space-24: 96px;
   --icon-current: var(--color-icon-primary);
 }
 
@@ -208,6 +215,13 @@
   --spacing-state-circle: var(--size-state-circle);
   --spacing-icon-xl: var(--size-icon-xl);
   --spacing-content-column: var(--size-content-column);
+  --spacing-sidebar: var(--size-sidebar);
+  --spacing-sidebar-collapsed: var(--size-sidebar-collapsed);
+  --spacing-avatar-s: var(--size-avatar-s);
+  --spacing-avatar-m: var(--size-avatar-m);
+  --spacing-kbd: var(--size-kbd);
+  --spacing-20: var(--space-20);
+  --spacing-24: var(--space-24);
   --shadow-glow-accent: 0 0 24px 0 var(--color-effect-glow);
   --shadow-focus-ring: 0 0 0 2px var(--color-bg-canvas), 0 0 0 4px var(--color-effect-focus);
   --shadow-elevation-1: 0 4px 12px -2px #00000029, 0 1px 2px 0 #0000003d;

@@ -83,9 +83,12 @@ Composições sem equivalente no shadcn (Barra superior, Logo) são montadas sob
 ## Atualizar os tokens
 
 1. Rode `packages/ui/tokens/export-figma-tokens.js` com a ferramenta `use_figma` do MCP do Figma
-   (somente leitura) no arquivo `WYqT9b0lxW4QhWmjuoPblV`. A API REST de variáveis não existe no plano
-   Pro; a execução de plugin é o caminho.
-2. Salve o JSON devolvido em `packages/ui/tokens/figma-tokens.json`.
+   (somente leitura) no arquivo `WYqT9b0lxW4QhWmjuoPblV`, duas vezes: com `part = "variables"` e
+   com `part = "styles"`. O conjunto passou do limite de 20 KB que a ferramenta devolve. A API REST
+   de variáveis não existe no plano Pro; a execução de plugin é o caminho.
+2. Junte as duas respostas num objeto `{ file, collections, textStyles, effectStyles }`, grave em
+   uma linha em `packages/ui/tokens/figma-tokens.json` e formate com o Prettier, que mantém o estilo
+   do arquivo.
 3. `pnpm --filter @access/ui tokens` gera `tokens.css` e `src/lib/merge-theme.ts` (as escalas para o
    `cn()`). O lint falha se algum dos dois ficar defasado.
 4. O diff do JSON e do CSS entra no PR.

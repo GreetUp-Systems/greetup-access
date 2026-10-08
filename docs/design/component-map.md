@@ -169,32 +169,103 @@ principal do desktop usa `size/content-column` (520).
 
 ### Logo · `logo.tsx`
 
-`<Logo format="horizontal">` ou `format="symbol"` (`3:95`, Versão = Principal), SVG exportado do Figma pelos
-limites do nó.
+`<Logo format="horizontal">` ou `format="symbol"` (`3:95`, Versão = Principal), desenhado pelos
+limites do nó. O horizontal é SVG em linha: a palavra segue o tema (`text/primary`, SPEC-015 N8) e o
+ponto fica `brand/magenta`; os gradientes do símbolo vêm da paleta. O símbolo é o SVG exportado.
 
 Validado em 04/10/2026: catálogo em 1440 comparado no Figma com Botão de ícone/Secundário e Vidro,
 Campo de texto, Item de lista, Barra superior e Toast; janela e código nas telas de identificação
 (SPEC-014 §5 e §6) em 360 e 1440.
 
+### Avatar · `avatar.tsx` (shadcn/ui)
+
+| Figma           | Nó       | Código                                          |
+| --------------- | -------- | ----------------------------------------------- |
+| Avatar          | `279:11` | `<Avatar size="s \| m">` com `<AvatarFallback>` |
+| Tamanho = S · M |          | `size/avatar-s` (32) e `size/avatar-m` (40)     |
+| Iniciais        |          | o texto do `AvatarFallback` (sem foto no MVP)   |
+
+### Atalho · `kbd.tsx` (shadcn/ui)
+
+`<Kbd>` (`279:74`) é uma tecla em `size/kbd`; `<KbdGroup>` junta as teclas (⌘ K).
+
+### Tendência · `trend.tsx` (estilo do Badge do shadcn/ui)
+
+`<Trend direction="positive | negative | neutral">12%</Trend>` (`279:208`, Variação = Positiva ·
+Negativa · Neutra). A seta acompanha a cor, e a direção também é lida pelo leitor de tela.
+
+### Aba de seção · `tabs.tsx` (shadcn/ui)
+
+`<Tabs>`, `<TabsList>`, `<TabsTrigger value count>` e `<TabsContent>` (`283:18`): só a variante de
+linha, com a contagem na cápsula e o sublinhado `stroke/indicator` na selecionada.
+
+### Progresso · `progress.tsx` (shadcn/ui)
+
+`<Progress value={0..100}>` (`283:19`): vendidos sobre capacidade, `bg/accent` sobre `bg/subtle`.
+
+### Menu da conta e Item de menu · `dropdown-menu.tsx` (shadcn/ui)
+
+| Figma                       | Nó        | Código                                                         |
+| --------------------------- | --------- | -------------------------------------------------------------- |
+| Menu da conta               | `365:461` | `<DropdownMenuContent>` (`w-sidebar` no menu da conta)         |
+| Cabeçalho (avatar, nome)    |           | `<DropdownMenuLabel>`                                          |
+| Separador                   |           | `<DropdownMenuSeparator>`                                      |
+| Item de menu                | `281:312` | `<DropdownMenuItem>` com ícone Lucide e rótulo                 |
+| Estado = Hover · Destrutivo |           | realce do Radix (`data-highlighted`) · `variant="destructive"` |
+
+Contexto = Painel nesta versão; as variantes Site entram com a moldura do site (SPEC-016 16A).
+
+### Barra lateral · `sidebar.tsx` (shadcn/ui Sidebar, flutuante e recolhível em ícones)
+
+| Figma                               | Nó        | Código                                                       |
+| ----------------------------------- | --------- | ------------------------------------------------------------ |
+| Barra lateral, Recolhida = Não, Sim | `282:572` | `<SidebarProvider defaultOpen>` com `<Sidebar>` (⌘B, cookie) |
+| Topo · Navegação · rodapé           |           | `<SidebarHeader>` · `<SidebarContent>` · `<SidebarFooter>`   |
+| Item de navegação                   | `280:289` | `<SidebarMenuButton isActive tooltip>` no `<SidebarMenu>`    |
+| Selo (contagem)                     |           | `<SidebarMenuBadge>`                                         |
+| Busca                               | `281:265` | `<SidebarSearchButton>` (abre a paleta ⌘K)                   |
+| Conta na barra lateral              | `281:292` | `<SidebarAccountButton initials name email>`                 |
+| Alça da barra lateral               | `281:369` | `<SidebarTrigger>`                                           |
+
+Abaixo de `md` a barra não aparece: o celular usa a Barra de abas. O item recolhido ganha
+tooltip (`tooltip.tsx`, só no código, como pede a descrição do Item de navegação).
+
+### Barra de abas · `tab-bar.tsx` (composição)
+
+`<TabBar>` com `<TabBarItem selected asChild>` (`73:376` e `73:39`): cápsula de vidro fixa no pé do
+celular; selecionada com a lente e a cor de destaque, pressionada só com a lente, foco com o anel
+interno. Ícones sempre preenchidos (`fill-icons.tsx`). O Selo da aba entra quando uma tela usar.
+
+### Etapa · `step.tsx` (composição com o Button)
+
+`<Steps>` com `<Step state number title detail action showLine>` (`294:71`):
+`state="done" | "current" | "in_progress" | "pending" | "error"` (Concluída, Atual, Em andamento,
+Pendente, Erro).
+
+Validado em 08/10/2026: catálogo em 1440, nos modos escuro e claro, comparado no Figma com Avatar,
+Atalho, Tendência, Aba de seção, Progresso, Menu da conta (Painel), Item de menu, Barra lateral
+(aberta e recolhida), Item de navegação, Conta na barra lateral, Barra de abas (3 abas) e Etapa.
+
 ## Ícones
 
 Página "Ícones" (`27:2`): 47 ícones, dos quais 43 são Lucide com o mesmo nome (`Ícone/ticket` →
 `Ticket` de `lucide-react`), traço 1,75, tamanhos `size/icon-sm` (16), `size/icon-md` (20) e
-`size/icon-lg` (24). Os quatro `*-fill` (`ticket-fill`, `calendar-fill`, `qr-code-fill`,
-`user-fill`) são próprios: exportar do Figma como SVG quando a primeira tela precisar.
+`size/icon-lg` (24). Os `*-fill` são próprios e vão para `fill-icons.tsx`, exportados do Figma com o
+preenchimento em `currentColor`, quando a primeira tela precisar: já estão `layout-grid-fill`,
+`calendar-fill` e `wallet-fill` (Barra de abas do sistema do produtor); faltam `ticket-fill`,
+`qr-code-fill`, `user-fill` e `house-fill`.
 
 ## Ainda não implementados
 
-| Figma                     | Nó do conjunto     | Variantes                                                                     |
-| ------------------------- | ------------------ | ----------------------------------------------------------------------------- |
-| Botão de ícone/Destrutivo | `42:258`           | Tamanho × Estado                                                              |
-| Card                      | `51:358`           | Tipo × Estado × Espaço                                                        |
-| Ingresso (restante)       | `56:409`           | Estado (Utilizado, Transferido, Cancelado)                                    |
-| Aba · Barra de abas       | `73:39` · `73:376` | Estado · Abas × Selecionada                                                   |
-| Stat Card                 | `114:184`          | Estado × Variação × Tamanho                                                   |
-| Controle segmentado       | `154:520`          | Selecionada                                                                   |
-| Cartão de evento          | `154:601`          | Tipo × Estado                                                                 |
-| Resultado do leitor (UX)  | `119:447`          | Estado (Verificando, Válido, Já utilizado, Inválido, Cancelado, Outro evento) |
+| Figma                     | Nó do conjunto | Variantes                                                                     |
+| ------------------------- | -------------- | ----------------------------------------------------------------------------- |
+| Botão de ícone/Destrutivo | `42:258`       | Tamanho × Estado                                                              |
+| Card                      | `51:358`       | Tipo × Estado × Espaço                                                        |
+| Ingresso (restante)       | `56:409`       | Estado (Utilizado, Transferido, Cancelado)                                    |
+| Stat Card                 | `114:184`      | Estado × Variação × Tamanho                                                   |
+| Controle segmentado       | `154:520`      | Selecionada                                                                   |
+| Cartão de evento          | `154:601`      | Tipo × Estado                                                                 |
+| Resultado do leitor (UX)  | `119:447`      | Estado (Verificando, Válido, Já utilizado, Inválido, Cancelado, Outro evento) |
 
 ## Telas
 
