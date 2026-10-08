@@ -2,9 +2,9 @@
 
 > **Status:** aprovada em 07/10/2026
 >
-> **Versão:** 1.1
+> **Versão:** 1.2 (15A: motivo da recusa só pelos `kyc_warnings`, regras da capa, erros do backend)
 >
-> **Atualizada em:** 07/10/2026
+> **Atualizada em:** 08/10/2026
 >
 > **Depende de:** SPEC-003 (onboarding do produtor), SPEC-004 (eventos), SPEC-005 (compras),
 > SPEC-014 (base do web, identificação, assinatura no navegador), SPEC-016 16A (moldura do site, antes
@@ -55,7 +55,7 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 | N8  | O logo acompanha o tema: a palavra "Access" usa `text/primary` (no Figma, ajustado; no código, entra na 15B). Hoje ela é branca fixa e some no modo claro.                                                                                                          |
 | P1  | Só pessoa física (KYC Standard) no piloto. Empresa (KYB) vem antes da abertura ao mercado (07/10/2026).                                                                                                                                                             |
 | P2  | O comprovante de endereço fica fora do formulário (opcional no KYC Standard); se a BlindPay pedir, chega como pedido de informações (RFI).                                                                                                                          |
-| P3  | O motivo da recusa é lido na hora da BlindPay (`kyc_warnings`, `fraud_warnings`), como o RFI: não é gravado nem logado.                                                                                                                                             |
+| P3  | O motivo da recusa é lido na hora da BlindPay, como o RFI, e não é gravado nem logado: só os `kyc_warnings` não resolvidos, com código e mensagem. Os `fraud_warnings` são sinais do modelo de risco, não motivos, e não saem da API (08/10/2026).                  |
 | P4  | "Corrigir e enviar de novo" reabre Seus dados com os dados da tentativa recusada, lidos na hora da BlindPay; os documentos são enviados de novo.                                                                                                                    |
 | P5  | O detalhe de taxas ao definir o preço (D-27) fica para a SPEC financeira. O preço mostra o mínimo e "A taxa de serviço é paga por quem compra, por cima do preço."                                                                                                  |
 | P6  | Cancelar e apagar evento, e apagar tipo de ingresso, ficam fora: o cancelamento ainda não invalida ingressos nem avisa compradores.                                                                                                                                 |
@@ -211,8 +211,9 @@ producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta 
   acento, 10 resultados, "Nome, UF"); guarda o código do IBGE.
 - **Capa:** seção no topo do editor (Envio de capa). Escolhida a imagem, o navegador confere tipo e
   tamanho, pede a URL (`POST .../cover/upload-url`), envia direto ao R2 com progresso e confirma
-  (`PUT .../cover`); trocar repete o fluxo; remover chama `DELETE .../cover`. Erro de tipo, tamanho
-  ou envio vira o estado Erro, com "Escolher outro arquivo".
+  (`PUT .../cover`); trocar repete o fluxo; remover, só no rascunho, chama `DELETE .../cover` (o
+  evento publicado troca a capa, mas não fica sem ela). Erro de tipo, tamanho ou envio vira o estado
+  Erro, com "Escolher outro arquivo".
 - **Editor:** caminho "Eventos › nome", status e as ações no cabeçalho ("Salvar alterações" e
   "Publicar evento"; no celular, na Barra de ações). Seções em cartões: Capa, Sobre o evento (nome,
   categoria, descrição), Data e local (início, término, local, cidade, endereço), Ingressos e
@@ -227,8 +228,9 @@ producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta 
   "Copiar link") e "Vendas" (vendidos de capacidade e receita).
 - **Erros da API → tela:** `422 ticket_price_below_minimum` (com `minimumCents`), `422
 ticket_quantity_exceeds_capacity`, `422 event_starts_in_past`, `422 event_not_publishable` (com o
-  requisito que falta) e `400 invalid_event` / `invalid_ticket_type` viram o erro do campo; `409
-producer_not_ready` volta ao Publicar bloqueado; falha de rede, toast de erro com "Tentar de novo".
+  requisito que falta) e `400 invalid_event` / `invalid_ticket_type` viram o erro do campo; `422
+invalid_cover` vira o estado Erro da capa; `409 producer_not_ready` volta ao Publicar bloqueado;
+  falha de rede e `503 cover_storage_unavailable`, toast de erro com "Tentar de novo".
 
 ## 7. Regras (critérios de aceite)
 
@@ -252,11 +254,13 @@ producer_not_ready` volta ao Publicar bloqueado; falha de rede, toast de erro co
 ## 8. Ajustes de backend (15A)
 
 - **`GET /api/producers/onboarding/customer`:** lê na BlindPay (`GET /customers/{id}`) a tentativa
-  atual e devolve `{ status, reasons: string[], draft }`. `reasons` são as mensagens de
-  `kyc_warnings` e `fraud_warnings`; `draft`, os dados sem arquivo para preencher a nova tentativa
-  (nome, nascimento, CPF, telefone, endereço, tipo de documento). Nada é gravado nem logado; sem
-  tentativa, `404 customer_not_found`. O formato dos avisos é conferido na referência da API da
-  BlindPay na implementação.
+  atual e devolve `{ status, reasons: [{ code, message }], draft }`. `status` é o `kyc_status` da
+  BlindPay; `reasons` são os `kyc_warnings` não resolvidos (código da AiPrise e mensagem em inglês;
+  o web mostra o texto em português pelo código), e os `fraud_warnings` ficam fora (P3); `draft`, os
+  dados sem arquivo para preencher a nova tentativa (nome, sobrenome, nascimento `YYYY-MM-DD`, CPF,
+  telefone, endereço com o país, e o país e o tipo do documento). Nada é gravado nem logado. Sem
+  tentativa, `404 blindpay_customer_not_found`; falha da BlindPay, `503
+compliance_provider_unavailable` ou `422 customer_fetch_failed`, como no resto do onboarding.
 - **SPEC-004, visão privada do evento:** ganha `ticketMinPriceCents` (o valor de
   `TICKET_MIN_PRICE_CENTS`).
 - **SPEC-004, `GET /api/events`:** cada evento ganha `soldTickets` (ingressos de compras com
@@ -264,33 +268,44 @@ producer_not_ready` volta ao Publicar bloqueado; falha de rede, toast de erro co
   de serviço), lidos sob a política `purchases_producer_read`.
 - **`GET /api/producers/me/sales?period=7d|30d|90d`:** `{ period, tickets, salesCents, previous:
 { tickets, salesCents }, daily: [{ date, tickets, salesCents }] }`, com as mesmas compras do item
-  anterior, contadas pela data da confirmação no fuso `America/Sao_Paulo`; `previous` é o período
-  anterior de mesma duração.
+  anterior, contadas pela data da confirmação no fuso `America/Sao_Paulo`. `period` é obrigatório;
+  `7d` é hoje e os 6 dias anteriores, e `previous` é o período anterior de mesma duração; `daily`
+  traz todos os dias do período, do mais antigo ao de hoje, com zero onde não houve venda.
 - **`GET /api/producers/me/sales/recent?limit=5`:** as últimas compras confirmadas: `{ eventName,
-ticketTypeName, quantity, subtotalCents, confirmedAt }`. Nenhum dado de quem comprou.
+ticketTypeName, quantity, subtotalCents, confirmedAt }`, `limit` de 1 a 20 (padrão 5). Nenhum dado
+  de quem comprou. Consulta fora disso, nas duas rotas: `400 invalid_sales_query`.
 - **Cidades:** tabela `cities` (`ibge_code` inteiro, chave; `name`; `uf` de 2 letras), carregada por
   migration a partir da lista de municípios do IBGE (API de Localidades), versionada no repositório.
-  `GET /api/cities?query=` (autenticada): busca sem acento por nome, até 10, ordem alfabética.
-- **SPEC-004, evento:** ganha `category` (enum `EventCategory`: `SHOWS`, `PARTIES`, `THEATER`,
-  `STANDUP`, `SPORTS`, `FESTIVALS`, `KIDS`, `COURSES`, `FOOD`), `cityCode` (FK para `cities`) e
-  `coverKey` (chave no R2), todos opcionais no rascunho. As visões privada e pública ganham
-  `category`, `city: { code, name, uf }` e `coverUrl` (`R2_PUBLIC_BASE_URL` + chave). Publicar sem
-  algum deles → `422 event_not_publishable` com o requisito.
-- **Capa:** `POST /api/events/:id/cover/upload-url` → `{ uploadUrl, key, expiresAt }`: PUT assinado
-  no R2 por 10 min, com `Content-Type` assinado; a chave é `events/<eventId>/<uuid>.<ext>`.
-  `PUT /api/events/:id/cover` com `{ key }` confere a chave do evento e o objeto no R2 (`HEAD`: tipo
-  JPG, PNG ou WebP; até 5 MB) e grava `coverKey`; fora disso, `422 invalid_cover` e o objeto é
-  apagado. `DELETE /api/events/:id/cover` limpa a capa. Trocar ou remover apaga o objeto anterior.
-  Envio abandonado deixa objeto sem dono no bucket; é aceito.
+  `GET /api/cities?query=` (autenticada): busca sem acento pelo início do nome ou de qualquer palavra
+  dele, até 10, ordem alfabética; menos de 2 letras, `400 invalid_city_query`.
+- **SPEC-004, evento:** ganha `category` (enum `EventCategory`; na API, em minúsculas como os
+  estados: `shows`, `parties`, `theater`, `standup`, `sports`, `festivals`, `kids`, `courses`,
+  `food`), `cityCode` (FK para `cities`) e `coverKey` (chave no R2), todos opcionais no rascunho.
+  Categoria e cidade se trocam, mas não se apagam; código fora da base, `400 invalid_event` com
+  `fields: ["cityCode"]`. As visões privada e pública ganham `category`, `city: { code, name, uf }` e
+  `coverUrl` (`R2_PUBLIC_BASE_URL` + chave). Publicar sem algum deles → `422 event_not_publishable`
+  com `missing` (`cover`, `category`, `city`).
+- **Capa:** `POST /api/events/:id/cover/upload-url` com `{ contentType }` (`image/jpeg`,
+  `image/png` ou `image/webp`) → `{ uploadUrl, key, expiresAt }`: PUT assinado no R2 por 10 min, com
+  `Content-Type` assinado; a chave é `events/<eventId>/<uuid>.<ext>`. `PUT /api/events/:id/cover`
+  com `{ key }` confere a chave do evento e o objeto no R2 (`HEAD`: o tipo assinado, até 5 MB) e
+  grava `coverKey`; fora disso, `422 invalid_cover`. Só objeto do próprio evento é apagado (tipo ou
+  tamanho errado): chave de outro evento é recusada sem tocar no objeto dele. `DELETE
+/api/events/:id/cover` limpa a capa do rascunho; no evento publicado, `409 event_cover_required`.
+  Trocar ou remover apaga o objeto anterior depois de gravar. Envio abandonado, ou objeto que o R2
+  não apagou, fica sem dono no bucket; é aceito. Sem o R2 configurado (só fora de production), as
+  três rotas respondem `503 cover_storage_unavailable` e `coverUrl` vem `null`.
 - **SPEC-008, `GET /api/me/tickets` e `/:id`:** o evento ganha `coverUrl`, para os cartões de Meus
   ingressos (9D).
 
 ## 9. Configuração
 
 Variáveis novas, com entrada no `.env.example`: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
-`R2_SECRET_ACCESS_KEY`, `R2_BUCKET` e `R2_PUBLIC_BASE_URL`. `BLINDPAY_ALLOWED_REDIRECT_ORIGINS`
-precisa incluir a origem do web em cada ambiente (já existe). Os tokens novos (P8) entram no snapshot
-`packages/ui/tokens/figma-tokens.json` na 15B.
+`R2_SECRET_ACCESS_KEY`, `R2_BUCKET` e `R2_PUBLIC_BASE_URL`, as cinco juntas ou nenhuma, obrigatórias
+em production. Vazias em development, não há capa e, portanto, nenhum evento publica: testar a
+publicação fora do ponta a ponta pede o bucket de desenvolvimento (§11).
+`BLINDPAY_ALLOWED_REDIRECT_ORIGINS` precisa incluir a origem do web em cada ambiente (já existe). Os
+tokens novos (P8) entram no snapshot `packages/ui/tokens/figma-tokens.json` na 15B.
 
 ## 10. Testes
 
