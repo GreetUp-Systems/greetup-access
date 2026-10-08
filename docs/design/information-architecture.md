@@ -49,7 +49,7 @@ fixa "Começar a vender".
 ### Desktop: barra lateral (Sidebar do shadcn)
 
 Painel flutuante de 256 px (`size/sidebar`), recolhível para só ícones (72 px,
-`size/sidebar-collapsed`, ⌘B), com o logo, a busca ⌘K, **Painel**, **Eventos** (com contagem) e
+`size/sidebar-collapsed`, ⌘B), com o logo, **Painel**, **Eventos** (com contagem) e
 **Recebimento**; Check-in entra com a SPEC-009. No rodapé, a conta (avatar, nome público, e-mail),
 com o menu: Perfil do produtor, Meus ingressos, Ir para o site e Sair.
 

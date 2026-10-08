@@ -2,7 +2,8 @@
 
 > **Status:** aprovada em 07/10/2026
 >
-> **Versão:** 1.2 (15A: motivo da recusa só pelos `kyc_warnings`, regras da capa, erros do backend)
+> **Versão:** 1.3 (15B sem busca ⌘K; 1.2: motivo da recusa só pelos `kyc_warnings`, regras da
+> capa, erros do backend)
 >
 > **Atualizada em:** 08/10/2026
 >
@@ -16,7 +17,7 @@ Dar ao web o sistema do produtor, a camada que só aparece depois do login e do 
 (D-29):
 
 1. o esqueleto: barra lateral no desktop (Sidebar do shadcn, com a conta no rodapé e o menu com
-   "Sair"), Barra de abas no celular, busca ⌘K e o Perfil do produtor;
+   "Sair"), Barra de abas no celular e o Perfil do produtor;
 2. o Painel: avisos, pendências, números, gráfico de vendas por dia, próximo evento, vendas
    recentes e eventos;
 3. a entrada focada (Criar perfil) e o Recebimento: conta de recebimento (Stellar, assinada no
@@ -48,7 +49,7 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 | N1  | Duas camadas (D-29): esta SPEC é o sistema do produtor; o site público é a SPEC-016. Só aparece o que existe; Check-in entra com a SPEC-009.                                                                                                                        |
 | N2  | Desktop: barra lateral flutuante (Sidebar do shadcn, `variant="floating"`, `collapsible="icon"`, ⌘B), com Painel, Eventos e Recebimento e a conta no rodapé. Celular: Barra de abas Painel · Eventos · Recebimento e o avatar no topo, que abre a conta numa folha. |
 | N3  | O menu da conta tem Perfil do produtor, Meus ingressos, Ir para o site e Sair, no desktop e no celular. Meus ingressos e Ir para o site levam ao site público.                                                                                                      |
-| N4  | Busca ⌘K: paleta de comandos (CommandDialog do shadcn) para ir a uma página do sistema ou a um evento do produtor, com os dados que o app já carrega. Sem busca no servidor.                                                                                        |
+| N4  | Sem busca ⌘K nem paleta de comandos: a navegação tem três itens e a lista de Eventos tem a própria busca (08/10/2026).                                                                                                                                              |
 | N5  | O sistema exige sessão e perfil de produtor. Sem sessão, a identificação da SPEC-014; sem perfil, Criar perfil, numa tela focada (logo e "Voltar ao site", sem a navegação). "Começar a vender", no site, leva até aqui.                                            |
 | N6  | O Painel tem ingressos vendidos e vendas com tendência contra o período anterior, o gráfico de vendas por dia e as vendas recentes, sem dados de quem comprou (15A). Gráficos e comparações além disso ficam para a SPEC-012.                                       |
 | N7  | Recebimento é item da navegação. No celular, a raiz da aba mostra o estado da verificação (em análise, pendência, recusado, liberando, pronto, erro); termos, dados e documentos abrem como páginas internas, com voltar e sem abas.                                |
@@ -60,7 +61,7 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 | P5  | O detalhe de taxas ao definir o preço (D-27) fica para a SPEC financeira. O preço mostra o mínimo e "A taxa de serviço é paga por quem compra, por cima do preço."                                                                                                  |
 | P6  | Cancelar e apagar evento, e apagar tipo de ingresso, ficam fora: o cancelamento ainda não invalida ingressos nem avisa compradores.                                                                                                                                 |
 | P7  | Avisos de vendas pausadas e de pedido de informações no Painel, calculados do estado que a API já devolve; sem e-mail.                                                                                                                                              |
-| P8  | Componentes novos no Design System (§5.3); tokens novos `size/sidebar` (256), `size/sidebar-collapsed` (72), `size/avatar-s` (32), `size/avatar-m` (40) e `size/kbd` (20).                                                                                          |
+| P8  | Componentes novos no Design System (§5.3); tokens novos `size/sidebar` (256), `size/sidebar-collapsed` (72), `size/avatar-s` (32) e `size/avatar-m` (40).                                                                                                           |
 | E1  | Capa do evento em 16:9, enviada do navegador direto ao Cloudflare R2 por URL assinada (D-30): JPG, PNG ou WebP até 5 MB; fora de 16:9, a imagem é cortada no centro na exibição. Obrigatória para publicar (07/10/2026).                                            |
 | E2  | Categoria do evento, de uma lista fixa: Shows, Festas, Teatro, Stand-up, Esportes, Festivais, Infantil, Cursos e Gastronomia. Obrigatória para publicar.                                                                                                            |
 | E3  | Cidade do evento escolhida da base do IBGE (código, nome e UF), separada do endereço, que fica com rua e número. Obrigatória para publicar.                                                                                                                         |
@@ -70,7 +71,7 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 | Parte | Conteúdo                                                                                                                                                                                          |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 15A   | Backend: tentativa atual na BlindPay, preço mínimo na visão do evento, vendidos e vendas por evento, resumo de vendas e vendas recentes; capa (R2), categoria e cidade no evento; base de cidades |
-| 15B   | Esqueleto: layout do sistema, barra lateral, Barra de abas, conta (menu e folha), busca ⌘K, Painel (todos os estados), Eventos, Perfil do produtor, logo no tema                                  |
+| 15B   | Esqueleto: layout do sistema, barra lateral, Barra de abas, conta (menu e folha), Painel (todos os estados), Eventos, Perfil do produtor, logo no tema                                            |
 | 15C   | Criar perfil (focado) e Recebimento: conta de recebimento, termos, dados, documentos e resultados da verificação                                                                                  |
 | 15D   | Evento: novo, editor (capa, categoria e cidade), tipos de ingresso, publicar e publicado                                                                                                          |
 
@@ -121,10 +122,9 @@ Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. Ord
 | ------------------------------------------------------------ | ------------------------------------------------------------- |
 | Barra lateral (Barra lateral)                                | `Sidebar`, `SidebarHeader`, `SidebarContent`, `SidebarFooter` |
 | Item de navegação                                            | `SidebarMenuButton` (+ `SidebarMenuBadge`, tooltip recolhido) |
-| Busca                                                        | gatilho do `CommandDialog`                                    |
 | Conta na barra lateral, Menu da conta (Painel), Item de menu | `NavUser`: `DropdownMenu`, `DropdownMenuItem`                 |
 | Alça                                                         | `SidebarTrigger`                                              |
-| Avatar, Atalho, Tendência (Avatar, atalhos e indicadores)    | `Avatar`, `Kbd`, `Badge`                                      |
+| Avatar, Tendência (Avatar e indicadores)                     | `Avatar`, `Badge`                                             |
 | Aba de seção, Progresso                                      | `Tabs` (linha), `Progress`                                    |
 | Etapa (Etapas)                                               | composição com `Button`                                       |
 | Área de texto (Campo de texto)                               | `Textarea`                                                    |
@@ -148,8 +148,6 @@ producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta 
   (D-17).
 - **Conta:** o menu (desktop) e a folha (celular) levam a `/producer/profile`, `/me/tickets` e `/`;
   "Sair" encerra a sessão Privy e volta ao Início do site.
-- **Busca ⌘K:** páginas do sistema e eventos do produtor (`GET /api/events`), filtrados no
-  navegador.
 - **Painel:** com perfil e sem `ready`, a configuração em etapas e "Enquanto isso", com os
   rascunhos. Com `ready`, os números, o gráfico, o próximo evento, as vendas recentes e os eventos.
   Avisos no topo: `compliance_request` com evento publicado → "Vendas pausadas" (erro);
@@ -319,9 +317,9 @@ tokens novos (P8) entram no snapshot `packages/ui/tokens/figma-tokens.json` na 1
 - **Unitários (web):** item ativo da navegação; para onde o layout leva sem sessão e sem perfil;
   estado do Painel a partir do produtor; tendência; etapa atual do Recebimento; campos do RFI; data e
   hora de Brasília → ISO; preço em reais ↔ centavos; validação da capa no navegador; erros da API →
-  estado do campo; filtro da busca ⌘K.
+  estado do campo.
 - **Ponta a ponta (Playwright, API simulada):** navegação pela barra lateral (aberta e recolhida) e
-  pelas abas; menu e folha da conta com "Sair" e com a ida ao site; busca ⌘K; sem perfil → criar
+  pelas abas; menu e folha da conta com "Sair" e com a ida ao site; sem perfil → criar
   perfil → conta de recebimento (assinatura simulada e erro); termos com `tos_id`; dados e
   documentos (com erro de arquivo); em análise, pendência com resposta, recusado com nova tentativa
   preenchida, liberando e pronto; Painel em todos os estados; Eventos; criar rascunho com cidade e
