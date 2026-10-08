@@ -198,7 +198,7 @@ docker compose -f docker-compose.test.yml down
 # Qualidade
 pnpm turbo typecheck
 pnpm turbo lint
-pnpm turbo format -- --check
+pnpm format:check                 # Prettier no código dos pacotes; pnpm format corrige
 
 # Contratos Soroban (Caatinga, D-25) — a partir de packages/contracts
 cargo test --locked                       # Linux/macOS e CI

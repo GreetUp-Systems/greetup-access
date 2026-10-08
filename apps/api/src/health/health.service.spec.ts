@@ -36,9 +36,12 @@ describe("HealthService", () => {
   });
 
   it("reports the failed dependency without exposing its error", async () => {
-    const service = createService(async () => undefined, async () => {
-      throw new Error("redis://user:secret@internal-host:6379");
-    });
+    const service = createService(
+      async () => undefined,
+      async () => {
+        throw new Error("redis://user:secret@internal-host:6379");
+      },
+    );
 
     await expect(service.readiness()).resolves.toEqual({
       status: "not_ready",

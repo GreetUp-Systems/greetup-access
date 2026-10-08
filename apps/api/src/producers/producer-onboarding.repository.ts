@@ -3,11 +3,7 @@ import { Injectable } from "@nestjs/common";
 
 export type BlindPayCustomerRecord = Prisma.BlindPayCustomerGetPayload<Record<string, never>>;
 type StoredKycStatus =
-  | "VERIFYING"
-  | "APPROVED"
-  | "REJECTED"
-  | "COMPLIANCE_REQUEST"
-  | "APPROVED_RFI";
+  "VERIFYING" | "APPROVED" | "REJECTED" | "COMPLIANCE_REQUEST" | "APPROVED_RFI";
 
 const operationalKycStatuses = new Set<StoredKycStatus>(["APPROVED", "APPROVED_RFI"]);
 
