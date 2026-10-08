@@ -1,6 +1,7 @@
 import { type ApiConfig } from "@access/config";
 import { DynamicModule, Module } from "@nestjs/common";
 
+import { CitiesModule } from "../cities/cities.module";
 import { UsersModule } from "../users/users.module";
 import { EventsController } from "./events.controller";
 import { EventsRepository } from "./events.repository";
@@ -13,7 +14,7 @@ export class EventsModule {
   static forRoot(config: ApiConfig): DynamicModule {
     return {
       module: EventsModule,
-      imports: [UsersModule],
+      imports: [UsersModule, CitiesModule],
       controllers: [EventsController, PublicEventsController],
       providers: [
         EventsRepository,

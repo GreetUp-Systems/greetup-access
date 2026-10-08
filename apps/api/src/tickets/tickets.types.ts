@@ -27,6 +27,7 @@ export interface TicketView {
     endsAt: string | null;
     venueName: string | null;
     address: string | null;
+    coverUrl: string | null;
   };
   ticketType: { id: string; name: string };
   purchaseId: string;

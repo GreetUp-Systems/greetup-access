@@ -21,6 +21,7 @@ import {
 } from "./producer-stellar-activation.service";
 import {
   type CreatedCustomerView,
+  type CustomerAttemptView,
   type OpenRfiView,
   type TermsSessionView,
   type UploadedDocumentView,
@@ -85,6 +86,13 @@ export class ProducerOnboardingController {
     @Headers("idempotency-key") idempotencyKey: string | undefined,
   ): Promise<CreatedCustomerView> {
     return this.onboardingService.createCustomer(principal, body, requestIp, idempotencyKey);
+  }
+
+  @Get("customer")
+  getCustomerAttempt(
+    @CurrentUser() principal: AuthenticatedPrincipal,
+  ): Promise<CustomerAttemptView> {
+    return this.onboardingService.getCustomerAttempt(principal);
   }
 
   @Get("rfi")

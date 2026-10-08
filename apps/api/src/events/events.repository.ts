@@ -1,28 +1,38 @@
 import { Prisma, PrismaService, TenantContextService } from "@access/database";
 import { Injectable } from "@nestjs/common";
 
+import { soldPurchaseStatuses } from "../producers/producer-sales.repository";
 import { type ProducerProfileRecord, producerContext } from "../producers/producers.repository";
 
+const summaryInclude = {
+  city: true,
+} satisfies Prisma.EventInclude;
+
 const eventInclude = {
+  ...summaryInclude,
   ticketTypes: { orderBy: { createdAt: "asc" } },
 } satisfies Prisma.EventInclude;
 
 const publicEventInclude = {
-  ticketTypes: { orderBy: { createdAt: "asc" } },
+  ...eventInclude,
   producer: { select: { displayName: true } },
 } satisfies Prisma.EventInclude;
 
 export type EventRecord = Prisma.EventGetPayload<{ include: typeof eventInclude }>;
-export type EventSummaryRecord = Prisma.EventGetPayload<Record<string, never>>;
+export type EventSummaryRecord = Prisma.EventGetPayload<{ include: typeof summaryInclude }>;
+export type EventListRecord = EventSummaryRecord & { soldTickets: number; salesCents: number };
 export type TicketTypeRecord = EventRecord["ticketTypes"][number];
 export type PublicEventRecord = Prisma.EventGetPayload<{ include: typeof publicEventInclude }>;
 export type StoredEventStatus = EventRecord["status"];
+export type StoredEventCategory = NonNullable<EventRecord["category"]>;
 
 export interface NewEvent {
   slug: string;
   name: string;
   description: string | null;
+  category: StoredEventCategory | null;
   venueName: string | null;
+  cityCode: number | null;
   address: string | null;
   startsAt: Date;
   endsAt: Date | null;
@@ -35,8 +45,11 @@ export interface EventChanges {
   slug?: string | undefined;
   name?: string | undefined;
   description?: string | null | undefined;
+  category?: StoredEventCategory | undefined;
   venueName?: string | null | undefined;
+  cityCode?: number | undefined;
   address?: string | null | undefined;
+  coverKey?: string | null | undefined;
   startsAt?: Date | undefined;
   endsAt?: Date | null | undefined;
   capacity?: number | undefined;
@@ -104,13 +117,30 @@ export class EventsRepository {
     );
   }
 
-  list(userId: string, status: StoredEventStatus | undefined): Promise<EventSummaryRecord[]> {
-    return this.tenantContext.withProducerContext(userId, (transaction, producerId) =>
-      transaction.event.findMany({
+  /** Each event with the tickets and subtotal it sold, read under `purchases_producer_read`. */
+  list(userId: string, status: StoredEventStatus | undefined): Promise<EventListRecord[]> {
+    return this.tenantContext.withProducerContext(userId, async (transaction, producerId) => {
+      const events = await transaction.event.findMany({
         where: { producerId, ...(status === undefined ? {} : { status }) },
+        include: summaryInclude,
         orderBy: { createdAt: "desc" },
-      }),
-    );
+      });
+      const sales = await transaction.purchase.groupBy({
+        by: ["eventId"],
+        where: {
+          producerId,
+          eventId: { in: events.map((event) => event.id) },
+          status: { in: [...soldPurchaseStatuses] },
+        },
+        _sum: { quantity: true, subtotalCents: true },
+      });
+      const byEvent = new Map(sales.map((row) => [row.eventId, row._sum]));
+      return events.map((event) => ({
+        ...event,
+        soldTickets: byEvent.get(event.id)?.quantity ?? 0,
+        salesCents: byEvent.get(event.id)?.subtotalCents ?? 0,
+      }));
+    });
   }
 
   find(userId: string, eventId: string): Promise<EventRecord | null> {

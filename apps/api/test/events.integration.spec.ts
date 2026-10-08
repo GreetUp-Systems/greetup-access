@@ -1,5 +1,7 @@
 import "reflect-metadata";
 
+import { randomUUID } from "node:crypto";
+
 import { type ApiConfig } from "@access/config";
 import { PrismaClient, PrismaService, TenantContextService } from "@access/database";
 import { type INestApplication } from "@nestjs/common";
@@ -15,6 +17,9 @@ import {
   type PrivyStellarWallet,
   type VerifiedPrivyPrincipal,
 } from "../src/common/privy/privy.types";
+import { COVER_STORAGE } from "../src/common/storage/cover-storage.types";
+import { calendarDays, salesDate } from "../src/producers/producer-sales.types";
+import { FakeCoverStorage } from "./fake-cover-storage";
 import { stellarTestConfig } from "./test-stellar-config";
 import { ticketsTestConfig } from "./test-tickets-config";
 
@@ -117,6 +122,7 @@ class FakePrivyGateway implements Pick<
 }
 
 const inThirtyDays = () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000).toISOString();
+const saoPaulo = { code: 3550308, name: "São Paulo", uf: "SP" };
 
 describe("events integration", () => {
   let app: INestApplication;
@@ -124,11 +130,14 @@ describe("events integration", () => {
   let runtimePrisma: PrismaService;
   let tenantContext: TenantContextService;
   const privy = new FakePrivyGateway();
+  const covers = new FakeCoverStorage();
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({ imports: [AppModule.forRoot(config)] })
       .overrideProvider(PRIVY_GATEWAY)
       .useValue(privy)
+      .overrideProvider(COVER_STORAGE)
+      .useValue(covers)
       .compile();
 
     app = module.createNestApplication();
@@ -158,6 +167,7 @@ describe("events integration", () => {
   beforeEach(async () => {
     await cleanDatabase();
     privy.reset();
+    covers.reset();
   });
 
   afterAll(async () => {
@@ -175,6 +185,8 @@ describe("events integration", () => {
         request(server).post(path).set("Authorization", auth).send(body),
       patch: (path: string, body: object) =>
         request(server).patch(path).set("Authorization", auth).send(body),
+      put: (path: string, body: object) =>
+        request(server).put(path).set("Authorization", auth).send(body),
       delete: (path: string) => request(server).delete(path).set("Authorization", auth),
     };
   }
@@ -222,6 +234,8 @@ describe("events integration", () => {
     const created = await api(user)
       .post("/api/events", {
         name: "Festival Access",
+        category: "festivals",
+        cityCode: saoPaulo.code,
         startsAt: inThirtyDays(),
         capacity: 300,
         refundPolicy: "Reembolso integral até 7 dias antes do evento.",
@@ -229,6 +243,20 @@ describe("events integration", () => {
       })
       .expect(201);
     return created.body as { id: string; slug: string };
+  }
+
+  // The browser's part of the flow: ask for the URL, PUT the file to R2, confirm the key.
+  async function attachCover(
+    user: TestUser,
+    eventId: string,
+    contentType = "image/png",
+  ): Promise<string> {
+    const upload = await api(user)
+      .post(`/api/events/${eventId}/cover/upload-url`, { contentType })
+      .expect(200);
+    covers.upload(upload.body.key as string, contentType, 200_000);
+    await api(user).put(`/api/events/${eventId}/cover`, { key: upload.body.key }).expect(200);
+    return upload.body.key as string;
   }
 
   async function addTicketType(user: TestUser, eventId: string, quantity = 200): Promise<string> {
@@ -243,6 +271,7 @@ describe("events integration", () => {
     await makeReady(user, producerId);
     const event = await createEvent(user);
     await addTicketType(user, event.id);
+    await attachCover(user, event.id);
     await api(user).post(`/api/events/${event.id}/publish`).expect(200);
     return event;
   }
@@ -253,6 +282,7 @@ describe("events integration", () => {
     expect(event).toMatchObject({ slug: "festival-access", status: "draft", ticketTypes: [] });
 
     await addTicketType(users.a, event.id);
+    await attachCover(users.a, event.id);
     const blocked = await api(users.a).post(`/api/events/${event.id}/publish`).expect(409);
     expect(blocked.body).toMatchObject({ code: "producer_not_ready" });
 
@@ -268,6 +298,7 @@ describe("events integration", () => {
   it("serves published and cancelled events publicly and hides drafts", async () => {
     const event = await publishedEvent(users.a);
     const draft = await createEvent(users.a, { name: "Rascunho" });
+    const { coverKey } = await ownerPrisma.event.findUniqueOrThrow({ where: { id: event.id } });
 
     const response = await request(app.getHttpServer())
       .get(`/api/public/events/${event.slug}`)
@@ -276,7 +307,10 @@ describe("events integration", () => {
       slug: "festival-access",
       name: "Festival Access",
       description: null,
+      category: "festivals",
+      coverUrl: `https://covers.test/${coverKey}`,
       venueName: null,
+      city: saoPaulo,
       address: null,
       endsAt: null,
       startsAt: expect.any(String),
@@ -323,7 +357,15 @@ describe("events integration", () => {
       await api(users.a)
         .post(`/api/events/${id}/ticket-types`, { name: "X", priceCents: 1, quantity: 1 })
         .expect(404);
+      await api(users.a)
+        .post(`/api/events/${id}/cover/upload-url`, { contentType: "image/png" })
+        .expect(404);
+      await api(users.a).delete(`/api/events/${id}/cover`).expect(404);
     }
+    const coverOfB = (await ownerPrisma.event.findUniqueOrThrow({ where: { id: eventOfB.id } }))
+      .coverKey!;
+    await api(users.a).put(`/api/events/${eventOfB.id}/cover`, { key: coverOfB }).expect(404);
+    expect(covers.objects.has(coverOfB)).toBe(true);
     await expect(api(users.a).get("/api/events").expect(200)).resolves.toMatchObject({
       body: [],
     });
@@ -387,6 +429,7 @@ describe("events integration", () => {
     await makeReady(users.a, producerId);
     const event = await createEvent(users.a, { capacity: 300 });
     await addTicketType(users.a, event.id, 200);
+    await attachCover(users.a, event.id);
 
     await Promise.all([
       api(users.a).post(`/api/events/${event.id}/publish`),
@@ -437,6 +480,7 @@ describe("events integration", () => {
     await makeReady(users.a, producerId);
     const event = await createEvent(users.a);
     const ticketTypeId = await addTicketType(users.a, event.id);
+    await attachCover(users.a, event.id);
     await api(users.a).post(`/api/events/${event.id}/publish`).expect(200);
 
     const refused = await api(users.a).delete(`/api/events/${event.id}`).expect(409);
@@ -505,5 +549,297 @@ describe("events integration", () => {
         }),
       ).rejects.toThrow();
     }
+  });
+
+  it("gives the private view the minimum ticket price", async () => {
+    await createProducer(users.a);
+    const event = await createEvent(users.a);
+
+    const view = await api(users.a).get(`/api/events/${event.id}`).expect(200);
+    expect(view.body.ticketMinPriceCents).toBe(6_000);
+  });
+
+  it("counts confirmed and issued sales per event and in the panel, without buyer data", async () => {
+    const eventA = await publishedEvent(users.a);
+    const eventB = await publishedEvent(users.b);
+    const [typeA, typeB] = await Promise.all(
+      [eventA, eventB].map((event) =>
+        ownerPrisma.ticketType.findFirstOrThrow({ where: { eventId: event.id } }),
+      ),
+    );
+    const buyer = await ownerPrisma.user.create({
+      data: { privyUserId: "did:privy:sales-buyer", email: "sales-buyer@example.com" },
+    });
+
+    // Brasília has no daylight saving time: -03:00 all year.
+    const days = calendarDays(salesDate(new Date()), 11);
+    const today = days[10]!;
+    const yesterday = days[9]!;
+    const dayBefore = days[8]!;
+    const tenDaysAgo = days[0]!;
+    const at = (date: string, time: string) => new Date(`${date}T${time}-03:00`);
+    const sale = (
+      ticketType: typeof typeA,
+      status: "AWAITING_PAYMENT" | "PAYMENT_CONFIRMED" | "TICKET_ISSUED" | "PAYMENT_FAILED",
+      quantity: number,
+      confirmedAt: Date | null,
+    ) =>
+      ownerPrisma.purchase.create({
+        data: {
+          buyerUserId: buyer.id,
+          producerId: ticketType!.producerId,
+          eventId: ticketType!.eventId,
+          ticketTypeId: ticketType!.id,
+          quantity,
+          unitPriceCents: 8_000,
+          subtotalCents: quantity * 8_000,
+          serviceFeeCents: 500,
+          totalCents: quantity * 8_000 + 500,
+          idempotencyKey: randomUUID(),
+          status,
+          paymentConfirmedAt: confirmedAt,
+        },
+      });
+    await sale(typeA, "PAYMENT_CONFIRMED", 2, at(yesterday, "00:30:00"));
+    // 02:30 UTC of yesterday, but still the day before in Brasília.
+    await sale(typeA, "TICKET_ISSUED", 1, at(dayBefore, "23:30:00"));
+    await sale(typeA, "TICKET_ISSUED", 1, at(tenDaysAgo, "12:00:00"));
+    await sale(typeA, "AWAITING_PAYMENT", 3, null);
+    await sale(typeA, "PAYMENT_FAILED", 4, null);
+    await sale(typeB, "PAYMENT_CONFIRMED", 5, at(yesterday, "10:00:00"));
+
+    const listA = await api(users.a).get("/api/events").expect(200);
+    expect(listA.body).toEqual([
+      expect.objectContaining({ id: eventA.id, soldTickets: 4, salesCents: 32_000 }),
+    ]);
+    const listB = await api(users.b).get("/api/events").expect(200);
+    expect(listB.body[0]).toMatchObject({ soldTickets: 5, salesCents: 40_000 });
+
+    const week = await api(users.a).get("/api/producers/me/sales?period=7d").expect(200);
+    expect(week.body).toMatchObject({
+      period: "7d",
+      tickets: 3,
+      salesCents: 24_000,
+      previous: { tickets: 1, salesCents: 8_000 },
+    });
+    expect(week.body.daily).toHaveLength(7);
+    expect(week.body.daily.slice(-3)).toEqual([
+      { date: dayBefore, tickets: 1, salesCents: 8_000 },
+      { date: yesterday, tickets: 2, salesCents: 16_000 },
+      { date: today, tickets: 0, salesCents: 0 },
+    ]);
+    const month = await api(users.a).get("/api/producers/me/sales?period=30d").expect(200);
+    expect(month.body).toMatchObject({ tickets: 4, previous: { tickets: 0 } });
+    expect(month.body.daily).toHaveLength(30);
+
+    const recent = await api(users.a).get("/api/producers/me/sales/recent?limit=2").expect(200);
+    expect(recent.body).toEqual([
+      {
+        eventName: "Festival Access",
+        ticketTypeName: "Pista",
+        quantity: 2,
+        subtotalCents: 16_000,
+        confirmedAt: at(yesterday, "00:30:00").toISOString(),
+      },
+      {
+        eventName: "Festival Access",
+        ticketTypeName: "Pista",
+        quantity: 1,
+        subtotalCents: 8_000,
+        confirmedAt: at(dayBefore, "23:30:00").toISOString(),
+      },
+    ]);
+    const all = await api(users.a).get("/api/producers/me/sales/recent").expect(200);
+    expect(all.body).toHaveLength(3);
+    expect(JSON.stringify(all.body)).not.toMatch(new RegExp(`${buyer.id}|sales-buyer`));
+
+    for (const path of [
+      "/api/producers/me/sales",
+      "/api/producers/me/sales?period=1y",
+      "/api/producers/me/sales/recent?limit=0",
+      "/api/producers/me/sales/recent?limit=21",
+    ]) {
+      const invalid = await api(users.a).get(path).expect(400);
+      expect(invalid.body).toMatchObject({ code: "invalid_sales_query" });
+    }
+  });
+
+  it("searches IBGE cities without accents, by any word, ten at most in alphabetical order", async () => {
+    await api(users.a).post("/api/auth/bootstrap").expect(200);
+    const search = (query: string) =>
+      api(users.a)
+        .get(`/api/cities?query=${encodeURIComponent(query)}`)
+        .expect(200);
+
+    const accented = await search("São Paulo");
+    const plain = await search("sao paulo");
+    expect(accented.body).toEqual(plain.body);
+    expect(accented.body[0]).toEqual(saoPaulo);
+    expect(accented.body.map((city: { name: string }) => city.name)).toEqual([
+      "São Paulo",
+      "São Paulo das Missões",
+      "São Paulo de Olivença",
+      "São Paulo do Potengi",
+    ]);
+
+    const byWord = await search("olivenca");
+    expect(byWord.body).toContainEqual({ code: 1303908, name: "São Paulo de Olivença", uf: "AM" });
+    const afterApostrophe = await search("oeste");
+    expect(afterApostrophe.body).toContainEqual({
+      code: 1100015,
+      name: "Alta Floresta D'Oeste",
+      uf: "RO",
+    });
+    const afterHyphen = await search("mirim");
+    expect(afterHyphen.body).toContainEqual({ code: 1100106, name: "Guajará-Mirim", uf: "RO" });
+
+    const many = await search("sa");
+    expect(many.body).toHaveLength(10);
+    const names = many.body.map((city: { name: string }) =>
+      city.name.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase(),
+    );
+    expect(names).toEqual([...names].sort());
+
+    const short = await api(users.a).get("/api/cities?query=s").expect(400);
+    expect(short.body).toMatchObject({ code: "invalid_city_query" });
+    await expect(search("sa%")).resolves.toMatchObject({ body: [] });
+    await request(app.getHttpServer()).get("/api/cities?query=sao").expect(401);
+  });
+
+  it("stores the category and the IBGE city, and refuses a code outside the base", async () => {
+    await createProducer(users.a);
+    const created = await api(users.a)
+      .post("/api/events", {
+        name: "Stand-up",
+        category: "standup",
+        cityCode: 3304557,
+        startsAt: inThirtyDays(),
+        capacity: 100,
+      })
+      .expect(201);
+    expect(created.body).toMatchObject({
+      category: "standup",
+      city: { code: 3304557, name: "Rio de Janeiro", uf: "RJ" },
+      coverUrl: null,
+    });
+
+    const updated = await api(users.a)
+      .patch(`/api/events/${created.body.id}`, { category: "theater", cityCode: saoPaulo.code })
+      .expect(200);
+    expect(updated.body).toMatchObject({ category: "theater", city: saoPaulo });
+    const listed = await api(users.a).get("/api/events").expect(200);
+    expect(listed.body[0]).toMatchObject({ category: "theater", city: saoPaulo, coverUrl: null });
+
+    for (const body of [{ cityCode: 1_234_567 }, { cityCode: null }, { category: "rodeio" }]) {
+      const refused = await api(users.a).patch(`/api/events/${created.body.id}`, body).expect(400);
+      expect(refused.body).toMatchObject({ code: "invalid_event", fields: Object.keys(body) });
+    }
+  });
+
+  it("publishes only with a cover, a category and a city", async () => {
+    const producerId = await createProducer(users.a);
+    await makeReady(users.a, producerId);
+    const bare = await api(users.a)
+      .post("/api/events", { name: "Sem capa", startsAt: inThirtyDays(), capacity: 300 })
+      .expect(201);
+    expect(bare.body).toMatchObject({ category: null, city: null, coverUrl: null });
+    await addTicketType(users.a, bare.body.id);
+
+    const missingAll = await api(users.a).post(`/api/events/${bare.body.id}/publish`).expect(422);
+    expect(missingAll.body).toMatchObject({
+      code: "event_not_publishable",
+      missing: ["cover", "category", "city"],
+    });
+
+    await api(users.a)
+      .patch(`/api/events/${bare.body.id}`, { category: "shows", cityCode: saoPaulo.code })
+      .expect(200);
+    const missingCover = await api(users.a).post(`/api/events/${bare.body.id}/publish`).expect(422);
+    expect(missingCover.body).toMatchObject({ missing: ["cover"] });
+
+    await attachCover(users.a, bare.body.id);
+    await api(users.a).post(`/api/events/${bare.body.id}/publish`).expect(200);
+  });
+
+  it("confirms only a valid upload of the event's own key", async () => {
+    await createProducer(users.a);
+    const event = await createEvent(users.a);
+    const other = await createEvent(users.a, { name: "Outro" });
+
+    const upload = await api(users.a)
+      .post(`/api/events/${event.id}/cover/upload-url`, { contentType: "image/jpeg" })
+      .expect(200);
+    expect(upload.body).toEqual({
+      uploadUrl: expect.stringContaining(upload.body.key),
+      key: expect.stringMatching(new RegExp(`^events/${event.id}/[0-9a-f-]{36}\\.jpg$`)),
+      expiresAt: expect.any(String),
+    });
+    expect(covers.presigned).toEqual([
+      { key: upload.body.key, contentType: "image/jpeg", expiresInSeconds: 600 },
+    ]);
+    const invalidRequest = await api(users.a)
+      .post(`/api/events/${event.id}/cover/upload-url`, { contentType: "image/gif" })
+      .expect(400);
+    expect(invalidRequest.body).toMatchObject({ code: "invalid_cover_request" });
+
+    // Never uploaded.
+    await api(users.a).put(`/api/events/${event.id}/cover`, { key: upload.body.key }).expect(422);
+
+    // Uploaded with a type other than the signed one, or too large: refused and deleted.
+    covers.upload(upload.body.key, "image/png", 1_000);
+    const wrongType = await api(users.a)
+      .put(`/api/events/${event.id}/cover`, { key: upload.body.key })
+      .expect(422);
+    expect(wrongType.body).toMatchObject({ code: "invalid_cover" });
+    expect(covers.objects.has(upload.body.key)).toBe(false);
+    covers.upload(upload.body.key, "image/jpeg", 5 * 1024 * 1024 + 1);
+    await api(users.a).put(`/api/events/${event.id}/cover`, { key: upload.body.key }).expect(422);
+    expect(covers.objects.has(upload.body.key)).toBe(false);
+
+    // The key of another event is refused without touching that event's object.
+    const otherKey = await attachCover(users.a, other.id);
+    await api(users.a).put(`/api/events/${event.id}/cover`, { key: otherKey }).expect(422);
+    expect(covers.objects.has(otherKey)).toBe(true);
+
+    const stored = await ownerPrisma.event.findUniqueOrThrow({ where: { id: event.id } });
+    expect(stored.coverKey).toBeNull();
+  });
+
+  it("replaces and removes covers, deleting the old object, and keeps a published one", async () => {
+    const producerId = await createProducer(users.a);
+    await makeReady(users.a, producerId);
+    const event = await createEvent(users.a);
+    await addTicketType(users.a, event.id);
+
+    const first = await attachCover(users.a, event.id, "image/jpeg");
+    const second = await attachCover(users.a, event.id, "image/webp");
+    expect(covers.objects.has(first)).toBe(false);
+    const current = await api(users.a).get(`/api/events/${event.id}`).expect(200);
+    expect(current.body.coverUrl).toBe(`https://covers.test/${second}`);
+
+    // Confirming the current key again changes nothing.
+    await api(users.a).put(`/api/events/${event.id}/cover`, { key: second }).expect(200);
+    expect(covers.objects.has(second)).toBe(true);
+
+    await api(users.a).delete(`/api/events/${event.id}/cover`).expect(204);
+    expect(covers.objects.has(second)).toBe(false);
+    await api(users.a).delete(`/api/events/${event.id}/cover`).expect(204);
+    await expect(api(users.a).get(`/api/events/${event.id}`)).resolves.toMatchObject({
+      body: { coverUrl: null },
+    });
+
+    const third = await attachCover(users.a, event.id);
+    await api(users.a).post(`/api/events/${event.id}/publish`).expect(200);
+    const kept = await api(users.a).delete(`/api/events/${event.id}/cover`).expect(409);
+    expect(kept.body).toMatchObject({ code: "event_cover_required" });
+    expect(covers.objects.has(third)).toBe(true);
+
+    // A published event can still swap its cover.
+    const fourth = await attachCover(users.a, event.id);
+    expect(covers.objects.has(third)).toBe(false);
+    const publicView = await request(app.getHttpServer())
+      .get(`/api/public/events/${event.slug}`)
+      .expect(200);
+    expect(publicView.body.coverUrl).toBe(`https://covers.test/${fourth}`);
   });
 });

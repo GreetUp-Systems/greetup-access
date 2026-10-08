@@ -1,11 +1,17 @@
 import { z } from "zod";
 
+import { coverContentTypes } from "./event-cover";
+import { eventCategories } from "./events.types";
+
 const maxInteger = 2_147_483_647;
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 const positiveInteger = z.number().int().min(1).max(maxInteger);
 const startsAt = z.string().datetime({ offset: true });
 const endsAt = z.string().datetime({ offset: true });
+const category = z.enum(eventCategories);
+// IBGE municipality codes have seven digits.
+const cityCode = z.number().int().min(1_000_000).max(9_999_999);
 
 function hasAtLeastOneField(value: Record<string, unknown>): boolean {
   return Object.keys(value).length > 0;
@@ -15,7 +21,9 @@ export const createEventSchema = z
   .object({
     name: text(120),
     description: text(5_000).optional(),
+    category: category.optional(),
     venueName: text(120).optional(),
+    cityCode: cityCode.optional(),
     address: text(200).optional(),
     startsAt,
     endsAt: endsAt.optional(),
@@ -28,7 +36,10 @@ export const updateEventSchema = z
   .object({
     name: text(120).optional(),
     description: text(5_000).nullable().optional(),
+    // Category and city are replaced, never cleared: a published event keeps both.
+    category: category.optional(),
     venueName: text(120).nullable().optional(),
+    cityCode: cityCode.optional(),
     address: text(200).nullable().optional(),
     startsAt: startsAt.optional(),
     endsAt: endsAt.nullable().optional(),
@@ -62,6 +73,10 @@ export const listEventsQuerySchema = z
     status: z.enum(["draft", "published", "cancelled"]).optional(),
   })
   .strict();
+
+export const coverUploadSchema = z.object({ contentType: z.enum(coverContentTypes) }).strict();
+
+export const setCoverSchema = z.object({ key: z.string().min(1).max(200) }).strict();
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;

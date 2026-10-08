@@ -12,6 +12,7 @@ const ticketInclude = {
       endsAt: true,
       venueName: true,
       address: true,
+      coverKey: true,
     },
   },
   ticketType: { select: { id: true, name: true } },

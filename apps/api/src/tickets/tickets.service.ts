@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 
 import { type AuthenticatedPrincipal } from "../auth/auth.types";
+import { COVER_STORAGE, type CoverStorage } from "../common/storage/cover-storage.types";
 import { UsersRepository } from "../users/users.repository";
 import { TicketQrService } from "./ticket-qr.service";
 import { type OwnedTicketRecord, TicketsRepository } from "./tickets.repository";
@@ -24,6 +25,7 @@ export class TicketsService {
     private readonly tickets: TicketsRepository,
     private readonly qr: TicketQrService,
     @Inject(TICKETS_CONFIG) private readonly config: TicketsConfig,
+    @Inject(COVER_STORAGE) private readonly coverStorage: CoverStorage | null,
   ) {}
 
   async list(principal: AuthenticatedPrincipal): Promise<TicketListView> {
@@ -63,6 +65,10 @@ export class TicketsService {
         endsAt: ticket.event.endsAt?.toISOString() ?? null,
         venueName: ticket.event.venueName,
         address: ticket.event.address,
+        coverUrl:
+          ticket.event.coverKey === null || this.coverStorage === null
+            ? null
+            : this.coverStorage.publicUrl(ticket.event.coverKey),
       },
       ticketType: { id: ticket.ticketType.id, name: ticket.ticketType.name },
       purchaseId: ticket.purchaseId,

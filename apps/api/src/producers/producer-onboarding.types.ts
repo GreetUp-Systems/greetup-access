@@ -1,4 +1,17 @@
-import { type BlindPayKycStatusValue, type BlindPayRfi } from "../common/blindpay/blindpay.types";
+import {
+  type BlindPayCustomerDraft,
+  type BlindPayCustomerStatus,
+  type BlindPayKycStatusValue,
+  type BlindPayKycWarning,
+  type BlindPayRfi,
+} from "../common/blindpay/blindpay.types";
+
+/** The current attempt read live from BlindPay; nothing of it is stored or logged (SPEC-015 P3). */
+export interface CustomerAttemptView {
+  status: BlindPayCustomerStatus;
+  reasons: BlindPayKycWarning[];
+  draft: BlindPayCustomerDraft;
+}
 
 export interface CreatedCustomerView {
   id: string;

@@ -44,6 +44,92 @@ describe("BlindPayHttpGateway", () => {
     });
   });
 
+  it("reads the current attempt: open KYC warnings and the text fields, never files or fraud signals", async () => {
+    jest.spyOn(global, "fetch").mockResolvedValueOnce(
+      json({
+        id: "re_test",
+        type: "individual",
+        kyc_type: "standard",
+        kyc_status: "rejected",
+        first_name: "Maria",
+        last_name: "Silva",
+        date_of_birth: "1990-05-17T00:00:00.000Z",
+        tax_id: "12345678909",
+        phone_number: "+5511999999999",
+        address_line_1: "Rua Augusta, 100",
+        address_line_2: null,
+        city: "São Paulo",
+        state_province_region: "SP",
+        postal_code: "01304-000",
+        country: "BR",
+        id_doc_country: "BR",
+        id_doc_type: "ID_CARD",
+        id_doc_front_file: "https://files.blindpay.test/front.png",
+        id_doc_back_file: "https://files.blindpay.test/back.png",
+        selfie_file: "https://files.blindpay.test/selfie.png",
+        proof_of_address_doc_file: "https://files.blindpay.test/address.pdf",
+        kyc_warnings: [
+          {
+            code: "BIRTH_DATE_MISMATCH",
+            message: "Mismatch between supplied birth date and extracted birth date.",
+            resolution_status: "UNRESOLVED",
+            warning_id: "w1",
+          },
+          { code: "FACE_MISMATCH", message: "Face mismatch.", resolution_status: "RESOLVED" },
+          { code: null, message: "Without a code." },
+        ],
+        fraud_warnings: [{ id: "UC114", name: "Datacenter proxy", operation: "+", score: 10 }],
+      }),
+    );
+
+    const attempt = await gateway.getCustomerAttempt("re_test");
+
+    expect(attempt).toEqual({
+      status: "rejected",
+      warnings: [
+        {
+          code: "BIRTH_DATE_MISMATCH",
+          message: "Mismatch between supplied birth date and extracted birth date.",
+        },
+      ],
+      draft: {
+        firstName: "Maria",
+        lastName: "Silva",
+        dateOfBirth: "1990-05-17",
+        taxId: "12345678909",
+        phoneNumber: "+5511999999999",
+        addressLine1: "Rua Augusta, 100",
+        addressLine2: null,
+        city: "São Paulo",
+        stateProvinceRegion: "SP",
+        postalCode: "01304-000",
+        country: "BR",
+        idDocCountry: "BR",
+        idDocType: "ID_CARD",
+      },
+    });
+    expect(JSON.stringify(attempt)).not.toMatch(/files\.blindpay|UC114|proxy/);
+  });
+
+  it("reads an attempt without warnings and refuses an unknown status", async () => {
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        json({ id: "re_test", kyc_status: "pending_review", kyc_warnings: null }),
+      )
+      .mockResolvedValueOnce(json({ id: "re_test", kyc_status: "mystery" }));
+
+    await expect(gateway.getCustomerAttempt("re_test")).resolves.toMatchObject({
+      status: "pending_review",
+      warnings: [],
+      draft: { firstName: null, dateOfBirth: null, idDocType: null },
+    });
+    await expect(gateway.getCustomerAttempt("re_test")).rejects.toMatchObject({
+      operation: "get_customer_invalid_response",
+      retryable: true,
+    });
+  });
+
   it("treats an unexpected success response as an uncertain outcome", async () => {
     jest
       .spyOn(global, "fetch")

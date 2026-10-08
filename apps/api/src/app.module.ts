@@ -5,9 +5,11 @@ import { DynamicModule, Module } from "@nestjs/common";
 
 import { AccountsModule } from "./accounts/accounts.module";
 import { AuthModule } from "./auth/auth.module";
+import { CitiesModule } from "./cities/cities.module";
 import { BlindPayModule } from "./common/blindpay/blindpay.module";
 import { PrivyModule } from "./common/privy/privy.module";
 import { StellarModule } from "./common/stellar/stellar.module";
+import { CoverStorageModule } from "./common/storage/cover-storage.module";
 import { EventsModule } from "./events/events.module";
 import { HealthModule } from "./health/health.module";
 import { ProducersModule } from "./producers/producers.module";
@@ -25,9 +27,11 @@ export class AppModule {
         BlindPayModule.forRoot(config),
         PrivyModule.forRoot(config),
         StellarModule.forRoot(config),
+        CoverStorageModule.forRoot(config),
         AuthModule,
         AccountsModule,
         ProducersModule,
+        CitiesModule,
         EventsModule.forRoot(config),
         PurchasesModule.forRoot(config),
         TicketsModule.forRoot(config),

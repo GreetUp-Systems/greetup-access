@@ -2,6 +2,49 @@ export type BlindPayCustomerTypeValue = "individual" | "business";
 export type BlindPayKycStatusValue =
   "verifying" | "approved" | "rejected" | "compliance_request" | "approved_rfi";
 
+/** Every `kyc_status` the customer read can carry, including the ones the Access never sets. */
+export const blindPayCustomerStatuses = [
+  "verifying",
+  "approved",
+  "rejected",
+  "deprecated",
+  "pending_review",
+  "awaiting_contract",
+  "compliance_request",
+  "approved_rfi",
+] as const;
+export type BlindPayCustomerStatus = (typeof blindPayCustomerStatuses)[number];
+
+/** An AiPrise warning code with the provider's English message (SPEC-015 P3). */
+export interface BlindPayKycWarning {
+  code: string;
+  message: string;
+}
+
+/** The data of an attempt, without any file, to fill the next one (SPEC-015 P4). */
+export interface BlindPayCustomerDraft {
+  firstName: string | null;
+  lastName: string | null;
+  /** YYYY-MM-DD. */
+  dateOfBirth: string | null;
+  taxId: string | null;
+  phoneNumber: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  stateProvinceRegion: string | null;
+  postalCode: string | null;
+  country: string | null;
+  idDocCountry: string | null;
+  idDocType: "PASSPORT" | "ID_CARD" | "DRIVERS" | null;
+}
+
+export interface BlindPayCustomerAttempt {
+  status: BlindPayCustomerStatus;
+  warnings: BlindPayKycWarning[];
+  draft: BlindPayCustomerDraft;
+}
+
 export interface BlindPayTermsSession {
   url: string;
 }
@@ -85,6 +128,7 @@ export interface BlindPayGateway {
     idempotencyKey: string,
   ): Promise<BlindPayCreatedCustomer>;
   getCustomerKycStatus(customerId: string): Promise<BlindPayKycStatusValue>;
+  getCustomerAttempt(customerId: string): Promise<BlindPayCustomerAttempt>;
   getOpenRfi(customerId: string): Promise<BlindPayRfi | null>;
   submitRfi(customerId: string, answers: BlindPayRfiAnswers, idempotencyKey: string): Promise<void>;
   registerExternalStellarWallet(

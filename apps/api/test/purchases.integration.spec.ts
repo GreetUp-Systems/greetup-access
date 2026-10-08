@@ -159,6 +159,9 @@ class FakeBlindPayGateway implements BlindPayGateway {
   async getCustomerKycStatus(): Promise<never> {
     throw new Error("not used");
   }
+  async getCustomerAttempt(): Promise<never> {
+    throw new Error("not used");
+  }
   async getOpenRfi(): Promise<never> {
     throw new Error("not used");
   }
@@ -278,11 +281,22 @@ describe("purchases integration", () => {
 
   async function publishedTicketType(quantity: number, priceCents = 8_000): Promise<string> {
     const event = await api(users.producer)
-      .post("/api/events", { name: "Show", startsAt: inThirtyDays(), capacity: 500 })
+      .post("/api/events", {
+        name: "Show",
+        category: "shows",
+        cityCode: 3550308,
+        startsAt: inThirtyDays(),
+        capacity: 500,
+      })
       .expect(201);
     const ticketType = await api(users.producer)
       .post(`/api/events/${event.body.id}/ticket-types`, { name: "Pista", priceCents, quantity })
       .expect(201);
+    // The cover flow is covered by the events suite; here only its result matters.
+    await ownerPrisma.event.update({
+      where: { id: event.body.id },
+      data: { coverKey: `events/${event.body.id}/${randomUUID()}.png` },
+    });
     await api(users.producer).post(`/api/events/${event.body.id}/publish`).expect(200);
     return ticketType.body.id as string;
   }
