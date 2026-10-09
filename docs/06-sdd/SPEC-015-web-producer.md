@@ -2,8 +2,8 @@
 
 > **Status:** aprovada em 07/10/2026
 >
-> **Versão:** 1.3 (15B sem busca ⌘K; 1.2: motivo da recusa só pelos `kyc_warnings`, regras da
-> capa, erros do backend)
+> **Versão:** 1.4 (15B: estados do sistema, Eventos e Perfil aprovados no Figma; 1.3: sem busca
+> ⌘K)
 >
 > **Atualizada em:** 08/10/2026
 >
@@ -44,27 +44,27 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 
 ## 3. Decisões desta SPEC (06/10/2026)
 
-| #   | Decisão                                                                                                                                                                                                                                                             |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| N1  | Duas camadas (D-29): esta SPEC é o sistema do produtor; o site público é a SPEC-016. Só aparece o que existe; Check-in entra com a SPEC-009.                                                                                                                        |
-| N2  | Desktop: barra lateral flutuante (Sidebar do shadcn, `variant="floating"`, `collapsible="icon"`, ⌘B), com Painel, Eventos e Recebimento e a conta no rodapé. Celular: Barra de abas Painel · Eventos · Recebimento e o avatar no topo, que abre a conta numa folha. |
-| N3  | O menu da conta tem Perfil do produtor, Meus ingressos, Ir para o site e Sair, no desktop e no celular. Meus ingressos e Ir para o site levam ao site público.                                                                                                      |
-| N4  | Sem busca ⌘K nem paleta de comandos: a navegação tem três itens e a lista de Eventos tem a própria busca (08/10/2026).                                                                                                                                              |
-| N5  | O sistema exige sessão e perfil de produtor. Sem sessão, a identificação da SPEC-014; sem perfil, Criar perfil, numa tela focada (logo e "Voltar ao site", sem a navegação). "Começar a vender", no site, leva até aqui.                                            |
-| N6  | O Painel tem ingressos vendidos e vendas com tendência contra o período anterior, o gráfico de vendas por dia e as vendas recentes, sem dados de quem comprou (15A). Gráficos e comparações além disso ficam para a SPEC-012.                                       |
-| N7  | Recebimento é item da navegação. No celular, a raiz da aba mostra o estado da verificação (em análise, pendência, recusado, liberando, pronto, erro); termos, dados e documentos abrem como páginas internas, com voltar e sem abas.                                |
-| N8  | O logo acompanha o tema: a palavra "Access" usa `text/primary` (no Figma, ajustado; no código, entra na 15B). Hoje ela é branca fixa e some no modo claro.                                                                                                          |
-| P1  | Só pessoa física (KYC Standard) no piloto. Empresa (KYB) vem antes da abertura ao mercado (07/10/2026).                                                                                                                                                             |
-| P2  | O comprovante de endereço fica fora do formulário (opcional no KYC Standard); se a BlindPay pedir, chega como pedido de informações (RFI).                                                                                                                          |
-| P3  | O motivo da recusa é lido na hora da BlindPay, como o RFI, e não é gravado nem logado: só os `kyc_warnings` não resolvidos, com código e mensagem. Os `fraud_warnings` são sinais do modelo de risco, não motivos, e não saem da API (08/10/2026).                  |
-| P4  | "Corrigir e enviar de novo" reabre Seus dados com os dados da tentativa recusada, lidos na hora da BlindPay; os documentos são enviados de novo.                                                                                                                    |
-| P5  | O detalhe de taxas ao definir o preço (D-27) fica para a SPEC financeira. O preço mostra o mínimo e "A taxa de serviço é paga por quem compra, por cima do preço."                                                                                                  |
-| P6  | Cancelar e apagar evento, e apagar tipo de ingresso, ficam fora: o cancelamento ainda não invalida ingressos nem avisa compradores.                                                                                                                                 |
-| P7  | Avisos de vendas pausadas e de pedido de informações no Painel, calculados do estado que a API já devolve; sem e-mail.                                                                                                                                              |
-| P8  | Componentes novos no Design System (§5.3); tokens novos `size/sidebar` (256), `size/sidebar-collapsed` (72), `size/avatar-s` (32) e `size/avatar-m` (40).                                                                                                           |
-| E1  | Capa do evento em 16:9, enviada do navegador direto ao Cloudflare R2 por URL assinada (D-30): JPG, PNG ou WebP até 5 MB; fora de 16:9, a imagem é cortada no centro na exibição. Obrigatória para publicar (07/10/2026).                                            |
-| E2  | Categoria do evento, de uma lista fixa: Shows, Festas, Teatro, Stand-up, Esportes, Festivais, Infantil, Cursos e Gastronomia. Obrigatória para publicar.                                                                                                            |
-| E3  | Cidade do evento escolhida da base do IBGE (código, nome e UF), separada do endereço, que fica com rua e número. Obrigatória para publicar.                                                                                                                         |
+| #   | Decisão                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| N1  | Duas camadas (D-29): esta SPEC é o sistema do produtor; o site público é a SPEC-016. Só aparece o que existe; Check-in entra com a SPEC-009.                                                                                                                                                                                                                                                                |
+| N2  | Desktop: barra lateral flutuante (Sidebar do shadcn, `variant="floating"`, `collapsible="icon"`, ⌘B), com Painel, Eventos e Recebimento e a conta no rodapé. Celular: Barra de abas Painel · Eventos · Recebimento e o avatar no topo, que abre a conta numa folha.                                                                                                                                         |
+| N3  | O menu da conta tem Perfil do produtor, Meus ingressos, Ir para o site e Sair, no desktop e no celular. Meus ingressos e Ir para o site levam ao site público.                                                                                                                                                                                                                                              |
+| N4  | Sem busca ⌘K nem paleta de comandos: a navegação tem três itens e a lista de Eventos tem a própria busca (08/10/2026).                                                                                                                                                                                                                                                                                      |
+| N5  | O sistema exige sessão e perfil de produtor. Sem sessão, a identificação da SPEC-014; sem perfil, Criar perfil, numa tela focada (logo e "Voltar ao site", sem a navegação). "Começar a vender", no site, leva até aqui.                                                                                                                                                                                    |
+| N6  | O Painel tem ingressos vendidos e vendas com tendência contra o período anterior, o gráfico de vendas por dia e as vendas recentes, sem dados de quem comprou (15A). Gráficos e comparações além disso ficam para a SPEC-012.                                                                                                                                                                               |
+| N7  | Recebimento é item da navegação. No celular, a raiz da aba mostra o estado da verificação (em análise, pendência, recusado, liberando, pronto, erro); termos, dados e documentos abrem como páginas internas, com voltar e sem abas.                                                                                                                                                                        |
+| N8  | O logo acompanha o tema: a palavra "Access" usa `text/primary` (no Figma, ajustado; no código, entra na 15B). Hoje ela é branca fixa e some no modo claro.                                                                                                                                                                                                                                                  |
+| P1  | Só pessoa física (KYC Standard) no piloto. Empresa (KYB) vem antes da abertura ao mercado (07/10/2026).                                                                                                                                                                                                                                                                                                     |
+| P2  | O comprovante de endereço fica fora do formulário (opcional no KYC Standard); se a BlindPay pedir, chega como pedido de informações (RFI).                                                                                                                                                                                                                                                                  |
+| P3  | O motivo da recusa é lido na hora da BlindPay, como o RFI, e não é gravado nem logado: só os `kyc_warnings` não resolvidos, com código e mensagem. Os `fraud_warnings` são sinais do modelo de risco, não motivos, e não saem da API (08/10/2026).                                                                                                                                                          |
+| P4  | "Corrigir e enviar de novo" reabre Seus dados com os dados da tentativa recusada, lidos na hora da BlindPay; os documentos são enviados de novo.                                                                                                                                                                                                                                                            |
+| P5  | O detalhe de taxas ao definir o preço (D-27) fica para a SPEC financeira. O preço mostra o mínimo e "A taxa de serviço é paga por quem compra, por cima do preço."                                                                                                                                                                                                                                          |
+| P6  | Cancelar e apagar evento, e apagar tipo de ingresso, ficam fora: o cancelamento ainda não invalida ingressos nem avisa compradores.                                                                                                                                                                                                                                                                         |
+| P7  | Avisos de vendas pausadas e de pedido de informações no Painel, calculados do estado que a API já devolve; sem e-mail.                                                                                                                                                                                                                                                                                      |
+| P8  | Componentes novos no Design System (§5.3); tokens novos `size/sidebar` (256), `size/sidebar-collapsed` (72), `size/avatar-s` (32), `size/avatar-m` (40) e, na 15B, as medidas fixas das telas: `size/column-s`, `size/column-m`, `size/column-l`, `size/column-xl`, `size/search-field`, `size/section-aside`, `size/menu`, `size/empty-text`, `size/chart`, `size/chart-compact` e `size/dashboard-aside`. |
+| E1  | Capa do evento em 16:9, enviada do navegador direto ao Cloudflare R2 por URL assinada (D-30): JPG, PNG ou WebP até 5 MB; fora de 16:9, a imagem é cortada no centro na exibição. Obrigatória para publicar (07/10/2026).                                                                                                                                                                                    |
+| E2  | Categoria do evento, de uma lista fixa: Shows, Festas, Teatro, Stand-up, Esportes, Festivais, Infantil, Cursos e Gastronomia. Obrigatória para publicar.                                                                                                                                                                                                                                                    |
+| E3  | Cidade do evento escolhida da base do IBGE (código, nome e UF), separada do endereço, que fica com rua e número. Obrigatória para publicar.                                                                                                                                                                                                                                                                 |
 
 ## 4. Entregas
 
@@ -83,18 +83,28 @@ Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. Ord
 
 ### 5.1 Esqueleto e Painel (página "App")
 
-| Tela                                      | Rota                | Celular    | Desktop     |
-| ----------------------------------------- | ------------------- | ---------- | ----------- |
-| Painel                                    | `/producer`         | `291:2431` | `284:1571`  |
-| Painel no modo claro                      | `/producer`         | —          | `287:11368` |
-| Menu da conta (desktop) / folha (celular) | sobreposição        | `293:2539` | `288:11539` |
-| Barra recolhida                           | —                   | —          | `288:11914` |
-| Configuração pendente                     | `/producer`         | `298:4040` | `298:3589`  |
-| Primeiro evento (pronto, sem eventos)     | `/producer`         | `299:4266` | `299:3865`  |
-| Vendas pausadas                           | `/producer`         | `297:3249` | `297:2973`  |
-| Pedido de informações                     | `/producer`         | `297:3789` | `297:3517`  |
-| Eventos                                   | `/producer/events`  | `307:3341` | `307:2983`  |
-| Perfil do produtor                        | `/producer/profile` | `300:4356` | `300:4078`  |
+| Tela                                      | Rota                | Celular     | Desktop     |
+| ----------------------------------------- | ------------------- | ----------- | ----------- |
+| Painel                                    | `/producer`         | `291:2431`  | `284:1571`  |
+| Painel no modo claro                      | `/producer`         | —           | `287:11368` |
+| Menu da conta (desktop) / folha (celular) | sobreposição        | `293:2539`  | `288:11539` |
+| Barra recolhida                           | —                   | —           | `288:11914` |
+| Configuração pendente                     | `/producer`         | `298:4040`  | `298:3589`  |
+| Primeiro evento (pronto, sem eventos)     | `/producer`         | `299:4266`  | `299:3865`  |
+| Vendas pausadas                           | `/producer`         | `297:3249`  | `297:2973`  |
+| Pedido de informações                     | `/producer`         | `297:3789`  | `297:3517`  |
+| Período do Painel (menu)                  | sobreposição        | —           | `407:2745`  |
+| Link copiado (Próximo evento)             | `/producer`         | —           | `410:16610` |
+| Carregando o sistema                      | todas               | `430:17165` | `430:6770`  |
+| Falha ao carregar o sistema               | todas               | `430:17265` | `430:17034` |
+| Eventos                                   | `/producer/events`  | `307:3341`  | `307:2983`  |
+| Eventos · Aba vazia                       | `/producer/events`  | `432:3813`  | `432:3428`  |
+| Eventos · Busca sem resultado             | `/producer/events`  | —           | `432:3625`  |
+| Eventos · Encerrados                      | `/producer/events`  | —           | `432:17453` |
+| Eventos · Linha em hover                  | `/producer/events`  | —           | `437:16993` |
+| Eventos · Ações ("⋯")                     | sobreposição        | —           | `410:2920`  |
+| Perfil do produtor                        | `/producer/profile` | `300:4356`  | `300:4078`  |
+| Perfil · Recebimento por estado           | `/producer/profile` | `433:17580` | `433:3828`  |
 
 ### 5.2 Criar perfil, Recebimento e Evento (página "Produtor")
 
@@ -145,7 +155,10 @@ preenchidos das abas: `layout-grid-fill`, `calendar-fill`, `wallet-fill`.
 producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta ou recolhida no
   navegador (cookie do `SidebarProvider`).
 - **Estado do produtor:** `GET /api/producers/me`, relido a cada 10 s enquanto alguma etapa espera
-  (D-17).
+  (D-17): análise da BlindPay, conta de recebimento a caminho na rede ou carteira sendo registrada.
+- **Carregando e falha:** enquanto sessão, produtor e eventos carregam, a navegação aparece e a conta
+  e a página ficam em esqueleto; se a API não responde, "Sem conexão" (o aviso do checkout) e
+  "Tentar de novo".
 - **Conta:** o menu (desktop) e a folha (celular) levam a `/producer/profile`, `/me/tickets` e `/`;
   "Sair" encerra a sessão Privy e volta ao Início do site.
 - **Painel:** com perfil e sem `ready`, a configuração em etapas e "Enquanto isso", com os
@@ -155,11 +168,18 @@ producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta 
   "Tudo pronto para vender" (sucesso, dispensável). Miniaturas dos eventos usam a capa; sem capa, a
   arte da marca.
 - **Período:** Últimos 7, 30 ou 90 dias (30 por padrão); a tendência compara com o período anterior
-  de mesma duração.
+  de mesma duração e some quando ele não teve venda. O gráfico tem uma barra por dia do período e
+  destaca o melhor dia, ou o dia apontado, com a data e o valor. A configuração em etapas leva a etapa
+  atual ao Recebimento ("Continuar"); os eventos do Painel abrem nos rascunhos enquanto ela aparece.
 - **Eventos:** abas À venda, Rascunhos e Encerrados (encerrado: `endsAt`, ou `startsAt`, no
   passado), busca por nome no navegador, colunas evento, data, status, vendidos (com barra) e receita.
-- **Perfil do produtor:** nome público (só leitura) e o resumo do Recebimento, com "Ver detalhes".
-  No celular, página interna com voltar.
+  O publicado que já aconteceu mostra o Status Encerrado; o cancelado, Cancelado. A linha inteira abre
+  o evento (no hover, o nome sublinha); o "⋯" tem Editar e, no publicado, Ver página e Copiar link
+  ("Link copiado"). Cada aba vazia e a busca sem resultado têm o seu texto; sem nenhum evento, "Crie
+  seu primeiro evento".
+- **Perfil do produtor:** nome público (só leitura) e o resumo do Recebimento por estado
+  (configuração pendente, em análise, pedido de informações, recusado, liberando, pronto), com "Ver
+  detalhes". No celular, página interna com voltar.
 - **Tema:** segue o sistema (claro ou escuro), com os tokens dos dois modos.
 
 ### Criar perfil e Recebimento (KYC Standard, pessoa física)
