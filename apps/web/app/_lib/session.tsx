@@ -16,7 +16,7 @@ import {
 import { activateStellarAccount } from "./account-activation";
 import { type AccountView, bootstrapAccount, type BootstrapOrigin } from "./api/account";
 import { ApiError } from "./api/client";
-import { type E2ESession, useE2ESession } from "./e2e-session";
+import { E2E_ANONYMOUS, type E2EState, useE2ESession } from "./e2e-session";
 import { restoreSession } from "./session-restore";
 
 export type SessionState =
@@ -45,22 +45,41 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-// The end-to-end build's signed-in buyer or producer (e2e-session.ts): no Privy.
-function e2eSessionValue({ token, account }: E2ESession): SessionContextValue {
+// The end-to-end build's visitor, or its signed-in buyer or producer (e2e-session.ts): no Privy.
+// "Sair" turns the test session into the visitor.
+function e2eSessionValue(e2e: E2EState, signOut: () => void): SessionContextValue {
+  if (e2e === E2E_ANONYMOUS) {
+    return {
+      state: { status: "anonymous" },
+      getToken: () =>
+        Promise.reject(new ApiError(401, "session_expired", "There is no active session.", null)),
+      completeLogin: () =>
+        Promise.reject(
+          new ApiError(401, "session_expired", "The test visitor never signs in.", null),
+        ),
+      abandonLogin: () => Promise.resolve(),
+      requestActivation: () => undefined,
+      logout: () => Promise.resolve(),
+    };
+  }
+  const { token, account } = e2e;
   return {
     state: { status: "authenticated", account },
     getToken: () => Promise.resolve(token),
     completeLogin: () => Promise.resolve(account),
     abandonLogin: () => Promise.resolve(),
     requestActivation: () => undefined,
-    logout: () => Promise.resolve(),
+    logout: () => {
+      signOut();
+      return Promise.resolve();
+    },
   };
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const { ready, authenticated, user, getAccessToken, logout: privyLogout } = usePrivy();
   const { signRawHash } = useSignRawHash();
-  const e2e = useE2ESession();
+  const { session: e2e, signOut: e2eSignOut } = useE2ESession();
   const [state, setState] = useState<SessionState>({ status: "loading" });
   const [activationRequested, setActivationRequested] = useState(false);
   // Only a session that existed when the page opened is restored; a login in progress is
@@ -150,7 +169,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [privyLogout]);
 
   // The test session is one stable value for the page, whatever Privy does underneath.
-  const e2eValue = useMemo(() => (e2e === null ? null : e2eSessionValue(e2e)), [e2e]);
+  const e2eValue = useMemo(
+    () => (e2e === null ? null : e2eSessionValue(e2e, e2eSignOut)),
+    [e2e, e2eSignOut],
+  );
   const value = useMemo(
     () => e2eValue ?? { state, getToken, completeLogin, abandonLogin, requestActivation, logout },
     [e2eValue, state, getToken, completeLogin, abandonLogin, requestActivation, logout],

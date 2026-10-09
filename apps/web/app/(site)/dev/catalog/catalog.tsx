@@ -12,7 +12,14 @@ import {
   DropdownMenuTrigger,
 } from "@access/ui/components/dropdown-menu";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@access/ui/components/field";
-import { CalendarFill, LayoutGridFill, WalletFill } from "@access/ui/components/fill-icons";
+import {
+  CalendarFill,
+  HouseFill,
+  LayoutGridFill,
+  TicketFill,
+  UserFill,
+  WalletFill,
+} from "@access/ui/components/fill-icons";
 import { Input, type InputProps } from "@access/ui/components/input";
 import { Progress } from "@access/ui/components/progress";
 import {
@@ -62,8 +69,11 @@ import {
 } from "lucide-react";
 import { type CSSProperties, type ReactNode, useEffect } from "react";
 
+import { CheckoutHeaderView } from "../../../_components/checkout/CheckoutHeader";
 import { IdentificationView } from "../../../_components/identification/IdentificationView";
-import { SiteHeader } from "../../../_components/SiteHeader";
+import { SiteAccountMenuContent } from "../../../_components/site/SiteAccountMenu";
+import { SiteFooter } from "../../../_components/site/SiteFooter";
+import { SiteHeader } from "../../../_components/site/SiteHeader";
 
 // Hover, focus and pressed are CSS states; the catalog forces them with data-preview-state.
 type Preview = "hover" | "pressed" | "focus";
@@ -409,10 +419,36 @@ export function Catalog({
         </div>
       </Section>
 
-      <Section id="navigation" title="Navegação">
+      <Section id="site-header" title="Cabeçalho do site">
+        {/* The 16A state (SPEC-016 S5): without the search and "Para produtores". Desktop only. */}
         <div className="grid gap-6">
-          <SiteHeader email={null} onSignIn={noop} onAccount={noop} />
-          <SiteHeader email="voce@email.com" onSignIn={noop} onAccount={noop} />
+          <SiteHeader account={{ kind: "loading" }} onSignIn={noop} onSignOut={noop} />
+          <SiteHeader account={{ kind: "visitor" }} onSignIn={noop} onSignOut={noop} />
+          <SiteHeader
+            account={{ kind: "member", email: "ana@email.com", profile: "buyer" }}
+            onSignIn={noop}
+            onSignOut={noop}
+          />
+          <SiteHeader
+            account={{
+              kind: "member",
+              email: "voce@email.com",
+              profile: { producerName: "Casa Fluida" },
+            }}
+            onSignIn={noop}
+            onSignOut={noop}
+          />
+        </div>
+      </Section>
+
+      <Section id="site-footer" title="Rodapé do site">
+        <SiteFooter />
+      </Section>
+
+      <Section id="checkout-header" title="Cabeçalho do checkout">
+        <div className="grid gap-6">
+          <CheckoutHeaderView email={null} onSignIn={noop} onAccount={noop} />
+          <CheckoutHeaderView email="voce@email.com" onSignIn={noop} onAccount={noop} />
         </div>
       </Section>
 
@@ -548,7 +584,50 @@ export function Catalog({
         </div>
       </Section>
 
+      <Section id="site-account-menu" title="Menu da conta · Site">
+        <div className="flex gap-16" style={frame.menu}>
+          <div className="w-sidebar">
+            <DropdownMenu open modal={false}>
+              <DropdownMenuTrigger className="sr-only">Conta</DropdownMenuTrigger>
+              <SiteAccountMenuContent
+                email="ana@email.com"
+                profile="buyer"
+                onSignOut={noop}
+                align="start"
+              />
+            </DropdownMenu>
+          </div>
+          <div className="w-sidebar">
+            <DropdownMenu open modal={false}>
+              <DropdownMenuTrigger className="sr-only">Conta</DropdownMenuTrigger>
+              <SiteAccountMenuContent
+                email="voce@email.com"
+                profile={{ producerName: "Casa Fluida" }}
+                onSignOut={noop}
+                align="start"
+              />
+            </DropdownMenu>
+          </div>
+        </div>
+      </Section>
+
       <Section id="tab-bar" title="Barra de abas">
+        <div style={fixedFrame(360, 104)}>
+          <TabBar className="md:flex">
+            <TabBarItem href="#tab-bar">
+              <HouseFill />
+              <span>Início</span>
+            </TabBarItem>
+            <TabBarItem href="#tab-bar">
+              <TicketFill />
+              <span>Ingressos</span>
+            </TabBarItem>
+            <TabBarItem href="#tab-bar" selected>
+              <UserFill />
+              <span>Conta</span>
+            </TabBarItem>
+          </TabBar>
+        </div>
         <div style={fixedFrame(360, 104)}>
           <TabBar className="md:flex">
             <TabBarItem href="#tab-bar" selected>

@@ -13,7 +13,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { AppHeader } from "../../../_components/AppHeader";
+import { EventHeader } from "../../../_components/event/EventHeader";
 import { EventPurchase } from "../../../_components/event/EventPurchase";
 import { Providers } from "../../../_components/Providers";
 import { getPublicEvent, type PublicEvent } from "../../../_lib/api/events";
@@ -40,9 +40,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (event === null) {
     return { title: "Evento não encontrado · Access" };
   }
+  const title = `${event.name} · Access`;
+  const description = `${formatEventStart(event.startsAt)} · ${event.venueName ?? event.address ?? ""}`;
+  // The cover is the shared link's image (SPEC-016 S13, S21); the poster keeps the brand art until 15D.
   return {
-    title: `${event.name} · Access`,
-    description: `${formatEventStart(event.startsAt)} · ${event.venueName ?? event.address ?? ""}`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(event.coverUrl === null ? {} : { images: [{ url: event.coverUrl }] }),
+    },
   };
 }
 
@@ -57,7 +65,7 @@ export default async function EventPage({ params, searchParams }: PageProps) {
 
   return (
     <Providers>
-      <AppHeader />
+      <EventHeader />
       {/* The 16 margin stays outside the size/page-content column, so the column is 1200 wide. */}
       <div className="md:px-4">
         <main className="mx-auto w-full max-w-page-content pb-10 md:flex md:items-start md:gap-16 md:pt-8">

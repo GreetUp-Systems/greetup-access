@@ -2,8 +2,9 @@ import type { ComponentProps, ReactNode } from "react";
 
 /**
  * Figma: the filled icons of the Barra de abas (page "Ícones": Ícone/layout-grid-fill 313:173,
- * calendar-fill 80:33, wallet-fill 313:182), exported from Figma at 24 with the fill on
- * currentColor, so the tab gives the color (icon/current). Lucide has no filled versions.
+ * calendar-fill 80:33, wallet-fill 313:182; and, for the Barra de abas do site, SPEC-016 16A,
+ * house-fill 313:161, ticket-fill 80:28, user-fill 80:43), exported from Figma at 24 with the
+ * fill on currentColor, so the tab gives the color (icon/current). Lucide has no filled versions.
  */
 type FillIconProps = Omit<ComponentProps<"svg">, "children">;
 
@@ -60,4 +61,45 @@ function WalletFill(props: FillIconProps) {
   );
 }
 
-export { CalendarFill, type FillIconProps, LayoutGridFill, WalletFill };
+function HouseFill(props: FillIconProps) {
+  return (
+    <FillIcon {...props}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M3 9.99997C2.99993 9.70904 3.06333 9.42159 3.18579 9.15768C3.30824 8.89378 3.4868 8.65976 3.709 8.47197L10.709 2.47297C11.07 2.16788 11.5274 2.00049 12 2.00049C12.4726 2.00049 12.93 2.16788 13.291 2.47297L20.291 8.47197C20.5132 8.65976 20.6918 8.89378 20.8142 9.15768C20.9367 9.42159 21.0001 9.70904 21 9.99997V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H14V15C14 14.7348 13.8946 14.4804 13.7071 14.2929C13.5196 14.1053 13.2652 14 13 14H11C10.7348 14 10.4804 14.1053 10.2929 14.2929C10.1054 14.4804 10 14.7348 10 15V21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V9.99997Z"
+      />
+    </FillIcon>
+  );
+}
+
+function TicketFill(props: FillIconProps) {
+  return (
+    <FillIcon {...props}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M2 9C2.79565 9 3.55871 9.31607 4.12132 9.87868C4.68393 10.4413 5 11.2044 5 12C5 12.7956 4.68393 13.5587 4.12132 14.1213C3.55871 14.6839 2.79565 15 2 15V17C2 17.5304 2.21071 18.0391 2.58579 18.4142C2.96086 18.7893 3.46957 19 4 19H20C20.5304 19 21.0391 18.7893 21.4142 18.4142C21.7893 18.0391 22 17.5304 22 17V15C21.2044 15 20.4413 14.6839 19.8787 14.1213C19.3161 13.5587 19 12.7956 19 12C19 11.2044 19.3161 10.4413 19.8787 9.87868C20.4413 9.31607 21.2044 9 22 9V7C22 6.46957 21.7893 5.96086 21.4142 5.58579C21.0391 5.21071 20.5304 5 20 5H4C3.46957 5 2.96086 5.21071 2.58579 5.58579C2.21071 5.96086 2 6.46957 2 7V9ZM12.25 5V7H13.75V5H12.25ZM12.25 11V13H13.75V11H12.25ZM12.25 17V19H13.75V17H12.25Z"
+      />
+    </FillIcon>
+  );
+}
+
+function UserFill(props: FillIconProps) {
+  return (
+    <FillIcon {...props}>
+      <path d="M12 11.4C14.43 11.4 16.4 9.43003 16.4 6.99998C16.4 4.56992 14.43 2.59998 12 2.59998C9.56992 2.59998 7.59998 4.56992 7.59998 6.99998C7.59998 9.43003 9.56992 11.4 12 11.4Z" />
+      <path d="M4.59998 21V19.4C4.59998 18.1801 5.08462 17.01 5.94728 16.1474C6.80995 15.2847 7.97998 14.8 9.19998 14.8H14.8C16.02 14.8 17.19 15.2847 18.0527 16.1474C18.9153 17.01 19.4 18.1801 19.4 19.4V21H4.59998Z" />
+    </FillIcon>
+  );
+}
+
+export {
+  CalendarFill,
+  type FillIconProps,
+  HouseFill,
+  LayoutGridFill,
+  TicketFill,
+  UserFill,
+  WalletFill,
+};

@@ -19,32 +19,10 @@ import type { ReactNode } from "react";
 
 import { initials } from "../../_lib/producer/navigation";
 import { receivingSummary } from "../../_lib/producer/receiving";
+import { SettingsSection } from "../SettingsSection";
 import { useProducer } from "./ProducerContext";
 
 const receivingHref = "/producer/receiving";
-
-/** Figma: a section of the desktop profile: its title and description beside the card. */
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="flex gap-12">
-      <div className="flex w-section-aside shrink-0 flex-col gap-1">
-        <h2 className="type-heading-h4 text-text-primary">{title}</h2>
-        <p className="type-body-s text-text-secondary">{description}</p>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-5 rounded-xl border border-border-subtle bg-bg-surface p-6">
-        {children}
-      </div>
-    </section>
-  );
-}
 
 /** Figma: Ícone, the 44 tile beside a value of the profile. */
 function Tile({ children }: { children: ReactNode }) {
@@ -125,7 +103,10 @@ export function ProfileScreen() {
             O nome que aparece para quem compra e para onde vai o dinheiro das vendas.
           </p>
         </header>
-        <Section title="Perfil de produtor" description="Como você aparece para quem compra.">
+        <SettingsSection
+          title="Perfil de produtor"
+          description="Como você aparece para quem compra."
+        >
           <div className="flex items-center gap-4">
             <Tile>
               <House />
@@ -138,8 +119,8 @@ export function ProfileScreen() {
           <p className="type-body-s text-text-secondary">
             Aparece como “Organizado por {name}” na página de cada evento.
           </p>
-        </Section>
-        <Section
+        </SettingsSection>
+        <SettingsSection
           title="Recebimento"
           description="Para onde vai o dinheiro das vendas. A verificação é feita pela BlindPay."
         >
@@ -161,7 +142,7 @@ export function ProfileScreen() {
               </Link>
             </Button>
           </div>
-        </Section>
+        </SettingsSection>
       </div>
     </>
   );

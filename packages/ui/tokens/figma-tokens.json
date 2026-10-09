@@ -943,6 +943,18 @@
           "type": "FLOAT",
           "web": "var(--size-dashboard-aside)",
           "values": { "Value": 360 }
+        },
+        {
+          "name": "size/footer-brand",
+          "type": "FLOAT",
+          "web": "var(--size-footer-brand)",
+          "values": { "Value": 320 }
+        },
+        {
+          "name": "size/account-content",
+          "type": "FLOAT",
+          "web": "var(--size-account-content)",
+          "values": { "Value": 880 }
         }
       ]
     },

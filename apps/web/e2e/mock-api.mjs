@@ -17,7 +17,11 @@ const base = {
   address: "Rua Augusta, 1200 · São Paulo",
   refundPolicy: "Reembolso integral até 7 dias antes do evento.",
   producer: { displayName: "Casa Fluida" },
+  coverUrl: null,
 };
+
+// The example event has a cover: the shared link's image (SPEC-016 S13).
+const exampleCoverUrl = "https://covers.example.com/events/festival-de-inverno.jpg";
 
 const startsAt = new Date(Date.now() + 30 * day).toISOString();
 
@@ -52,6 +56,7 @@ function event(slug) {
       return {
         ...base,
         ...upcoming,
+        coverUrl: exampleCoverUrl,
         slug,
         status: "published",
         ticketTypes: [
@@ -649,6 +654,12 @@ createServer(async (request, response) => {
       }
       send(response, 200, salesSummary(period, scenario.sales === true ? {} : null));
     }
+    return;
+  }
+
+  if (url === "/api/producers/me" && request.headers.authorization === `Bearer ${token}`) {
+    // The test buyer has an account and no producer profile, as the API answers (SPEC-016 §6).
+    send(response, ...noProducer);
     return;
   }
 

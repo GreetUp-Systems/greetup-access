@@ -104,6 +104,8 @@
   --size-chart: 236px;
   --size-chart-compact: 132px;
   --size-dashboard-aside: 360px;
+  --size-footer-brand: 320px;
+  --size-account-content: 880px;
   --icon-current: var(--color-icon-primary);
 }
 
@@ -242,6 +244,8 @@
   --spacing-chart: var(--size-chart);
   --spacing-chart-compact: var(--size-chart-compact);
   --spacing-dashboard-aside: var(--size-dashboard-aside);
+  --spacing-footer-brand: var(--size-footer-brand);
+  --spacing-account-content: var(--size-account-content);
   --shadow-glow-accent: 0 0 24px 0 var(--color-effect-glow);
   --shadow-focus-ring: 0 0 0 2px var(--color-bg-canvas), 0 0 0 4px var(--color-effect-focus);
   --shadow-elevation-1: 0 4px 12px -2px #00000029, 0 1px 2px 0 #0000003d;

@@ -3,8 +3,8 @@
 import { notFound, useRouter } from "next/navigation";
 
 import { useSession } from "../../_lib/session";
-import { AppHeader } from "../AppHeader";
 import { Identification } from "../identification/Identification";
+import { CheckoutHeader } from "./CheckoutHeader";
 import { FollowUpView } from "./FollowUpView";
 import { PixView } from "./PixView";
 import { ReviewView } from "./ReviewView";
@@ -29,7 +29,7 @@ export function CheckoutScreen({ purchaseId }: { purchaseId: string }) {
     throw new Error("The order could not be loaded.");
   }
 
-  const header = <AppHeader mobileBar={false} />;
+  const header = <CheckoutHeader />;
 
   if (state.status === "anonymous") {
     return (

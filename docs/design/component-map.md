@@ -27,7 +27,10 @@ Componente ainda não implementado é feito na primeira tela que precisar dele, 
 | Estado = Hover · Foco · Pressionado | `hover:`, `focus-visible:`, `active:` |
 
 Regras do Figma: no máximo um Primário por tela; Inverso substitui o Primário sobre imagem, câmera
-ou vidro, nunca junto dele; Destrutivo sempre com confirmação.
+ou vidro, nunca junto dele; Destrutivo sempre com confirmação. No uso, o Inverso também é a ação
+neutra de destaque sobre `bg/canvas` e `bg/surface` ("Entrar" do Cabeçalho do site, "Comprar
+ingresso", "Começar a vender", "Mostrar ingresso"), e "Sair" da Conta é Destrutivo sem confirmação:
+sair não apaga nada (SPEC-016 §6).
 
 Import: `import { Button } from "@access/ui/components/button"`. Com `asChild`, o filho único (um
 link) recebe o visual do botão.
@@ -218,8 +221,11 @@ linha, com a contagem na cápsula e o sublinhado `stroke/indicator` na seleciona
 | Ações do evento             | `410:3081` | `<DropdownMenuContent className="w-menu">` (`size/menu`)       |
 | Menu do período             | `407:3075` | `<DropdownMenuRadioGroup>` com `<DropdownMenuRadioItem>`       |
 
-Contexto = Painel nesta versão; as variantes Site entram com a moldura do site (SPEC-016 16A). Na
-Folha · Conta (`293:2785`) o mesmo Item de menu tem 44 de altura e é um link comum:
+Contexto = Painel no sistema do produtor (`AccountMenu`, `apps/web/app/_components/producer`) e
+Contexto = Site na moldura do site (`SiteAccountMenu`, `apps/web/app/_components/site`): `365:246`
+para quem compra, só com a inicial e o e-mail (S3), e `365:260` para quem também produz, com as
+iniciais, o nome público e o e-mail. O menu do site abre abaixo do avatar, alinhado à direita dele.
+Na Folha · Conta (`293:2785`) o mesmo Item de menu tem 44 de altura e é um link comum:
 `menuItemVariants({ size: "m" })`.
 
 ### Tabela · `table.tsx` (partes do shadcn/ui Table)
@@ -250,6 +256,32 @@ tooltip (`tooltip.tsx`, só no código, como pede a descrição do Item de naveg
 `<TabBar>` com `<TabBarItem selected asChild>` (`73:376` e `73:39`): cápsula de vidro fixa no pé do
 celular; selecionada com a lente e a cor de destaque, pressionada só com a lente, foco com o anel
 interno. Ícones sempre preenchidos (`fill-icons.tsx`). O Selo da aba entra quando uma tela usar.
+No sistema do produtor, Painel · Eventos · Recebimento; no site (`SiteTabBar`), Início · Ingressos ·
+Conta, com `HouseFill`, `TicketFill` e `UserFill` (Mobile · Conta, `300:4512`).
+
+### Cabeçalho do site · `apps/web/app/_components/site/SiteHeader.tsx` (composição)
+
+| Figma                                     | Nó         | Código                                                         |
+| ----------------------------------------- | ---------- | -------------------------------------------------------------- |
+| Cabeçalho do site                         | `316:171`  | `<SiteHeader account onSignIn onSignOut>`, só a partir de `md` |
+| Sessão = Visitante · Comprador · Produtor |            | `account` (`SiteAccount`: visitante, quem compra, quem produz) |
+| Mostrar busca · Mostrar Para produtores   |            | ainda não existem no código: entram com a 16C e a 16D (S5)     |
+| Header · Sessão carregando                | `231:5834` | `account` carregando: o esqueleto de "Entrar" no fim da coluna |
+
+O logo leva ao Início; "Entrar" é Inverso M; "Meus ingressos" é Fantasma M com `Ticket`; "Painel do
+produtor", Secundário M com `LayoutGrid`; o avatar S num alvo de 44 abre o Menu da conta (Site). No
+celular, a página do evento usa a Barra superior/Marca, e a área do comprador, a Barra de abas.
+
+### Rodapé do site · `apps/web/app/_components/site/SiteFooter.tsx` (composição)
+
+`<SiteFooter>` (`316:234`, Formato = Desktop): a marca em `size/footer-brand` (320), as colunas de
+links e a base com o crédito dos pagamentos. "Mostrar Explorar eventos" e "Mostrar Access" ficam
+desligados até o Explorar (16C) e os termos (S16); o Formato = Celular entra com o Início.
+
+### Cabeçalho do checkout · `apps/web/app/_components/checkout/CheckoutHeader.tsx` (composição)
+
+`<CheckoutHeaderView email onSignIn onAccount>`: o cabeçalho focado do checkout no desktop
+(Navegação de `150:2242`), o logo e a conta ("Entrar" ou o e-mail, Fantasma M) (SPEC-016 S20).
 
 ### Etapa · `step.tsx` (composição com o Button)
 
@@ -267,8 +299,8 @@ Página "Ícones" (`27:2`): 47 ícones, dos quais 43 são Lucide com o mesmo nom
 `Ticket` de `lucide-react`), traço 1,75, tamanhos `size/icon-sm` (16), `size/icon-md` (20) e
 `size/icon-lg` (24). Os `*-fill` são próprios e vão para `fill-icons.tsx`, exportados do Figma com o
 preenchimento em `currentColor`, quando a primeira tela precisar: já estão `layout-grid-fill`,
-`calendar-fill` e `wallet-fill` (Barra de abas do sistema do produtor); faltam `ticket-fill`,
-`qr-code-fill`, `user-fill` e `house-fill`.
+`calendar-fill` e `wallet-fill` (Barra de abas do sistema do produtor) e `house-fill`,
+`ticket-fill` e `user-fill` (Barra de abas do site); falta `qr-code-fill`.
 
 ## Ainda não implementados
 
@@ -290,7 +322,11 @@ produtor, a conta (menu e folha), a barra recolhida e os estados de carregamento
 [SPEC-015](../06-sdd/SPEC-015-web-producer.md) §5.1.
 
 Página "Compra" (`138:321`): página do evento, escolher ingresso, identificação (e-mail e código),
-revisar pedido, Pix, pagamento confirmado, ingresso pronto, seus ingressos (e anteriores) e
-ingresso, cada uma em 360 e 1440, mais os estados de borda (indisponível, valor mínimo, esgotou,
-total mudou, pagamento não concluído, erro de conexão, vazio e entrar). Os IDs de cada quadro estão
-na [SPEC-014](../06-sdd/SPEC-014-web-purchase.md) §5 e §6.
+revisar pedido, Pix, pagamento confirmado e ingresso pronto, cada uma em 360 e 1440, mais os estados
+de borda (indisponível, valor mínimo, esgotou, total mudou, pagamento não concluído, erro de conexão
+e entrar). Os IDs de cada quadro estão na [SPEC-014](../06-sdd/SPEC-014-web-purchase.md) §5 e §6.
+
+Página "Site público" (`325:2`): Início, Para produtores, Explorar, a área do comprador (Meus
+ingressos, o ingresso e a Conta, de quem compra e de quem também produz) e a proposta da página do
+evento com o Cabeçalho do site, em 360 e 1440. Os IDs de cada quadro estão na
+[SPEC-016](../06-sdd/SPEC-016-web-public-site.md) §5.1.
