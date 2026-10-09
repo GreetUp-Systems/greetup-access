@@ -16,7 +16,7 @@
 .github/
 ├── workflows/
 │   ├── ci.yml                  ← já existe no repo
-│   ├── cd.yml                  ← a escrever (o legado do GreetUp saiu em 08/10/2026)
+│   ├── cd.yml                  ← já existe no repo
 │   └── contracts-deploy.yml    ← já existe no repo
 ├── CODEOWNERS                  ← define aprovadores obrigatórios
 

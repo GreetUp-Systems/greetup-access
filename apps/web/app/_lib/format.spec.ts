@@ -1,9 +1,17 @@
 import {
+  brasiliaDay,
+  formatAmount,
   formatAvailability,
+  formatDayMonth,
+  formatDaysUntil,
   formatEventEnd,
   formatEventStart,
-  formatTicketDateTime,
   formatPrice,
+  formatReais,
+  formatShortDayMonth,
+  formatTicketDateTime,
+  formatTimeAgo,
+  formatWeekdayDate,
 } from "./format";
 
 describe("formatPrice", () => {
@@ -11,6 +19,14 @@ describe("formatPrice", () => {
     expect(formatPrice(4_000)).toBe("R$ 40,00");
     expect(formatPrice(123_456)).toBe("R$ 1.234,56");
     expect(formatPrice(5)).toBe("R$ 0,05");
+  });
+});
+
+describe("formatAmount", () => {
+  it("formats cents as reais without the currency", () => {
+    expect(formatAmount(2_640_000)).toBe("26.400,00");
+    expect(formatAmount(409_200)).toBe("4.092,00");
+    expect(formatAmount(0)).toBe("0,00");
   });
 });
 
@@ -64,5 +80,40 @@ describe("formatAvailability", () => {
     expect(formatAvailability(120)).toBe("120 disponíveis");
     expect(formatAvailability(1)).toBe("1 disponível");
     expect(formatAvailability(0)).toBe("Esgotado");
+  });
+});
+
+describe("Painel formats", () => {
+  it("writes today and days in Brasília", () => {
+    // 15:00 UTC is noon in São Paulo.
+    expect(formatWeekdayDate("2026-10-05T15:00:00.000Z")).toBe("Segunda, 5 de outubro");
+    expect(formatWeekdayDate("2026-10-10T15:00:00.000Z")).toBe("Sábado, 10 de outubro");
+    expect(formatDayMonth("2026-11-03T15:00:00.000Z")).toBe("3 de novembro");
+    expect(formatShortDayMonth(brasiliaDay("2026-10-02"))).toBe("2 out");
+  });
+
+  it("rounds sales to whole reais", () => {
+    expect(formatReais(2_184_000)).toBe("21.840");
+    expect(formatReais(2_183_960)).toBe("21.840");
+    expect(formatReais(0)).toBe("0");
+  });
+
+  it("says how long ago a sale happened", () => {
+    const now = new Date("2026-10-06T15:00:00Z");
+    const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
+    expect(formatTimeAgo(ago(0), now)).toBe("agora");
+    expect(formatTimeAgo(ago(5), now)).toBe("há 5 min");
+    expect(formatTimeAgo(ago(60), now)).toBe("há 1 h");
+    expect(formatTimeAgo(ago(60 * 24), now)).toBe("há 1 dia");
+    expect(formatTimeAgo(ago(60 * 24 * 3), now)).toBe("há 3 dias");
+  });
+
+  it("counts calendar days until an event in Brasília", () => {
+    // 23:30 in São Paulo on 6/10.
+    const now = new Date("2026-10-07T02:30:00Z");
+    expect(formatDaysUntil("2026-10-07T00:00:00Z", now)).toBe("Hoje");
+    // 21:00 on 7/10 in São Paulo: tomorrow there, though the same UTC day.
+    expect(formatDaysUntil("2026-10-08T00:00:00Z", now)).toBe("Amanhã");
+    expect(formatDaysUntil("2026-10-13T00:00:00Z", now)).toBe("Em 6 dias");
   });
 });
