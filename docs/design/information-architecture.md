@@ -19,7 +19,8 @@ ela mora.
   celular. Os dois menus têm "Sair".
 - **O comprador aparece pelo e-mail.** O Access não guarda nome de comprador (SPEC-002). Quem também
   produz aparece pelo nome público do perfil.
-- **Fluxos focados ficam sem navegação.** Checkout e Criar perfil têm só o logo e a saída.
+- **Fluxos focados ficam sem navegação.** Criar perfil tem só o logo e a saída. O checkout tem o
+  logo e a conta no desktop e, no celular, a barra de cada passo; a saída fica na página.
 - **O início de cada camada responde "o que eu faço agora".** No site, o que está à venda; no
   sistema do produtor, as pendências, depois os números.
 
@@ -35,14 +36,17 @@ ela mora.
 |          | Quem também produz: Meus ingressos, Painel do produtor e o avatar                     |
 | Conta    | Menu da conta: Meus ingressos, Conta, Vender ingressos (ou Painel do produtor) e Sair |
 
-O rodapé repete os caminhos: para quem compra, para quem produz e os termos.
+O rodapé repete os caminhos que existem, para quem compra e para quem produz; os termos entram
+quando houver os textos. Até o Início (SPEC-016 16C), aparece só no desktop da área do comprador;
+a página do evento e o celular ficam sem ele.
 
 ### Celular: Barra de abas
 
 **Início · Ingressos · Conta.** Para visitante, Ingressos e Conta levam a "Entrar". O topo do Início
 tem o logo, "Entrar" (ou o avatar), a cidade como seletor e a busca com o botão de filtros. Ficam
-sem abas: o checkout, o seletor de cidade, a folha de filtros e Para produtores, que tem a barra
-fixa "Começar a vender".
+sem abas: a página do evento, que tem a barra de compra e, no topo, a ação da conta; o checkout; o
+ingresso aberto; o seletor de cidade; a folha de filtros; e Para produtores, que tem a barra fixa
+"Começar a vender".
 
 ## 3. Sistema do produtor
 

@@ -58,7 +58,8 @@ O gerador transforma cada variável do Figma em tema do Tailwind, pelo nome da s
 | `stroke/*`                         | `--stroke-focus`                    | `border` (1), `outline-2`, `w-(--stroke-…)`   |
 
 Dark é o padrão; Light entra por `data-theme="light"` ou pela preferência do sistema. Cada camada
-tem o seu layout raiz (D-29): o site público força Dark até a SPEC-016 revisar o modo claro dele, e
+tem o seu layout raiz (D-29): o site público força Dark até a 16C, quando o modo claro dele é
+decidido com o Início (SPEC-016 S15), e
 o sistema do produtor segue o tema do sistema, com o tema no `<html>` para os menus e folhas, que
 abrem em portal, acompanharem. Um único breakpoint, `md:` (768), separa celular e desktop. `cn()` vem de
 `@access/ui/lib/utils` e conhece essas escalas: `cn("h-control-md", "h-control-lg")` fica com a

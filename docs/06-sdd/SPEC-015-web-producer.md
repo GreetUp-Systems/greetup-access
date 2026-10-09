@@ -2,10 +2,11 @@
 
 > **Status:** aprovada em 07/10/2026
 >
-> **Versão:** 1.4 (15B: estados do sistema, Eventos e Perfil aprovados no Figma; 1.3: sem busca
-> ⌘K)
+> **Versão:** 1.5 (15C: Criar perfil leva ao Painel quem já tem perfil; 15D: a capa no cartaz da
+> página do evento, vinda da SPEC-016 S21; 1.4: estados do sistema, Eventos e Perfil aprovados no
+> Figma)
 >
-> **Atualizada em:** 08/10/2026
+> **Atualizada em:** 09/10/2026
 >
 > **Depende de:** SPEC-003 (onboarding do produtor), SPEC-004 (eventos), SPEC-005 (compras),
 > SPEC-014 (base do web, identificação, assinatura no navegador), SPEC-016 16A (moldura do site, antes
@@ -73,7 +74,7 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 | 15A   | Backend: tentativa atual na BlindPay, preço mínimo na visão do evento, vendidos e vendas por evento, resumo de vendas e vendas recentes; capa (R2), categoria e cidade no evento; base de cidades |
 | 15B   | Esqueleto: layout do sistema, barra lateral, Barra de abas, conta (menu e folha), Painel (todos os estados), Eventos, Perfil do produtor, logo no tema                                            |
 | 15C   | Criar perfil (focado) e Recebimento: conta de recebimento, termos, dados, documentos e resultados da verificação                                                                                  |
-| 15D   | Evento: novo, editor (capa, categoria e cidade), tipos de ingresso, publicar e publicado                                                                                                          |
+| 15D   | Evento: novo, editor (capa, categoria e cidade), tipos de ingresso, publicar e publicado; a capa no cartaz da página do evento (SPEC-016 S21)                                                     |
 
 Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. Ordem: 15A → 15B → SPEC-016
 16A (moldura do site) → SPEC-014 9D (Meus ingressos, já na moldura) → 15C → 15D → validação real
@@ -108,23 +109,24 @@ Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. Ord
 
 ### 5.2 Criar perfil, Recebimento e Evento (página "Produtor")
 
-| Tela                          | Rota                    | Celular    | Desktop    |
-| ----------------------------- | ----------------------- | ---------- | ---------- |
-| Criar perfil (focado)         | `/producer/start`       | `305:5771` | `303:4779` |
-| Recebimento · Termos          | `/producer/receiving`   | `302:4201` | `301:2818` |
-| Recebimento · Seus dados      | `/producer/receiving`   | `302:4286` | `301:3083` |
-| Recebimento · Documentos      | `/producer/receiving`   | `302:4468` | `301:3386` |
-| Recebimento · Em análise      | `/producer/receiving`   | `302:4594` | `301:3623` |
-| Recebimento · Pendência (RFI) | `/producer/receiving`   | `302:4704` | `301:3797` |
-| Recebimento · Recusado        | `/producer/receiving`   | `302:4856` | `301:4010` |
-| Recebimento · Liberando       | `/producer/receiving`   | `302:4981` | `301:4205` |
-| Recebimento · Pronto          | `/producer/receiving`   | `302:5084` | `301:4372` |
-| Recebimento · Conta com erro  | `/producer/receiving`   | `302:5193` | `301:4545` |
-| Evento · Novo                 | `/producer/events/new`  | `305:5869` | `303:4935` |
-| Evento · Rascunho             | `/producer/events/[id]` | `305:6053` | `303:5237` |
-| Evento · Tipo de ingresso     | sobreposição            | `305:6304` | `304:5854` |
-| Evento · Publicar bloqueado   | `/producer/events/[id]` | `305:6381` | `304:5217` |
-| Evento · Publicado            | `/producer/events/[id]` | `305:6633` | `304:5507` |
+| Tela                                                | Rota                    | Celular    | Desktop    |
+| --------------------------------------------------- | ----------------------- | ---------- | ---------- |
+| Criar perfil (focado)                               | `/producer/start`       | `305:5771` | `303:4779` |
+| Recebimento · Termos                                | `/producer/receiving`   | `302:4201` | `301:2818` |
+| Recebimento · Seus dados                            | `/producer/receiving`   | `302:4286` | `301:3083` |
+| Recebimento · Documentos                            | `/producer/receiving`   | `302:4468` | `301:3386` |
+| Recebimento · Em análise                            | `/producer/receiving`   | `302:4594` | `301:3623` |
+| Recebimento · Pendência (RFI)                       | `/producer/receiving`   | `302:4704` | `301:3797` |
+| Recebimento · Recusado                              | `/producer/receiving`   | `302:4856` | `301:4010` |
+| Recebimento · Liberando                             | `/producer/receiving`   | `302:4981` | `301:4205` |
+| Recebimento · Pronto                                | `/producer/receiving`   | `302:5084` | `301:4372` |
+| Recebimento · Conta com erro                        | `/producer/receiving`   | `302:5193` | `301:4545` |
+| Evento · Novo                                       | `/producer/events/new`  | `305:5869` | `303:4935` |
+| Evento · Rascunho                                   | `/producer/events/[id]` | `305:6053` | `303:5237` |
+| Evento · Tipo de ingresso                           | sobreposição            | `305:6304` | `304:5854` |
+| Evento · Publicar bloqueado                         | `/producer/events/[id]` | `305:6381` | `304:5217` |
+| Evento · Publicado                                  | `/producer/events/[id]` | `305:6633` | `304:5507` |
+| Página do evento com a capa (página "Site público") | `/e/[slug]`             | a desenhar | `387:4114` |
 
 ### 5.3 Componentes
 
@@ -189,7 +191,8 @@ producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta 
   configuração Stellar: `POST /api/producers/onboarding/stellar/activate`; em `signing`, o navegador
   assina o `hashToSign` com `signRawHash` e envia a `.../stellar/activate/signature` (o fluxo da
   conta do comprador, D-28); em `409 activation_signature_stale`, prepara e assina de novo uma vez.
-  Pronto o perfil, entra no sistema, no Recebimento.
+  Pronto o perfil, entra no sistema, no Recebimento. Quem já tem perfil e abre `/producer/start`
+  (pelo "Vender ingressos" do site ou pela URL) vai para `/producer`.
 - **Etapas:** Conta de recebimento, Termos da BlindPay, Seus dados, Documentos e Verificação, em
   linha do tempo (Etapa). Desktop: a lista à esquerda e a etapa à direita; celular: "Etapa N de 4"
   com progresso, e a lista abaixo nos resultados.
@@ -244,6 +247,9 @@ producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta 
   chama `POST /api/events/:id/publish`; senão, o botão fica desabilitado com o motivo.
 - **Publicado:** "Ver página" no cabeçalho; cartões "À venda" (link `<origem do app>/e/<slug>` e
   "Copiar link") e "Vendas" (vendidos de capacidade e receita).
+- **Página do evento (SPEC-016 S21):** o cartaz de `/e/[slug]` mostra a capa (`coverUrl`, cortada
+  no centro), no desktop e no celular, com a arte da marca quando não há capa. O quadro do celular
+  com a capa entra no Figma antes do código.
 - **Erros da API → tela:** `422 ticket_price_below_minimum` (com `minimumCents`), `422
 ticket_quantity_exceeds_capacity`, `422 event_starts_in_past`, `422 event_not_publishable` (com o
   requisito que falta) e `400 invalid_event` / `invalid_ticket_type` viram o erro do campo; `422
@@ -340,11 +346,12 @@ tokens novos (P8) entram no snapshot `packages/ui/tokens/figma-tokens.json` na 1
   estado do campo.
 - **Ponta a ponta (Playwright, API simulada):** navegação pela barra lateral (aberta e recolhida) e
   pelas abas; menu e folha da conta com "Sair" e com a ida ao site; sem perfil → criar
-  perfil → conta de recebimento (assinatura simulada e erro); termos com `tos_id`; dados e
+  perfil → conta de recebimento (assinatura simulada e erro); com perfil, `/producer/start` → Painel;
+  termos com `tos_id`; dados e
   documentos (com erro de arquivo); em análise, pendência com resposta, recusado com nova tentativa
   preenchida, liberando e pronto; Painel em todos os estados; Eventos; criar rascunho com cidade e
   categoria, capa (envio, erro e troca), tipo abaixo do mínimo, publicar bloqueado, publicar e link do
-  publicado.
+  publicado; a página do evento com a capa e sem ela.
 - **Conferência visual:** cada tela do §5 em 360 e 1440 (e o Painel no modo claro), registrada no PR.
 
 ## 11. Validação real

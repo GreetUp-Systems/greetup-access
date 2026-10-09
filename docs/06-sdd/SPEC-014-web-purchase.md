@@ -2,9 +2,10 @@
 
 > **Status:** 9A, 9B e 9C implementadas; 9D pendente, depois da moldura do site (SPEC-016 16A)
 >
-> **Versão:** 1.2 (checkout da 9C.2: erros da criação e do Pix, estados novos da escolha)
+> **Versão:** 1.3 (o "Entrar" fica na página; a capa no cartaz passa à SPEC-015 15D; 9D na moldura
+> da SPEC-016 16A)
 >
-> **Atualizada em:** 05/10/2026
+> **Atualizada em:** 09/10/2026
 >
 > **Aprovada em:** 04/10/2026
 >
@@ -29,15 +30,15 @@ Privy no navegador, que valida os fluxos adiados (ativação da conta, e-mail de
 
 ## 3. Decisões desta SPEC (04/10/2026)
 
-| #   | Decisão                                                                                                                                                                           |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1  | A taxa aparece antes do Pix: a compra passa a ter dois passos no backend, cotação e depois Pix (SPEC-005 v1.5).                                                                   |
-| A2  | A página pública ganha término, local em duas partes e disponibilidade por tipo (SPEC-004 v2.2). A capa é a arte padrão da marca; upload de imagem fica com o painel do produtor. |
-| A3  | Código legível do ingresso derivado do `tokenId`: `AX-` + 4 dígitos (SPEC-008 v1.3).                                                                                              |
-| A4  | Sem contagem regressiva no Pix até a validade do `pix_code` ser medida: a tela mostra só "Aguardando".                                                                            |
-| A5  | "Meus ingressos" dentro da moldura do site (SPEC-016 16A), com a Barra de abas Início · Ingressos · Conta no celular. Revisto em 06/10/2026: antes, sem a barra de abas.          |
-| B   | Telas que o FigJam prevê e o Figma não tem são desenhadas no Figma, no padrão do arquivo, antes da implementação (§6).                                                            |
-| C   | Login Privy sem UI pronta; API chamada direto do navegador; evento renderizado no servidor; sem biblioteca de cache; SSE com `fetch-event-source`; QR gerado no cliente (§7).     |
+| #   | Decisão                                                                                                                                                                                                                                                                                 |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | A taxa aparece antes do Pix: a compra passa a ter dois passos no backend, cotação e depois Pix (SPEC-005 v1.5).                                                                                                                                                                         |
+| A2  | A página pública ganha término, local em duas partes e disponibilidade por tipo (SPEC-004 v2.2). O cartaz é a arte padrão da marca; a capa do evento entra nele na SPEC-015 15D, com o envio da capa, e já é a imagem de compartilhamento desde a SPEC-016 16A (revisto em 09/10/2026). |
+| A3  | Código legível do ingresso derivado do `tokenId`: `AX-` + 4 dígitos (SPEC-008 v1.3).                                                                                                                                                                                                    |
+| A4  | Sem contagem regressiva no Pix até a validade do `pix_code` ser medida: a tela mostra só "Aguardando".                                                                                                                                                                                  |
+| A5  | "Meus ingressos" dentro da moldura do site (SPEC-016 16A), com a Barra de abas Início · Ingressos · Conta no celular. Revisto em 06/10/2026: antes, sem a barra de abas.                                                                                                                |
+| B   | Telas que o FigJam prevê e o Figma não tem são desenhadas no Figma, no padrão do arquivo, antes da implementação (§6).                                                                                                                                                                  |
+| C   | Login Privy sem UI pronta; API chamada direto do navegador; evento renderizado no servidor; sem biblioteca de cache; SSE com `fetch-event-source`; QR gerado no cliente (§7).                                                                                                           |
 
 ## 4. Entregas
 
@@ -46,7 +47,7 @@ Privy no navegador, que valida os fluxos adiados (ativação da conta, e-mail de
 | 9A    | Backend: compra em dois passos, página pública ampliada, código do ingresso, CORS             |
 | 9B    | Base do web: Privy, cliente de API, cabeçalho, identificação, catálogo dos componentes usados |
 | 9C    | Compra: evento, escolha, identificação, revisão, Pix e acompanhamento                         |
-| 9D    | Área do comprador: Meus ingressos (próximos e anteriores) e o ingresso                        |
+| 9D    | Área do comprador: Meus ingressos (próximos e anteriores) e o ingresso, na moldura da 16A     |
 
 Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. A 9C vem em três:
 9C.1, evento e escolha; 9C.2, do "Continuar" até o Pix na tela (criar o pedido, revisar e gerar o
@@ -71,15 +72,18 @@ confirmado, ingresso pronto, pagamento não concluído e a ativação da conta a
 
 **9D, revista em 06/10/2026:** as telas da área do comprador passaram para a página "Site público"
 (os mesmos nós) e ficam dentro da moldura do site (SPEC-016 16A): cabeçalho do site no desktop e
-Barra de abas Início · Ingressos · Conta no celular. O título é "Meus ingressos", e os cartões mostram
+Barra de abas Início · Ingressos · Conta no celular, menos no ingresso aberto, que fica sem abas
+(SPEC-016 S4). O título é "Meus ingressos", e os cartões mostram
 a capa do evento (`coverUrl`, SPEC-015 15A), com a arte da marca quando não há capa.
 
 `/checkout/[purchaseId]` é uma tela que evolui sem recarregar (revisão → Pix → confirmado →
 pronto), como o FigJam define para "Depois do pagamento". Recarregar a página volta ao estado atual
 da compra.
 
-O cabeçalho do desktop tem "Entrar", que abre a mesma identificação com `origin: "login"` e leva a
-"Meus ingressos". "Vender ingressos" fica fora desta SPEC (§12). Na 9B, sem tela de produto ainda, a
+O cabeçalho do desktop tem "Entrar", que abre a mesma identificação com `origin: "login"` e deixa a
+pessoa na página em que estava (revisto em 09/10/2026, como a 9C.1 implementou). "Vender ingressos"
+fica fora desta SPEC (§12). Desde a SPEC-016 16A, o cabeçalho do desktop é o do site; o checkout
+fica com o cabeçalho focado (o logo e a conta). Na 9B, sem tela de produto ainda, a
 identificação é conferida no catálogo (`/dev/catalog?identificacao=<estado>`); a validação real do
 login acontece no "Entrar" do cabeçalho, na 9C.
 
@@ -210,7 +214,8 @@ NEXT_PUBLIC_PRIVY_APP_ID=
 ## 12. Fora do escopo
 
 - "Vender ingressos" e todo o fluxo do produtor (onboarding, eventos, check-in);
-- barra de abas, Perfil e tema claro selecionável pela interface;
+- Perfil e tema claro selecionável pela interface (a Barra de abas vem da moldura da SPEC-016 16A,
+  A5);
 - transferência de ingresso;
 - upload de imagem de capa;
 - contagem regressiva do Pix (A4);
