@@ -10,9 +10,11 @@ const isPhone = (page: Page): boolean => (page.viewportSize()?.width ?? 0) < 768
 async function openScenarios(page: Page): Promise<void> {
   await page.addInitScript(() => window.localStorage.setItem("access-e2e-session", "1"));
   await page.goto(`/e/festival-de-cenarios-${randomUUID().slice(0, 8)}`);
-  // The header shows the account once the test session is on.
+  // The header shows the account once the test session is on (SPEC-016 S2, S19).
   await expect(
-    page.getByRole("button", { name: isPhone(page) ? "Seus ingressos" : "comprador@example.com" }),
+    isPhone(page)
+      ? page.getByRole("button", { name: "Conta" })
+      : page.getByRole("button", { name: "Menu da conta" }),
   ).toBeVisible();
 }
 
@@ -63,6 +65,11 @@ test("reviews the order with its fee, survives a reload and shows the Pix", asyn
   await expect(visible(page, "2 × Pista")).toBeVisible();
   await expect(visible(page, "Taxa de serviço")).toBeVisible();
   await expect(visible(page, "R$ 264,00")).toBeVisible();
+  if (!isPhone(page)) {
+    // The checkout keeps its focused header, the logo and the account, not the site's (S20).
+    await expect(page.getByRole("button", { name: "comprador@example.com" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Menu da conta" })).toHaveCount(0);
+  }
 
   await page.reload();
   await expect(visible(page, "2 × Pista")).toBeVisible();
