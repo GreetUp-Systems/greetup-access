@@ -2,9 +2,10 @@
 
 > **Status:** 7A e 7B implementadas; e-mail real pendente do smoke pelo front
 >
-> **Versão:** 1.4 (emenda da SPEC-015, parte 15A: capa do evento no ingresso; grafia única do QR)
+> **Versão:** 1.5 (emenda da SPEC-014 9D: cidade do evento no ingresso; 1.4: capa do evento no
+> ingresso e grafia única do QR)
 >
-> **Atualizada em:** 08/10/2026
+> **Atualizada em:** 09/10/2026
 >
 > **Aprovada em:** 04/10/2026
 >
@@ -73,7 +74,8 @@ depois pela emissão. Sem paginação no MVP, com teto de 200 itens.
         "endsAt": "ISO-8601 | null",
         "venueName": "Casa Access | null",
         "address": "Rua Exemplo, 100 · São Paulo | null",
-        "coverUrl": "https://<origem pública do R2>/events/<id>/<uuid>.jpg | null"
+        "coverUrl": "https://<origem pública do R2>/events/<id>/<uuid>.jpg | null",
+        "city": { "code": 3550308, "name": "São Paulo", "uf": "SP" } | null
       },
       "ticketType": { "id": "uuid", "name": "Pista" },
       "purchaseId": "uuid",
@@ -92,8 +94,11 @@ depois pela emissão. Sem paginação no MVP, com teto de 200 itens.
 `code` é o código legível do ingresso: `AX-` seguido do `tokenId` com pelo menos 4 dígitos
 (`AX-0042`), único no contrato; é `null` enquanto o ingresso estiver `pending_mint`. Serve para
 identificar o ingresso na tela e, no bloco 8, para digitar na entrada quando a câmera falha.
-`event.status` e `event.endsAt` separam "Próximos" de "Anteriores" (encerrado ou cancelado).
-`event.coverUrl` é a capa do evento (SPEC-015, D-30), `null` sem capa.
+`event.status`, `event.endsAt` e, sem término, `event.startsAt` separam "Próximos" de "Anteriores"
+(evento cancelado ou já encerrado, SPEC-014 M2).
+`event.coverUrl` é a capa do evento (SPEC-015, D-30), `null` sem capa. `event.city` é a cidade do
+evento, da base do IBGE (D-30), `null` no evento sem cidade; os cartões de Meus ingressos e o
+ingresso aberto mostram a cidade ao lado da data ou do local (SPEC-014 9D).
 
 `onchain` é `null` enquanto o ingresso estiver `pending_mint`. O link do explorer usa a rede de
 `STELLAR_NETWORK`; `contractId` vem de `STELLAR_TICKET_CONTRACT_ID`, que a API passa a ler.
@@ -273,6 +278,7 @@ APP_PUBLIC_URL=
 ### Integração (PostgreSQL e Redis reais, Resend fake)
 
 - comprador A lista só os próprios ingressos; `GET` de ingresso de B responde `404`;
+- o evento do ingresso traz `coverUrl` e `city`, e `city` é `null` quando o evento não tem cidade;
 - `qrToken` só para ingresso `issued`;
 - SSE emite o estágio inicial, a mudança para `ticket_issued` e fecha; compra de outro usuário
   responde `404`;
@@ -288,6 +294,7 @@ E-mail real pelo Resend no smoke ponta a ponta da compra (SPEC-005 §15).
 ## 13. Definição de pronto
 
 - [x] 7A: meus ingressos, QR assinado e SSE, com testes.
+- [ ] v1.5: cidade do evento no ingresso, com teste de integração (entra com a SPEC-014 9D).
 - [x] 7B: `NotifyWorker` com um e-mail por compra, idempotente, com testes.
 - [x] Build, lint, typecheck, unitários e integração passam.
 - [ ] E-mail real entregue no smoke ponta a ponta.

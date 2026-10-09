@@ -1,8 +1,9 @@
 # SPEC-014 — App web · Compra
 
-> **Status:** 9A, 9B e 9C implementadas; 9D pendente, depois da moldura do site (SPEC-016 16A)
+> **Status:** 9A, 9B e 9C implementadas; 9D planejada em 09/10/2026 (M1–M6), depois da moldura do site
+> (SPEC-016 16A)
 >
-> **Versão:** 1.3 (o "Entrar" fica na página; a capa no cartaz passa à SPEC-015 15D; 9D na moldura
+> **Versão:** 1.4 (decisões da 9D, M1–M6); 1.3 (o "Entrar" fica na página; a capa no cartaz passa à SPEC-015 15D; 9D na moldura
 > da SPEC-016 16A)
 >
 > **Atualizada em:** 09/10/2026
@@ -40,14 +41,25 @@ Privy no navegador, que valida os fluxos adiados (ativação da conta, e-mail de
 | B   | Telas que o FigJam prevê e o Figma não tem são desenhadas no Figma, no padrão do arquivo, antes da implementação (§6).                                                                                                                                                                  |
 | C   | Login Privy sem UI pronta; API chamada direto do navegador; evento renderizado no servidor; sem biblioteca de cache; SSE com `fetch-event-source`; QR gerado no cliente (§7).                                                                                                           |
 
+### Decisões da 9D (09/10/2026)
+
+| #   | Decisão                                                                                                                                                                                                                                                                                                                                                           |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1  | Meus ingressos agrupa por evento: um cartão com "N ingressos"; o selo do tipo aparece quando todos são do mesmo tipo; "Mostrar ingresso" abre o primeiro, pela emissão.                                                                                                                                                                                           |
+| M2  | Anterior é o ingresso de evento cancelado ou cujo término (sem término, o início) já passou, a mesma regra das abas de Eventos (SPEC-015 §6). Próximos em ordem cronológica; Anteriores do mais recente ao mais antigo, em `?aba=anteriores`.                                                                                                                     |
+| M3  | Estados do ingresso: Válido, Emitindo e Cancelado; no evento cancelado o ingresso fica Cancelado e o QR não aparece, mesmo que a API devolva o token. Utilizado e Transferido entram com o check-in (SPEC-009) e a transferência. Evento que já passou, não cancelado e sem check-in: o cartão esmaecido, sem o selo de estado, e o ingresso aberto segue Válido. |
+| M4  | Ingresso aberto: `[id]` é um ingresso; a tela mostra os ingressos do mesmo evento, com o da rota selecionado, e trocar de ingresso troca a rota. O QR vem de `GET /api/me/tickets/:id`; o voltar leva a `/me/tickets`; emitindo, a tela relê a cada 5 s; no celular, desliza entre os ingressos.                                                                  |
+| M5  | O ingresso traz a cidade do evento (SPEC-008 v1.5), mostrada ao lado da data ou do local.                                                                                                                                                                                                                                                                         |
+| M6  | Próximos: o próximo evento no Destaque largo do Cartão de evento e os demais em grade de destaques, 3 por linha no desktop; no celular, o destaque e as linhas. Anteriores: cartões em linha, 4 por linha no desktop e um por linha no celular. A contagem é "Em N dias" até dois dias antes, "Amanhã" na véspera, "Hoje" no dia e "Agora" do início ao fim.      |
+
 ## 4. Entregas
 
-| Parte | Conteúdo                                                                                      |
-| ----- | --------------------------------------------------------------------------------------------- |
-| 9A    | Backend: compra em dois passos, página pública ampliada, código do ingresso, CORS             |
-| 9B    | Base do web: Privy, cliente de API, cabeçalho, identificação, catálogo dos componentes usados |
-| 9C    | Compra: evento, escolha, identificação, revisão, Pix e acompanhamento                         |
-| 9D    | Área do comprador: Meus ingressos (próximos e anteriores) e o ingresso, na moldura da 16A     |
+| Parte | Conteúdo                                                                                                                          |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 9A    | Backend: compra em dois passos, página pública ampliada, código do ingresso, CORS                                                 |
+| 9B    | Base do web: Privy, cliente de API, cabeçalho, identificação, catálogo dos componentes usados                                     |
+| 9C    | Compra: evento, escolha, identificação, revisão, Pix e acompanhamento                                                             |
+| 9D    | Área do comprador: Meus ingressos (próximos e anteriores) e o ingresso, na moldura da 16A, e a cidade no ingresso (SPEC-008 v1.5) |
 
 Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. A 9C vem em três:
 9C.1, evento e escolha; 9C.2, do "Continuar" até o Pix na tela (criar o pedido, revisar e gerar o
@@ -113,6 +125,21 @@ evento (`138:322`, `140:931`; RN-008) vieram na 9C.1.
 | Falha na identificação  | `190:2973` | `190:3236` | Toast de erro "Não deu para continuar", no envio do código ou na confirmação                                    |
 | Evento já começou       | `221:3245` | `221:3338` | "O evento já começou · Vendas encerradas", sem selo e sem botão de compra (as vendas param no início, SPEC-004) |
 
+Os estados da 9D foram desenhados em 09/10/2026 na página "Site público" (seções "Área do comprador ·
+Estados (9D)" e "Ingresso aberto · Estados (9D)"), com o Destaque largo do Cartão de evento:
+
+| Estado da 9D                      | Celular     | Desktop     | Como aparece                                                                                                     |
+| --------------------------------- | ----------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| Meus ingressos · Carregando       | `465:18327` | `465:18230` | Título e controle reais; esqueletos no lugar do destaque e dos cartões                                           |
+| Meus ingressos · Erro             | `465:18576` | `465:18436` | Toast "Sem conexão" e "Tentar de novo", como no sistema do produtor                                              |
+| Meus ingressos · Sem próximos     | `465:18777` | `465:18713` | "Nenhum evento pela frente" e "Os ingressos de eventos que já passaram estão em Anteriores."                     |
+| Meus ingressos · Anteriores vazio | `465:18890` | `465:18822` | "Nenhum evento anterior" e "Os eventos que já passaram aparecem aqui."                                           |
+| Ingresso · Um ingresso            | `465:7858`  | `465:7844`  | "Seu ingresso" e um item na lista; no celular, sem paginação                                                     |
+| Ingresso · Três ingressos         | `465:7881`  | `465:7867`  | "Seus 3 ingressos"; no celular, "Ingresso 1 de 3 · deslize para ver os outros"                                   |
+| Ingresso · Emitindo               | `465:7904`  | `465:7890`  | O Ingresso Emitindo; o item da lista com "Código AX-····"                                                        |
+| Ingresso · Cancelado              | `465:7927`  | `465:7913`  | O Ingresso Cancelado, sem QR; no desktop, "Este evento foi cancelado. Fale com quem organiza sobre o reembolso." |
+| Ingresso · Carregando             | `465:7950`  | `465:7936`  | Esqueletos no topo, na lista e na placa do ingresso                                                              |
+
 ## 7. Arquitetura do app
 
 - **Login:** `@privy-io/react-auth` sem UI pronta (`useLoginWithEmail`): as telas de e-mail e
@@ -176,7 +203,7 @@ Tiradas da tabela "Regras de negócio em cada etapa" do FigJam, com a origem.
 | Pagamento     | A confirmação vem do webhook da BlindPay; falha ou devolução libera o estoque e mostra "Pagamento não concluído" | SPEC-005      |
 | Emissão       | A compra só fica "emitida" quando todos os ingressos saem; a tela mostra "Emitindo" até lá                       | SPEC-005      |
 | Conta Stellar | Ativada por intenção e invisível para o comprador                                                                | D-23          |
-| Ingresso      | O QR Code só aparece para ingresso emitido e só na área logada                                                   | SPEC-008      |
+| Ingresso      | O QR Code só aparece para ingresso emitido, de evento não cancelado, e só na área logada                         | SPEC-008, M3  |
 
 ## 9. Ajustes de backend (9A)
 
@@ -198,13 +225,20 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api
 NEXT_PUBLIC_PRIVY_APP_ID=
 ```
 
+A 9D acrescenta o token `size/feature-art` (560, a arte do Destaque largo do Cartão de evento),
+criado no Figma em 09/10/2026; entra no snapshot `packages/ui/tokens/figma-tokens.json` com o código.
+
 ## 11. Testes
 
 - **Unitários (web):** formatação de valores e datas, agrupamento de ingressos por evento, código
-  legível, mapeamento de `code` de erro para estado de tela.
+  legível, mapeamento de `code` de erro para estado de tela. Na 9D: Próximos x Anteriores (cancelado
+  no futuro, evento sem término, em andamento), a ordem de cada aba, a contagem no fuso de Brasília
+  (Em N dias, Amanhã, Hoje, Agora), o selo do tipo só com um tipo e o primeiro ingresso pela emissão.
 - **Ponta a ponta (Playwright, API simulada por interceptação):** compra feliz até "Ingresso
   pronto"; valor mínimo; esgotado; total mudou; pagamento não concluído; sessão ativa pulando a
-  identificação; evento indisponível; seus ingressos vazio, próximos e anteriores.
+  identificação; evento indisponível; Meus ingressos vazio, próximos e anteriores. Na 9D também: sem
+  próximos, anteriores vazio e erro com "Tentar de novo"; o ingresso aberto com a troca entre os
+  ingressos do evento, o voltar, o emitindo que relê até ficar pronto e o evento cancelado sem QR.
 - **Conferência visual:** cada tela em 360 e 1440 comparada com o nó do §5, registrada no PR.
 - **Backend (9A):** unitários e integração dos dois passos, da cotação vencida, do total alterado,
   da disponibilidade pública e do código.
@@ -225,6 +259,7 @@ NEXT_PUBLIC_PRIVY_APP_ID=
 
 - [x] 9A: dois passos, página pública ampliada, código do ingresso e CORS, com testes.
 - [x] Telas do §6 desenhadas no Figma e revisadas pelo Matheus (04/10/2026).
+- [ ] Estados da 9D (§6, 09/10/2026) revisados pelo Matheus.
 - [x] 9B: login, identificação e base do app, com conferência visual (PR #22). Login real validado no app em 05/10/2026 (mesma conta e wallet); a ativação Stellar, recusada pela Privy no servidor, passa a assinar no navegador (D-28).
 - [x] 9C: compra de ponta a ponta com a API simulada e conferência visual. 9C.1 (página do evento e escolha do ingresso) no PR #24; 9C.2 (checkout até o Pix) no PR #27, conferida pelo Matheus com a API simulada em 06/10/2026; 9C.3 (acompanhamento até o ingresso pronto) no PR #28.
 - [ ] 9D: área do comprador com conferência visual.

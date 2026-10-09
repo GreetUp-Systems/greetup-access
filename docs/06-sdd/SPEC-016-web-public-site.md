@@ -88,22 +88,22 @@ Cada parte é um PR próprio, com a conferência visual 360/1440 registrada.
 
 ### 5.1 Telas (página "Site público")
 
-| Tela                                  | Rota               | Celular     | Desktop     |
-| ------------------------------------- | ------------------ | ----------- | ----------- |
-| Início                                | `/`                | `327:575`   | `325:31`    |
-| Início no modo claro                  | `/`                | —           | `338:14360` |
-| Para produtores                       | `/producers`       | `337:1457`  | `334:1394`  |
-| Explorar (desktop com o popover Onde) | `/explore`         | `358:2380`  | `355:1759`  |
-| Explorar · Filtros (folha)            | sobreposição       | `360:2515`  | —           |
-| Explorar · Cidade                     | sobreposição       | `360:16030` | `355:1759`  |
-| Explorar · Sem resultados             | `/explore`         | —           | `357:2217`  |
-| Meus ingressos (9D)                   | `/me/tickets`      | `146:2582`  | `150:2853`  |
-| Meus ingressos · Anteriores (9D)      | `/me/tickets`      | `157:2067`  | `157:2232`  |
-| Meus ingressos · Vazio (9D)           | `/me/tickets`      | `176:2209`  | `176:5667`  |
-| Ingresso (9D)                         | `/me/tickets/[id]` | `154:3551`  | `156:2434`  |
-| Conta · quem compra                   | `/me`              | `300:4512`  | `300:4244`  |
-| Conta · quem também produz            | `/me`              | `391:4135`  | `370:13566` |
-| Página do evento (proposta, S12)      | `/e/[slug]`        | —           | `387:4114`  |
+| Tela                                  | Rota                         | Celular     | Desktop     |
+| ------------------------------------- | ---------------------------- | ----------- | ----------- |
+| Início                                | `/`                          | `327:575`   | `325:31`    |
+| Início no modo claro                  | `/`                          | —           | `338:14360` |
+| Para produtores                       | `/producers`                 | `337:1457`  | `334:1394`  |
+| Explorar (desktop com o popover Onde) | `/explore`                   | `358:2380`  | `355:1759`  |
+| Explorar · Filtros (folha)            | sobreposição                 | `360:2515`  | —           |
+| Explorar · Cidade                     | sobreposição                 | `360:16030` | `355:1759`  |
+| Explorar · Sem resultados             | `/explore`                   | —           | `357:2217`  |
+| Meus ingressos (9D)                   | `/me/tickets`                | `146:2582`  | `150:2853`  |
+| Meus ingressos · Anteriores (9D)      | `/me/tickets?aba=anteriores` | `157:2067`  | `157:2232`  |
+| Meus ingressos · Vazio (9D)           | `/me/tickets`                | `176:2209`  | `176:5667`  |
+| Ingresso (9D)                         | `/me/tickets/[id]`           | `154:3551`  | `156:2434`  |
+| Conta · quem compra                   | `/me`                        | `300:4512`  | `300:4244`  |
+| Conta · quem também produz            | `/me`                        | `391:4135`  | `370:13566` |
+| Página do evento (proposta, S12)      | `/e/[slug]`                  | —           | `387:4114`  |
 
 Na 16A, o `387:4114` vale pelo cabeçalho; o cartaz com a capa é conferido na SPEC-015 15D (S21).
 
