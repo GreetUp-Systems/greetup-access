@@ -13,12 +13,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { AppHeader } from "../../../_components/AppHeader";
-import { EventPurchase } from "../../../_components/event/EventPurchase";
-import { Providers } from "../../../_components/Providers";
-import { getPublicEvent, type PublicEvent } from "../../../_lib/api/events";
-import { formatEventEnd, formatEventStart } from "../../../_lib/format";
-import { saleState } from "../../../_lib/ticket-selection";
+import { AppHeader } from "../../_components/AppHeader";
+import { EventPurchase } from "../../_components/event/EventPurchase";
+import { Providers } from "../../_components/Providers";
+import { getPublicEvent, type PublicEvent } from "../../_lib/api/events";
+import { formatEventEnd, formatEventStart } from "../../_lib/format";
+import { saleState } from "../../_lib/ticket-selection";
 
 // Rendered on the server: the shared link's preview and the content work without JavaScript
 // (SPEC-014 §7). Availability changes all the time, so nothing is cached.

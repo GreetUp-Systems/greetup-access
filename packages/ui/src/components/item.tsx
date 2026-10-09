@@ -56,17 +56,14 @@ function Item({ className, size, divider, selected, asChild = false, ...props }:
   );
 }
 
-/**
- * Figma: Ícone, the tile twice the icon size (20 in a 40 tile, 16 in a 32 tile when compact). The
- * icon is icon/secondary, icon/accent when the item is selected.
- */
+/** Figma: Ícone, the tile twice the icon size (20 in a 40 tile, 16 in a 32 tile when compact). */
 function ItemMedia({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="item-media"
       aria-hidden
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-md bg-bg-subtle text-icon-secondary [&_svg]:size-icon-md",
+        "flex size-10 shrink-0 items-center justify-center rounded-md bg-bg-subtle text-icon-primary [&_svg]:size-icon-md",
         "group-data-[size=compact]/item:size-8 group-data-[size=compact]/item:[&_svg]:size-icon-sm",
         "group-data-interactive/item:group-hover/item:bg-bg-surface",
         "group-data-selected/item:bg-bg-accent-subtle group-data-selected/item:text-icon-accent",
@@ -117,17 +114,14 @@ function ItemDescription({ className, ...props }: ComponentProps<"p">) {
   );
 }
 
-/**
- * Figma: Fim, the value (Mono/M), the badge and the arrow or the check. The arrow is icon/secondary
- * and turns icon/primary on hover; a badge keeps its own icon.
- */
+/** Figma: Fim, the value (Mono/M), the badge and the arrow or the check. */
 function ItemActions({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="item-actions"
       className={cn(
-        "flex shrink-0 items-center gap-2 [&>svg]:size-icon-md [&>svg]:text-icon-secondary",
-        "group-data-interactive/item:group-hover/item:[&>svg]:text-icon-primary group-data-selected/item:[&>svg]:text-icon-accent group-aria-disabled/item:text-text-tertiary",
+        "flex shrink-0 items-center gap-2 [&_svg]:size-icon-md [&_svg]:text-icon-primary",
+        "group-data-selected/item:[&_svg]:text-icon-accent group-aria-disabled/item:text-text-tertiary",
         className,
       )}
       {...props}

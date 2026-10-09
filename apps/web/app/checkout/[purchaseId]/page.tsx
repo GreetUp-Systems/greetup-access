@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { CheckoutScreen } from "../../../_components/checkout/CheckoutScreen";
-import { Providers } from "../../../_components/Providers";
+import { CheckoutScreen } from "../../_components/checkout/CheckoutScreen";
+import { Providers } from "../../_components/Providers";
 
 export const metadata: Metadata = { title: "Seu pedido · Access" };
 

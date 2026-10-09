@@ -1,30 +1,32 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { CircleCheck, CircleX, Info, Send, TriangleAlert, X } from "lucide-react";
-import type { ComponentProps, ReactNode } from "react";
+import { CircleCheck, CircleX, Info, Send, TriangleAlert } from "lucide-react";
+import type { ComponentProps } from "react";
 
-import { Button } from "@access/ui/components/button";
 import { cn } from "@access/ui/lib/utils";
 
 /**
- * Figma: Toast (77:527) shown in the screen's flow (the order kept, the total changed, a failure,
- * the notices of the Painel). Glass (Glass/Superfície) with the tone's translucent tint over it;
- * the tint colors the icon and the title, the message stays text/primary. Tom = Sucesso · Neutro ·
- * Destaque · Erro · Atenção. Mostrar fechar puts a ghost S icon button in the place of a 20 icon;
- * Mostrar ação adds a line with a ghost S button at the end, its label on the text's edge.
+ * Figma: Toast (77:527) shown in the screen's flow (the order kept, the total changed, a failure).
+ * Glass (Glass/Superfície) with the tone's translucent tint over it; the tint colors the icon and
+ * the title, the message stays text/primary. Tom = Sucesso · Neutro · Destaque · Erro · Atenção.
  */
 const alertVariants = cva(
   [
-    "group/alert flex w-full flex-col gap-1 rounded-xl border border-glass-rim bg-glass-surface px-4 py-3 text-left",
+    "group/alert flex w-full items-start gap-3 rounded-xl border border-glass-rim bg-glass-surface px-4 py-3 text-left",
     "shadow-glass-superficie backdrop-blur-glass-superficie",
+    "[&>svg]:size-icon-md [&>svg]:shrink-0",
   ],
   {
     variants: {
       tone: {
-        success: "bg-linear-to-b from-glass-tint-success to-glass-tint-success",
-        neutral: "",
-        accent: "bg-linear-to-b from-glass-tint-accent to-glass-tint-accent",
-        danger: "bg-linear-to-b from-glass-tint-danger to-glass-tint-danger",
-        warning: "bg-linear-to-b from-glass-tint-warning to-glass-tint-warning",
+        success:
+          "bg-linear-to-b from-glass-tint-success to-glass-tint-success [&>svg]:text-icon-success",
+        neutral: "[&>svg]:text-icon-secondary",
+        accent:
+          "bg-linear-to-b from-glass-tint-accent to-glass-tint-accent [&>svg]:text-icon-accent",
+        danger:
+          "bg-linear-to-b from-glass-tint-danger to-glass-tint-danger [&>svg]:text-icon-danger",
+        warning:
+          "bg-linear-to-b from-glass-tint-warning to-glass-tint-warning [&>svg]:text-icon-warning",
       },
     },
     defaultVariants: { tone: "neutral" },
@@ -32,25 +34,19 @@ const alertVariants = cva(
 );
 
 const toneIcons = {
-  success: { icon: CircleCheck, color: "text-icon-success" },
-  neutral: { icon: Info, color: "text-icon-secondary" },
-  accent: { icon: Send, color: "text-icon-accent" },
-  danger: { icon: CircleX, color: "text-icon-danger" },
-  warning: { icon: TriangleAlert, color: "text-icon-warning" },
+  success: CircleCheck,
+  neutral: Info,
+  accent: Send,
+  danger: CircleX,
+  warning: TriangleAlert,
 } as const;
 
-type AlertProps = ComponentProps<"div"> &
-  VariantProps<typeof alertVariants> & {
-    /** Figma: Mostrar ação. A ghost S button (or link) at the end of its own line. */
-    action?: ReactNode;
-    /** Figma: Mostrar fechar. Dismisses the notice. */
-    onClose?: () => void;
-  };
+type AlertProps = ComponentProps<"div"> & VariantProps<typeof alertVariants>;
 
 /** Danger and warning interrupt screen readers (role alert); the others are polite (status). */
-function Alert({ className, tone, action, onClose, children, ...props }: AlertProps) {
+function Alert({ className, tone, children, ...props }: AlertProps) {
   const key = tone ?? "neutral";
-  const { icon: Icon, color } = toneIcons[key];
+  const Icon = toneIcons[key];
   return (
     <div
       data-slot="alert"
@@ -59,22 +55,8 @@ function Alert({ className, tone, action, onClose, children, ...props }: AlertPr
       className={cn(alertVariants({ tone }), className)}
       {...props}
     >
-      <div className="flex items-start gap-3">
-        <Icon aria-hidden className={cn("size-icon-md shrink-0", color)} />
-        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
-        {onClose === undefined ? null : (
-          <Button
-            variant="ghost"
-            size="icon-s"
-            aria-label="Fechar"
-            onClick={onClose}
-            className="-m-2 shrink-0"
-          >
-            <X />
-          </Button>
-        )}
-      </div>
-      {action === undefined ? null : <div className="-my-1 -mr-3 flex justify-end">{action}</div>}
+      <Icon aria-hidden />
+      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
     </div>
   );
 }

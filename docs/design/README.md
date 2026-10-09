@@ -57,10 +57,8 @@ O gerador transforma cada variável do Figma em tema do Tailwind, pelo nome da s
 | Efeito `Elevation/2`, `Glass/…`    | `--shadow-elevation-2`, `--blur-…`  | `shadow-elevation-2`, `backdrop-blur-…`       |
 | `stroke/*`                         | `--stroke-focus`                    | `border` (1), `outline-2`, `w-(--stroke-…)`   |
 
-Dark é o padrão; Light entra por `data-theme="light"` ou pela preferência do sistema. Cada camada
-tem o seu layout raiz (D-29): o site público força Dark até a SPEC-016 revisar o modo claro dele, e
-o sistema do produtor segue o tema do sistema, com o tema no `<html>` para os menus e folhas, que
-abrem em portal, acompanharem. Um único breakpoint, `md:` (768), separa celular e desktop. `cn()` vem de
+Dark é o padrão; Light entra por `data-theme="light"` ou pela preferência do sistema (no MVP o app
+força Dark). Um único breakpoint, `md:` (768), separa celular e desktop. `cn()` vem de
 `@access/ui/lib/utils` e conhece essas escalas: `cn("h-control-md", "h-control-lg")` fica com a
 última.
 
@@ -85,12 +83,9 @@ Composições sem equivalente no shadcn (Barra superior, Logo) são montadas sob
 ## Atualizar os tokens
 
 1. Rode `packages/ui/tokens/export-figma-tokens.js` com a ferramenta `use_figma` do MCP do Figma
-   (somente leitura) no arquivo `WYqT9b0lxW4QhWmjuoPblV`, duas vezes: com `part = "variables"` e
-   com `part = "styles"`. O conjunto passou do limite de 20 KB que a ferramenta devolve. A API REST
-   de variáveis não existe no plano Pro; a execução de plugin é o caminho.
-2. Junte as duas respostas num objeto `{ file, collections, textStyles, effectStyles }`, grave em
-   uma linha em `packages/ui/tokens/figma-tokens.json` e formate com o Prettier, que mantém o estilo
-   do arquivo.
+   (somente leitura) no arquivo `WYqT9b0lxW4QhWmjuoPblV`. A API REST de variáveis não existe no plano
+   Pro; a execução de plugin é o caminho.
+2. Salve o JSON devolvido em `packages/ui/tokens/figma-tokens.json`.
 3. `pnpm --filter @access/ui tokens` gera `tokens.css` e `src/lib/merge-theme.ts` (as escalas para o
    `cn()`). O lint falha se algum dos dois ficar defasado.
 4. O diff do JSON e do CSS entra no PR.
