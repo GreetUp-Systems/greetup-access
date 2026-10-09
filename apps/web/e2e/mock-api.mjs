@@ -289,6 +289,282 @@ function ticketView(record, ticket) {
   };
 }
 
+// --- The producer system (SPEC-015 §6). The test session names its scenario after the token,
+// "e2e-session-token:<scenario>" (app/_lib/e2e-session.ts); fixtures follow the Figma screens.
+const week = 7 * day;
+
+// The Figma dates while they are ahead, then the same weekday and hour in a later week.
+function ahead(iso) {
+  let time = new Date(iso).getTime();
+  while (time < Date.now() + day) {
+    time += week;
+  }
+  return new Date(time).toISOString();
+}
+
+function weeksAgo(weeks, hourUtc) {
+  const date = new Date(Date.now() - weeks * week);
+  date.setUTCHours(hourUtc, 0, 0, 0);
+  return date.toISOString();
+}
+
+const cities = {
+  saoPaulo: { code: 3550308, name: "São Paulo", uf: "SP" },
+  curitiba: { code: 4106902, name: "Curitiba", uf: "PR" },
+  rio: { code: 3304557, name: "Rio de Janeiro", uf: "RJ" },
+  bh: { code: 3106200, name: "Belo Horizonte", uf: "MG" },
+};
+
+function producerEvent(fields) {
+  const createdAt = new Date(Date.now() - 60 * day).toISOString();
+  return {
+    slug: fields.id,
+    description: null,
+    category: "festivals",
+    coverUrl: null,
+    address: null,
+    endsAt: null,
+    refundPolicy: null,
+    status: "published",
+    publishedAt: createdAt,
+    cancelledAt: null,
+    createdAt,
+    updatedAt: createdAt,
+    soldTickets: 0,
+    salesCents: 0,
+    ...fields,
+  };
+}
+
+// À venda 2, Rascunhos 1 and Encerrados 4, as the tabs of Desktop · Eventos (307:2983).
+function producerEvents() {
+  return [
+    producerEvent({
+      id: "festival-de-inverno",
+      name: "Festival de Inverno",
+      venueName: "Casa Fluida",
+      city: cities.saoPaulo,
+      startsAt: ahead("2026-10-13T00:00:00.000Z"),
+      capacity: 300,
+      soldTickets: 120,
+      salesCents: 2_640_000,
+    }),
+    producerEvent({
+      id: "feira-criativa",
+      name: "Feira Criativa",
+      category: "food",
+      venueName: "Parque da Cidade",
+      city: cities.curitiba,
+      startsAt: ahead("2026-11-14T13:00:00.000Z"),
+      capacity: 150,
+      soldTickets: 62,
+      salesCents: 409_200,
+    }),
+    producerEvent({
+      id: "noite-de-jazz",
+      name: "Noite de Jazz",
+      category: "shows",
+      status: "draft",
+      publishedAt: null,
+      venueName: "Blue Note",
+      city: cities.rio,
+      startsAt: ahead("2026-11-05T23:00:00.000Z"),
+      capacity: 200,
+    }),
+    producerEvent({
+      id: "sunset-session",
+      name: "Sunset Session",
+      category: "parties",
+      venueName: "Casa Fluida",
+      city: cities.saoPaulo,
+      startsAt: weeksAgo(2, 21),
+      capacity: 250,
+      soldTickets: 250,
+      salesCents: 1_500_000,
+    }),
+    producerEvent({
+      id: "baile-de-primavera",
+      name: "Baile de Primavera",
+      category: "parties",
+      venueName: "Casa Fluida",
+      city: cities.saoPaulo,
+      startsAt: weeksAgo(5, 23),
+      capacity: 300,
+      soldTickets: 281,
+      salesCents: 1_686_000,
+    }),
+    producerEvent({
+      id: "mostra-de-curtas",
+      name: "Mostra de Curtas",
+      category: "theater",
+      venueName: "Cine Belas Artes",
+      city: cities.bh,
+      startsAt: weeksAgo(9, 22),
+      capacity: 120,
+      soldTickets: 96,
+      salesCents: 288_000,
+    }),
+    producerEvent({
+      id: "feira-de-outono",
+      name: "Feira de Outono",
+      category: "food",
+      status: "cancelled",
+      cancelledAt: new Date(Date.now() - 20 * day).toISOString(),
+      venueName: "Parque da Cidade",
+      city: cities.curitiba,
+      startsAt: ahead("2026-10-24T13:00:00.000Z"),
+      capacity: 150,
+    }),
+  ];
+}
+
+const readyProducer = {
+  id: "00000000-0000-4000-8000-0000000000aa",
+  displayName: "Casa Fluida",
+  onboardingStatus: "ready",
+  compliance: { status: "approved", hasOpenRfi: false },
+  stellar: { status: "active" },
+};
+
+// --- The Painel's sales (SPEC-015 §8), shaped as Desktop · Painel (284:1571): 182 tickets and
+// R$ 21.840 in 30 days, 12% and 8% over the 30 days before, the best day four days ago.
+const figmaBars = [
+  35, 48, 29, 58, 45, 70, 83, 42, 54, 64, 50, 75, 93, 61, 46, 67, 88, 56, 74, 96, 66, 80, 59, 99,
+  114, 160, 93, 80, 126, 102,
+];
+const brasiliaDate = (instant) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(instant);
+
+function salesSummary(period, totals) {
+  const days = { "7d": 7, "30d": 30, "90d": 90 }[period];
+  const bars = Array.from(
+    { length: days },
+    (_, index) => figmaBars[(index + 30 - (days % 30)) % 30],
+  );
+  const weight = bars.reduce((sum, bar) => sum + bar, 0);
+  const scale = totals === null ? 0 : days / 30;
+  const salesCents = totals === null ? 0 : Math.round((2_184_000 * scale) / 100) * 100;
+  const tickets = totals === null ? 0 : Math.round(182 * scale);
+  const daily = bars.map((bar, index) => ({
+    date: brasiliaDate(new Date(Date.now() - (days - 1 - index) * day)),
+    tickets: Math.round((tickets * bar) / weight),
+    salesCents: Math.round((salesCents * bar) / weight / 100) * 100,
+  }));
+  return {
+    period,
+    tickets,
+    salesCents,
+    previous:
+      totals === null
+        ? { tickets: 0, salesCents: 0 }
+        : { tickets: Math.round(tickets / 1.12), salesCents: Math.round(salesCents / 1.08) },
+    daily,
+  };
+}
+
+const minutesAgo = (minutes) => new Date(Date.now() - minutes * 60_000).toISOString();
+const recentSales = () => [
+  {
+    eventName: "Festival de Inverno",
+    ticketTypeName: "Pista",
+    quantity: 2,
+    subtotalCents: 26_400,
+    confirmedAt: minutesAgo(5),
+  },
+  {
+    eventName: "Festival de Inverno",
+    ticketTypeName: "Camarote",
+    quantity: 1,
+    subtotalCents: 26_400,
+    confirmedAt: minutesAgo(32),
+  },
+  {
+    eventName: "Feira Criativa",
+    ticketTypeName: "Geral",
+    quantity: 3,
+    subtotalCents: 19_800,
+    confirmedAt: minutesAgo(60),
+  },
+];
+const openRfi = {
+  id: "rfi_e2e",
+  status: "pending",
+  request: [],
+  expiresAt: "2026-11-03T15:00:00.000Z",
+  createdAt: "2026-10-07T15:00:00.000Z",
+};
+
+const unavailable = [503, { code: "http_503", message: "" }];
+const noProducer = [404, { code: "producer_not_found", message: "" }];
+const producerWith = (fields) => [200, { ...readyProducer, ...fields }];
+const drafts = () => producerEvents().filter((event) => event.status === "draft");
+const pending = (status, hasOpenRfi = false) => ({
+  onboardingStatus: "compliance_pending",
+  compliance: { status, hasOpenRfi },
+});
+// Calls per session token, for the scenarios that change after the first answer.
+const calls = new Map();
+
+// Each scenario answers GET /producers/me and GET /events: [status, body]. A test that needs its
+// own counters adds "~<id>" to the scenario's name.
+const producerScenarios = {
+  ready: {
+    me: () => [200, readyProducer],
+    events: () => [200, producerEvents()],
+    sales: true,
+  },
+  "first-event": { me: () => [200, readyProducer], events: () => [200, []] },
+  "approved-rfi": {
+    me: () =>
+      producerWith({
+        onboardingStatus: "ready",
+        compliance: { status: "approved_rfi", hasOpenRfi: true },
+      }),
+    events: () => [200, producerEvents()],
+    sales: true,
+    rfi: true,
+  },
+  setup: { me: () => producerWith(pending(null)), events: () => [200, drafts()] },
+  verifying: { me: () => producerWith(pending("verifying")), events: () => [200, drafts()] },
+  rfi: {
+    me: () => producerWith(pending("compliance_request", true)),
+    events: () => [200, producerEvents()],
+    sales: true,
+    rfi: true,
+  },
+  rejected: { me: () => producerWith(pending("rejected")), events: () => [200, drafts()] },
+  releasing: {
+    me: () =>
+      producerWith({
+        onboardingStatus: "wallet_registration_pending",
+        compliance: { status: "approved", hasOpenRfi: false },
+      }),
+    events: () => [200, drafts()],
+  },
+  "no-producer": { me: () => noProducer, events: () => noProducer },
+  failure: { me: () => unavailable, events: () => unavailable },
+  // The first load fails; "Tentar de novo" works.
+  "failure-once": {
+    me: (count) => (count === 1 ? unavailable : [200, readyProducer]),
+    events: () => [200, producerEvents()],
+  },
+};
+
+function producerScenario(authorization) {
+  const prefix = `Bearer ${token}:`;
+  if (!authorization?.startsWith(prefix)) {
+    return undefined;
+  }
+  const session = authorization.slice(prefix.length);
+  const scenario = producerScenarios[session.split("~")[0]];
+  return scenario === undefined ? undefined : { ...scenario, session };
+}
+
 function readBody(request) {
   return new Promise((resolve) => {
     let raw = "";
@@ -345,6 +621,48 @@ createServer(async (request, response) => {
     }
     advance[control[2]](record);
     send(response, 200, view(record));
+    return;
+  }
+
+  const [path, query = ""] = url.split("?");
+  if (
+    path === "/api/producers/me/sales" ||
+    path === "/api/producers/me/sales/recent" ||
+    path === "/api/producers/onboarding/rfi"
+  ) {
+    const scenario = producerScenario(request.headers.authorization);
+    if (scenario === undefined) {
+      send(response, 401, { code: "invalid_auth_token", message: "" });
+      return;
+    }
+    const params = new URLSearchParams(query);
+    if (path === "/api/producers/onboarding/rfi") {
+      send(response, 200, scenario.rfi === true ? openRfi : null);
+    } else if (path === "/api/producers/me/sales/recent") {
+      const limit = Number(params.get("limit") ?? 5);
+      send(response, 200, scenario.sales === true ? recentSales().slice(0, limit) : []);
+    } else {
+      const period = params.get("period") ?? "";
+      if (!["7d", "30d", "90d"].includes(period)) {
+        send(response, 400, { code: "invalid_sales_query", message: "" });
+        return;
+      }
+      send(response, 200, salesSummary(period, scenario.sales === true ? {} : null));
+    }
+    return;
+  }
+
+  if (url === "/api/producers/me" || url === "/api/events") {
+    const scenario = producerScenario(request.headers.authorization);
+    if (scenario === undefined) {
+      send(response, 401, { code: "invalid_auth_token", message: "" });
+      return;
+    }
+    const key = `${scenario.session} ${url}`;
+    const count = (calls.get(key) ?? 0) + 1;
+    calls.set(key, count);
+    const [status, body] = url === "/api/events" ? scenario.events(count) : scenario.me(count);
+    send(response, status, body);
     return;
   }
 

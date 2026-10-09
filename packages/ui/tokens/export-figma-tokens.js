@@ -1,7 +1,11 @@
 // Read-only Figma plugin script that exports the design tokens of the Access design system.
-// Run it with the Figma MCP `use_figma` tool on file WYqT9b0lxW4QhWmjuoPblV and save the
-// returned JSON as packages/ui/tokens/figma-tokens.json; then run `pnpm --filter @access/ui
-// tokens`. It never writes to the Figma file.
+// Run it with the Figma MCP `use_figma` tool on file WYqT9b0lxW4QhWmjuoPblV, once for each
+// `part`: the whole export no longer fits the 20 KB the tool returns. Join both results into one
+// object, { file, collections, textStyles, effectStyles }, save it on a single line as
+// packages/ui/tokens/figma-tokens.json and format it with Prettier; then run
+// `pnpm --filter @access/ui tokens`. It never writes to the Figma file.
+
+const part = "variables"; // "variables", then "styles"
 
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
 const variables = await figma.variables.getLocalVariablesAsync();
@@ -24,26 +28,31 @@ function value(raw) {
   return raw;
 }
 
+if (part === "variables") {
+  return {
+    file: "WYqT9b0lxW4QhWmjuoPblV",
+    collections: collections.map((collection) => ({
+      name: collection.name,
+      modes: collection.modes.map((mode) => mode.name),
+      variables: collection.variableIds.map((id) => {
+        const variable = byId[id];
+        return {
+          name: variable.name,
+          type: variable.resolvedType,
+          web: variable.codeSyntax.WEB || null,
+          values: Object.fromEntries(
+            collection.modes.map((mode) => [mode.name, value(variable.valuesByMode[mode.modeId])]),
+          ),
+        };
+      }),
+    })),
+  };
+}
+
 const textStyles = await figma.getLocalTextStylesAsync();
 const effectStyles = await figma.getLocalEffectStylesAsync();
 
 return {
-  file: "WYqT9b0lxW4QhWmjuoPblV",
-  collections: collections.map((collection) => ({
-    name: collection.name,
-    modes: collection.modes.map((mode) => mode.name),
-    variables: collection.variableIds.map((id) => {
-      const variable = byId[id];
-      return {
-        name: variable.name,
-        type: variable.resolvedType,
-        web: variable.codeSyntax.WEB || null,
-        values: Object.fromEntries(
-          collection.modes.map((mode) => [mode.name, value(variable.valuesByMode[mode.modeId])]),
-        ),
-      };
-    }),
-  })),
   textStyles: textStyles.map((style) => ({
     name: style.name,
     family: style.fontName.family,
