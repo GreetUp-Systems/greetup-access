@@ -16,7 +16,7 @@ import {
 import { activateStellarAccount } from "./account-activation";
 import { type AccountView, bootstrapAccount, type BootstrapOrigin } from "./api/account";
 import { ApiError } from "./api/client";
-import { E2E_TOKEN, e2eAccount, useE2ESession } from "./e2e-session";
+import { type E2ESession, useE2ESession } from "./e2e-session";
 import { restoreSession } from "./session-restore";
 
 export type SessionState =
@@ -45,15 +45,17 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-// The end-to-end build's signed-in buyer (e2e-session.ts): stable functions, no Privy.
-const e2eSessionValue: SessionContextValue = {
-  state: { status: "authenticated", account: e2eAccount },
-  getToken: () => Promise.resolve(E2E_TOKEN),
-  completeLogin: () => Promise.resolve(e2eAccount),
-  abandonLogin: () => Promise.resolve(),
-  requestActivation: () => undefined,
-  logout: () => Promise.resolve(),
-};
+// The end-to-end build's signed-in buyer or producer (e2e-session.ts): no Privy.
+function e2eSessionValue({ token, account }: E2ESession): SessionContextValue {
+  return {
+    state: { status: "authenticated", account },
+    getToken: () => Promise.resolve(token),
+    completeLogin: () => Promise.resolve(account),
+    abandonLogin: () => Promise.resolve(),
+    requestActivation: () => undefined,
+    logout: () => Promise.resolve(),
+  };
+}
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const { ready, authenticated, user, getAccessToken, logout: privyLogout } = usePrivy();
@@ -147,12 +149,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState({ status: "anonymous" });
   }, [privyLogout]);
 
+  // The test session is one stable value for the page, whatever Privy does underneath.
+  const e2eValue = useMemo(() => (e2e === null ? null : e2eSessionValue(e2e)), [e2e]);
   const value = useMemo(
-    () =>
-      e2e
-        ? e2eSessionValue
-        : { state, getToken, completeLogin, abandonLogin, requestActivation, logout },
-    [e2e, state, getToken, completeLogin, abandonLogin, requestActivation, logout],
+    () => e2eValue ?? { state, getToken, completeLogin, abandonLogin, requestActivation, logout },
+    [e2eValue, state, getToken, completeLogin, abandonLogin, requestActivation, logout],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

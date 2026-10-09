@@ -8,6 +8,16 @@ export function formatPrice(cents: number): string {
   return currency.format(cents / 100).replace(/\s/u, " ");
 }
 
+const amount = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** 2640000 → "26.400,00": a value whose "R$" is drawn apart, as the revenue of the event tables. */
+export function formatAmount(cents: number): string {
+  return amount.format(cents / 100);
+}
+
 interface DateParts {
   weekday: string;
   day: string;
@@ -55,6 +65,72 @@ function capitalize(value: string): string {
 export function formatEventStart(startsAt: string): string {
   const p = parts(startsAt);
   return `${capitalize(p.weekday.slice(0, 3))}, ${p.day} de ${p.month}, ${time(p)}`;
+}
+
+/** "Segunda, 6 de outubro": today, under the Painel's greeting. */
+export function formatWeekdayDate(iso: string): string {
+  const p = parts(iso);
+  return `${capitalize(p.weekday.replace("-feira", ""))}, ${p.day} de ${p.month}`;
+}
+
+/** "3 de novembro". */
+export function formatDayMonth(iso: string): string {
+  const p = parts(iso);
+  return `${p.day} de ${p.month}`;
+}
+
+/** "3 nov": a day in a tight place (a step, a chart). */
+export function formatShortDayMonth(iso: string): string {
+  const p = parts(iso);
+  return `${p.day} ${p.month.slice(0, 3)}`;
+}
+
+/** A calendar day of Brasília (YYYY-MM-DD, as the sales API counts them) as an instant on it. */
+export function brasiliaDay(date: string): string {
+  return `${date}T15:00:00.000Z`;
+}
+
+const reais = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+
+/** 2183960 → "21.840": whole reais, for the big numbers of the Painel. */
+export function formatReais(cents: number): string {
+  return reais.format(Math.round(cents / 100));
+}
+
+/** "agora", "há 5 min", "há 1 h", "há 3 dias": how long ago a sale happened. */
+export function formatTimeAgo(iso: string, now: Date): string {
+  const minutes = Math.floor((now.getTime() - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) {
+    return "agora";
+  }
+  if (minutes < 60) {
+    return `há ${minutes} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `há ${hours} h`;
+  }
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "há 1 dia" : `há ${days} dias`;
+}
+
+const dayFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** The calendar day of an instant in Brasília, as midnight UTC of that date. */
+const calendarDay = (iso: string) => Date.parse(`${dayFormat.format(new Date(iso))}T00:00:00Z`);
+
+/** "Hoje", "Amanhã", "Em 6 dias": calendar days until an event, in Brasília. */
+export function formatDaysUntil(startsAt: string, now: Date): string {
+  const days = Math.round((calendarDay(startsAt) - calendarDay(now.toISOString())) / 86_400_000);
+  if (days <= 0) {
+    return "Hoje";
+  }
+  return days === 1 ? "Amanhã" : `Em ${days} dias`;
 }
 
 /** "Sáb, 12 out · 21:00": the date and time on a ticket (Figma: Ingresso, 56:409). */

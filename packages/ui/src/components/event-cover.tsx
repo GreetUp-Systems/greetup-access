@@ -34,13 +34,15 @@ function EventCover({ className }: { className?: string }) {
 /**
  * Figma: Miniatura, the cover art at the size of a row (Revisar pedido 145:1592 and 150:2242),
  * exported from 150:2252. Below md size/thumbnail-s (56), from md size/thumbnail-m (64), with
- * radius/md. Decorative, like the cover.
+ * radius/md; the producer's lists use size/control-md (44) through className. With `src`, the
+ * event's own cover (16:9) is cut in the center; without it, the brand's art. Decorative, like the
+ * cover: the row names the event.
  */
-function EventThumbnail({ className }: { className?: string }) {
+function EventThumbnail({ src, className }: { src?: string | null; className?: string }) {
   return (
     <img
       data-slot="event-thumbnail"
-      src={thumbnail.src}
+      src={src ?? thumbnail.src}
       alt=""
       aria-hidden
       draggable={false}

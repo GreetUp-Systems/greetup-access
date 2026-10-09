@@ -1,5 +1,6 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import {
+  CalendarCheck,
   Check,
   CircleCheck,
   CircleX,
@@ -57,6 +58,7 @@ const states = {
   // Event (a cancelled event reuses the ticket's "Cancelado")
   draft: { label: "Rascunho", icon: EyeOff, tone: "neutral" },
   published: { label: "Publicado", icon: Eye, tone: "success" },
+  ended: { label: "Encerrado", icon: CalendarCheck, tone: "neutral" },
   // Producer verification
   in_review: { label: "Em análise", icon: Search, tone: "warning" },
   approved: { label: "Aprovado", icon: CircleCheck, tone: "success" },

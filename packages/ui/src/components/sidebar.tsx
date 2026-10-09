@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, ChevronsUpDown, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsUpDown } from "lucide-react";
 import { Slot } from "radix-ui";
 import {
   type ComponentProps,
@@ -14,13 +14,12 @@ import {
 } from "react";
 
 import { Avatar, AvatarFallback } from "@access/ui/components/avatar";
-import { Kbd, KbdGroup } from "@access/ui/components/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@access/ui/components/tooltip";
 import { cn } from "@access/ui/lib/utils";
 
 /**
- * Figma: Barra lateral (282:572) with Item de navegação (280:289), Busca (281:265), Conta na barra
- * lateral (281:292) and Alça da barra lateral (281:369). The desktop navigation of the producer
+ * Figma: Barra lateral (282:572) with Item de navegação (280:289), Conta na barra lateral (281:292)
+ * and Alça da barra lateral (281:369). The desktop navigation of the producer
  * system: a floating bg/surface panel 12 from the edges, size/sidebar open or size/sidebar-collapsed
  * with icons only (⌘B), remembered in a cookie. Phones use the Barra de abas instead, so there is no
  * mobile sheet. shadcn/ui Sidebar (variant floating, collapsible icon), adapted.
@@ -160,15 +159,12 @@ function SidebarInset({ className, ...props }: ComponentProps<"main">) {
   );
 }
 
-/** Figma: Topo. The logo and the search, space/5 apart. */
+/** Figma: Topo, the logo. */
 function SidebarHeader({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="sidebar-header"
-      className={cn(
-        "flex w-full flex-col gap-5 group-data-[collapsible=icon]:items-center",
-        className,
-      )}
+      className={cn("flex w-full flex-col group-data-[collapsible=icon]:items-center", className)}
       {...props}
     />
   );
@@ -225,8 +221,8 @@ type SidebarMenuButtonProps = ComponentProps<"button"> & {
 
 /**
  * Figma: Item de navegação. Icon, label and an optional count (SidebarMenuBadge); collapsed, the
- * icon alone with a tooltip. Hover gets bg/subtle; the selected one is a subtle card with a border,
- * Elevation/1 and the icon in icon/accent.
+ * icon alone with a tooltip, the label kept for screen readers. Hover gets bg/subtle; the selected
+ * one is a subtle card with a border, Elevation/1 and the icon in icon/accent.
  */
 function SidebarMenuButton({
   asChild = false,
@@ -245,7 +241,7 @@ function SidebarMenuButton({
       className={cn(
         "group/menu-button flex h-control-md w-full items-center gap-3 rounded-md px-3 text-left type-body-m-strong text-text-secondary outline-none hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-border-accent [&>span:first-of-type]:flex-1 [&>span:first-of-type]:truncate [&>svg]:size-icon-md [&>svg]:shrink-0 [&>svg]:text-icon-secondary hover:[&>svg]:text-icon-primary",
         "data-[active=true]:border data-[active=true]:border-border-subtle data-[active=true]:bg-bg-subtle data-[active=true]:text-text-primary data-[active=true]:shadow-elevation-1 data-[active=true]:[&>svg]:text-icon-accent",
-        "group-data-[collapsible=icon]:size-control-md group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:[&>span]:hidden",
+        "group-data-[collapsible=icon]:size-control-md group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:[&>span:first-of-type]:sr-only group-data-[collapsible=icon]:[&>span:not(:first-of-type)]:hidden",
         className,
       )}
       {...props}
@@ -275,30 +271,6 @@ function SidebarMenuBadge({ className, ...props }: ComponentProps<"span">) {
       )}
       {...props}
     />
-  );
-}
-
-/** Figma: Busca. Opens the command palette (⌘K); collapsed, the icon alone. */
-function SidebarSearchButton({ className, ...props }: ComponentProps<"button">) {
-  return (
-    <button
-      type="button"
-      data-slot="sidebar-search"
-      aria-keyshortcuts="Meta+K Control+K"
-      className={cn(
-        "flex h-control-md w-full items-center gap-2 rounded-md border border-border-subtle bg-bg-canvas px-3 text-left outline-none hover:border-border-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-border-accent [&>svg]:size-icon-md [&>svg]:shrink-0 [&>svg]:text-icon-secondary",
-        "group-data-[collapsible=icon]:size-control-md group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:[&>:not(svg)]:hidden",
-        className,
-      )}
-      {...props}
-    >
-      <Search aria-hidden />
-      <span className="flex-1 type-body-m text-text-tertiary">Buscar</span>
-      <KbdGroup>
-        <Kbd>⌘</Kbd>
-        <Kbd>K</Kbd>
-      </KbdGroup>
-    </button>
   );
 }
 
@@ -332,10 +304,11 @@ function SidebarAccountButton({
       )}
       {...props}
     >
-      <Avatar size="m">
+      {/* The initials repeat the name, so screen readers hear the name and the e-mail only. */}
+      <Avatar size="m" aria-hidden>
         <AvatarFallback>{initials}</AvatarFallback>
       </Avatar>
-      <span className="flex min-w-0 flex-1 flex-col gap-0-5 group-data-[collapsible=icon]:hidden">
+      <span className="flex min-w-0 flex-1 flex-col gap-0-5 group-data-[collapsible=icon]:sr-only">
         <span className="truncate type-body-m-strong text-text-primary">{name}</span>
         <span className="truncate type-body-s text-text-tertiary">{email}</span>
       </span>
@@ -362,7 +335,6 @@ export {
   SidebarMenuItem,
   SidebarProvider,
   type SidebarProviderProps,
-  SidebarSearchButton,
   type SidebarState,
   SidebarTrigger,
   useSidebar,

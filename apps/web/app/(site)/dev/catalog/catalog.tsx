@@ -14,7 +14,6 @@ import {
 import { Field, FieldDescription, FieldError, FieldLabel } from "@access/ui/components/field";
 import { CalendarFill, LayoutGridFill, WalletFill } from "@access/ui/components/fill-icons";
 import { Input, type InputProps } from "@access/ui/components/input";
-import { Kbd } from "@access/ui/components/kbd";
 import { Progress } from "@access/ui/components/progress";
 import {
   Sidebar,
@@ -27,7 +26,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarSearchButton,
   SidebarTrigger,
 } from "@access/ui/components/sidebar";
 import { Step, Steps, type StepState } from "@access/ui/components/step";
@@ -64,8 +62,8 @@ import {
 } from "lucide-react";
 import { type CSSProperties, type ReactNode, useEffect } from "react";
 
-import { IdentificationView } from "../../_components/identification/IdentificationView";
-import { SiteHeader } from "../../_components/SiteHeader";
+import { IdentificationView } from "../../../_components/identification/IdentificationView";
+import { SiteHeader } from "../../../_components/SiteHeader";
 
 // Hover, focus and pressed are CSS states; the catalog forces them with data-preview-state.
 type Preview = "hover" | "pressed" | "focus";
@@ -166,7 +164,6 @@ function ProducerNav({ collapsed }: { collapsed: boolean }) {
           <div className="pl-3 group-data-[collapsible=icon]:pl-0">
             {collapsed ? <Logo format="symbol" height={28} /> : <Logo height={28} />}
           </div>
-          <SidebarSearchButton />
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
@@ -438,15 +435,13 @@ export function Catalog({
         </div>
       </Section>
 
-      <Section id="avatar" title="Avatar · Atalho · Tendência · Progresso">
+      <Section id="avatar" title="Avatar · Tendência · Progresso">
         <div className="flex flex-wrap items-center gap-8">
           {(["s", "m"] as const).map((size) => (
             <Avatar key={size} size={size}>
               <AvatarFallback>CF</AvatarFallback>
             </Avatar>
           ))}
-          <Kbd>⌘</Kbd>
-          <Kbd>K</Kbd>
           <Trend direction="positive">12%</Trend>
           <Trend direction="negative">12%</Trend>
           <Trend direction="neutral">12%</Trend>

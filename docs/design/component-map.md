@@ -56,8 +56,9 @@ precisar.
 | Estado = Erro         |          | `aria-invalid` no `Input` + `<FieldError>` (com ícone)  |
 | Estado = Desabilitado |          | `disabled` no `Field` e no `Input`                      |
 
-Ícones dentro do campo (Ícone à esquerda/direita) entram com o `input-group` do shadcn quando uma
-tela usar.
+Com ícone (Ícone à esquerda/direita), o campo é o `input-group.tsx` do shadcn/ui: `<InputGroup
+size>` com `<InputGroupAddon align="inline-start" | "inline-end">` e `<InputGroupInput>`; a borda e
+os estados passam para o grupo. A busca das listas usa S com `size/search-field` (240).
 
 ### Código de 6 dígitos · `input-otp.tsx` (shadcn/ui)
 
@@ -74,7 +75,8 @@ seis `<InputOTPSlot>`. Aceita colar e o preenchimento automático do sistema.
 | Estado = Selecionado · Desabilitado |          | `selected` · `aria-disabled`                                 |
 | Mostrar divisor                     |          | `divider`                                                    |
 
-Com `asChild`, o filho (um botão ou link) vira o item, com hover e foco.
+Com `asChild`, o filho (um botão ou link) vira o item, com hover e foco. O ícone e a seta são
+`icon/secondary` (no hover a seta fica `icon/primary`; selecionado, os dois `icon/accent`).
 
 ### Janela · `dialog.tsx` (shadcn/ui)
 
@@ -88,8 +90,10 @@ cheia, e a tela traz a sua Barra superior.
 | -------------------------------------------------- | -------- | ------------------------------------------------------------------ |
 | Toast no fluxo da tela                             | `77:527` | `<Alert tone="…">` com `<AlertTitle>` e `<AlertDescription>`       |
 | Tom = Sucesso · Neutro · Destaque · Erro · Atenção |          | `tone="success" \| "neutral" \| "accent" \| "danger" \| "warning"` |
+| Mostrar ação                                       |          | `action` (um Fantasma S, no fim da sua linha)                      |
+| Mostrar fechar                                     |          | `onClose` (Botão de ícone/Fantasma S no lugar de um ícone de 20)   |
 
-O ícone vem do tom. Ação e fechar entram quando uma tela usar; o toast temporário (Sonner) também.
+O ícone vem do tom. O toast temporário (Sonner) entra quando uma tela usar.
 
 ### Barra superior · `top-bar.tsx` (composição)
 
@@ -108,11 +112,12 @@ conhecidas (Header · Sessão carregando, `231:5834`).
 | Figma               | Nó      | Código                                     |
 | ------------------- | ------- | ------------------------------------------ |
 | Status              | `46:85` | `<Status status="cancelled" size="s">`     |
-| Status = 14 estados |         | `status` (o texto e o ícone vêm do estado) |
+| Status = 15 estados |         | `status` (o texto e o ícone vêm do estado) |
 | Tamanho = S · M     |         | `size="s" \| "m"`                          |
 | Mostrar ícone       |         | `showIcon` (desligar só em tabela densa)   |
 
-O texto é fixo por estado, como diz o componente no Figma.
+O texto é fixo por estado, como diz o componente no Figma. Encerrado (`ended`, neutro, ícone
+`calendar-check`) é o evento publicado que já aconteceu; o cancelado usa o Cancelado do ingresso.
 
 ### Esqueleto · `skeleton.tsx` (shadcn/ui)
 
@@ -164,8 +169,10 @@ principal do desktop usa `size/content-column` (520).
 
 ### Miniatura · `event-cover.tsx`
 
-`<EventThumbnail>`: a arte padrão no tamanho de uma linha (Miniatura, exportada de `150:2252`),
-`size/thumbnail-s` (56) no celular e `size/thumbnail-m` (64) a partir de `md`, com `radius/md`.
+`<EventThumbnail src>`: a capa do evento (`coverUrl`, cortada no centro) ou, sem ela, a arte padrão
+no tamanho de uma linha (Miniatura, exportada de `150:2252`), `size/thumbnail-s` (56) no celular e
+`size/thumbnail-m` (64) a partir de `md`, com `radius/md`. As listas do produtor usam
+`size/control-md` (44) e o Próximo evento do Painel, `size/thumbnail-s`, pelo `className`.
 
 ### Logo · `logo.tsx`
 
@@ -185,10 +192,6 @@ Campo de texto, Item de lista, Barra superior e Toast; janela e código nas tela
 | Tamanho = S · M |          | `size/avatar-s` (32) e `size/avatar-m` (40)     |
 | Iniciais        |          | o texto do `AvatarFallback` (sem foto no MVP)   |
 
-### Atalho · `kbd.tsx` (shadcn/ui)
-
-`<Kbd>` (`279:74`) é uma tecla em `size/kbd`; `<KbdGroup>` junta as teclas (⌘ K).
-
 ### Tendência · `trend.tsx` (estilo do Badge do shadcn/ui)
 
 `<Trend direction="positive | negative | neutral">12%</Trend>` (`279:208`, Variação = Positiva ·
@@ -205,15 +208,28 @@ linha, com a contagem na cápsula e o sublinhado `stroke/indicator` na seleciona
 
 ### Menu da conta e Item de menu · `dropdown-menu.tsx` (shadcn/ui)
 
-| Figma                       | Nó        | Código                                                         |
-| --------------------------- | --------- | -------------------------------------------------------------- |
-| Menu da conta               | `365:461` | `<DropdownMenuContent>` (`w-sidebar` no menu da conta)         |
-| Cabeçalho (avatar, nome)    |           | `<DropdownMenuLabel>`                                          |
-| Separador                   |           | `<DropdownMenuSeparator>`                                      |
-| Item de menu                | `281:312` | `<DropdownMenuItem>` com ícone Lucide e rótulo                 |
-| Estado = Hover · Destrutivo |           | realce do Radix (`data-highlighted`) · `variant="destructive"` |
+| Figma                       | Nó         | Código                                                         |
+| --------------------------- | ---------- | -------------------------------------------------------------- |
+| Menu da conta               | `365:461`  | `<DropdownMenuContent>` (`w-sidebar` no menu da conta)         |
+| Cabeçalho (avatar, nome)    |            | `<DropdownMenuLabel>`                                          |
+| Separador                   |            | `<DropdownMenuSeparator>`                                      |
+| Item de menu                | `281:312`  | `<DropdownMenuItem>` com ícone Lucide e rótulo                 |
+| Estado = Hover · Destrutivo |            | realce do Radix (`data-highlighted`) · `variant="destructive"` |
+| Ações do evento             | `410:3081` | `<DropdownMenuContent className="w-menu">` (`size/menu`)       |
+| Menu do período             | `407:3075` | `<DropdownMenuRadioGroup>` com `<DropdownMenuRadioItem>`       |
 
-Contexto = Painel nesta versão; as variantes Site entram com a moldura do site (SPEC-016 16A).
+Contexto = Painel nesta versão; as variantes Site entram com a moldura do site (SPEC-016 16A). Na
+Folha · Conta (`293:2785`) o mesmo Item de menu tem 44 de altura e é um link comum:
+`menuItemVariants({ size: "m" })`.
+
+### Tabela · `table.tsx` (partes do shadcn/ui Table)
+
+As tabelas do sistema do produtor (Eventos `307:2983`, os eventos do Painel, os tipos de ingresso):
+`<Table>` com `<TableHeader>` (a linha `bg/subtle` com `<TableHead>` em Label/S), `<TableBody>`,
+`<TableRow>` e `<TableCell>`. Não é componente no Figma: as telas desenham com quadros. As linhas
+são flex com os papéis de tabela, para a linha inteira ser o link do evento; cada divisor tem 12 de
+cada lado. As colunas usam `size/column-s` (120), `column-m` (140), `column-l` (180) e
+`column-xl` (200); a coluna sem largura ocupa o resto.
 
 ### Barra lateral · `sidebar.tsx` (shadcn/ui Sidebar, flutuante e recolhível em ícones)
 
@@ -223,7 +239,6 @@ Contexto = Painel nesta versão; as variantes Site entram com a moldura do site 
 | Topo · Navegação · rodapé           |           | `<SidebarHeader>` · `<SidebarContent>` · `<SidebarFooter>`   |
 | Item de navegação                   | `280:289` | `<SidebarMenuButton isActive tooltip>` no `<SidebarMenu>`    |
 | Selo (contagem)                     |           | `<SidebarMenuBadge>`                                         |
-| Busca                               | `281:265` | `<SidebarSearchButton>` (abre a paleta ⌘K)                   |
 | Conta na barra lateral              | `281:292` | `<SidebarAccountButton initials name email>`                 |
 | Alça da barra lateral               | `281:369` | `<SidebarTrigger>`                                           |
 
@@ -243,7 +258,7 @@ interno. Ícones sempre preenchidos (`fill-icons.tsx`). O Selo da aba entra quan
 Pendente, Erro).
 
 Validado em 08/10/2026: catálogo em 1440, nos modos escuro e claro, comparado no Figma com Avatar,
-Atalho, Tendência, Aba de seção, Progresso, Menu da conta (Painel), Item de menu, Barra lateral
+Tendência, Aba de seção, Progresso, Menu da conta (Painel), Item de menu, Barra lateral
 (aberta e recolhida), Item de navegação, Conta na barra lateral, Barra de abas (3 abas) e Etapa.
 
 ## Ícones
@@ -268,6 +283,11 @@ preenchimento em `currentColor`, quando a primeira tela precisar: já estão `la
 | Resultado do leitor (UX)  | `119:447`      | Estado (Verificando, Válido, Já utilizado, Inválido, Cancelado, Outro evento) |
 
 ## Telas
+
+Página "App" (`267:2`): o sistema do produtor, com o Painel e seus estados, Eventos, o Perfil do
+produtor, a conta (menu e folha), a barra recolhida e os estados de carregamento, erro e vazio, em
+360 e 1440 (o Painel também no modo claro). Os IDs de cada quadro estão na
+[SPEC-015](../06-sdd/SPEC-015-web-producer.md) §5.1.
 
 Página "Compra" (`138:321`): página do evento, escolher ingresso, identificação (e-mail e código),
 revisar pedido, Pix, pagamento confirmado, ingresso pronto, seus ingressos (e anteriores) e

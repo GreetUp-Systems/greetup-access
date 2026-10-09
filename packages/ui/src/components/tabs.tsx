@@ -45,7 +45,10 @@ function TabsTrigger({ className, children, count, ...props }: TabsTriggerProps)
       <span className="flex items-center gap-2">
         {children}
         {count === undefined ? null : (
-          <span className="flex h-status-s min-w-status-s items-center justify-center rounded-full bg-bg-subtle px-1-5 type-badge-s text-text-secondary group-data-[state=active]/tab:bg-bg-accent-subtle group-data-[state=active]/tab:text-text-accent">
+          <span
+            data-slot="tabs-count"
+            className="flex h-status-s min-w-status-s items-center justify-center rounded-full bg-bg-subtle px-1-5 type-badge-s text-text-secondary group-data-[state=active]/tab:bg-bg-accent-subtle group-data-[state=active]/tab:text-text-accent"
+          >
             {count}
           </span>
         )}
