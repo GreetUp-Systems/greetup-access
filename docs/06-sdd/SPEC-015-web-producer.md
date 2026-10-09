@@ -370,7 +370,7 @@ a ponta da SPEC-005.
 
 - [ ] Telas do §5 e componentes do §5.3 revisados pelo Matheus.
 - [x] 15A: endpoints e campos do §8, com testes (PR #29, 08/10/2026).
-- [ ] 15B: esqueleto com conferência visual (360/1440 e modo claro).
+- [x] 15B: esqueleto e Painel com conferência visual em 360/1440 e modo claro (PR #31, 09/10/2026).
 - [ ] SPEC-016 16A (moldura do site) e SPEC-014 9D (Meus ingressos) no ar, logo depois da 15B.
 - [ ] 15C: Criar perfil e Recebimento com conferência visual.
 - [ ] 15D: Evento com conferência visual.

@@ -46,12 +46,11 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 4. a próxima SPEC permanece bloqueada até build, lint, typecheck e testes da etapa ativa passarem;
 5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
 
-**SPEC ativa:** [`SPEC-014 — App web · Compra`](./SPEC-014-web-purchase.md), em quatro partes
-(9A backend, 9B base do web, 9C compra, 9D área do comprador), a partir da ponte de design
-([`docs/design`](../design/README.md)). As SPECs 004, 005 e 008 recebem emendas na 9A. Os smokes que
-dependem da assinatura do usuário (3C da SPEC-003 e ponta a ponta da SPEC-005) são validados pelo
-app web. Production usa o mesmo
-modelo de signer (D-24) e fica liberada só na etapa explícita de habilitação de Pubnet/USDC.
+**SPEC ativa:** [`SPEC-016 — App web · Site público`](./SPEC-016-web-public-site.md), parte 16A
+(moldura do site), a próxima da sequência do app web: SPEC-015 15A e 15B prontas → 16A → SPEC-014 9D
+→ 15C → 15D → validação real → 16B a 16D. Os smokes que dependem da assinatura do usuário (3C da
+SPEC-003 e ponta a ponta da SPEC-005) são validados pelo app web. Production usa o mesmo modelo de
+signer (D-24) e fica liberada só na etapa explícita de habilitação de Pubnet/USDC.
 
 O [`ADR-009`](../03-adrs/ADR-009-identity-producer-tenancy.md) fechou identidade, wallet, modelo de
 produtor e a Q-03 em 29/09/2026.
@@ -139,7 +138,7 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | SPEC-012 dashboard       | Reduzir: polling em vez de WebSocket                                                                                                                                                                                                                                |
 | SPEC-013 pipeline        | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig                                                                                                                                                                                                             |
 | SPEC-014 web purchase    | **Em implementação:** 9A, 9B e 9C prontas; 9D depois da moldura do site (SPEC-016 16A) — [nova versão](./SPEC-014-web-purchase.md)                                                                                                                                  |
-| SPEC-015 web producer    | **Em implementação (v1.2):** sistema do produtor; 15A (backend) pronta em 08/10/2026; a seguir 15B → 16A → 9D → 15C → 15D → validação real — [SPEC](./SPEC-015-web-producer.md)                                                                                     |
+| SPEC-015 web producer    | **Em implementação (v1.4):** sistema do produtor; 15A (backend) pronta em 08/10/2026 e 15B (esqueleto e Painel) em 09/10/2026; a seguir 16A → 9D → 15C → 15D → validação real — [SPEC](./SPEC-015-web-producer.md)                                                  |
 | SPEC-016 web public site | **Aprovada (v1.0):** site público; 16A antes do 9D, 16B a 16D depois da validação da SPEC-015 — [SPEC](./SPEC-016-web-public-site.md)                                                                                                                               |
 
 As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Identidade e Q-03
