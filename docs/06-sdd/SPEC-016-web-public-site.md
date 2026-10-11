@@ -1,6 +1,6 @@
 # SPEC-016 — App web · Site público
 
-> **Status:** aprovada em 07/10/2026
+> **Status:** aprovada em 07/10/2026; 16A implementada em 11/10/2026 (PR #33)
 >
 > **Versão:** 1.1 (recorte da 16A, rodapé, sessão e Conta, revistos em 09/10/2026)
 >
@@ -257,8 +257,8 @@ em 09/10/2026. As capturas de Para produtores ficam em `apps/web/public/` na 16D
 ## 12. Definição de pronto
 
 - [ ] Telas do §5 e componentes do §5.2 revisados pelo Matheus; questões do §13 respondidas em 07/10/2026.
-- [ ] 16A: moldura, Conta e a página do evento com o cabeçalho do site e a capa como imagem de
-      compartilhamento, com conferência visual
+- [x] 16A: moldura, Conta e a página do evento com o cabeçalho do site e a capa como imagem de
+      compartilhamento, com conferência visual (PR #33, 11/10/2026)
       (Meus ingressos e o ingresso, dentro da moldura, são o 9D da SPEC-014).
 - [ ] 16B: rotas do §8, com testes.
 - [ ] 16C: Início e Explorar com conferência visual (360/1440 e modo claro).

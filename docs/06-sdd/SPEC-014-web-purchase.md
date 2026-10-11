@@ -1,12 +1,12 @@
 # SPEC-014 — App web · Compra
 
-> **Status:** 9A, 9B e 9C implementadas; 9D planejada em 09/10/2026 (M1–M6), depois da moldura do site
-> (SPEC-016 16A)
+> **Status:** 9A, 9B e 9C implementadas; 9D em implementação desde 11/10/2026 (M1–M13), na moldura do
+> site (SPEC-016 16A)
 >
-> **Versão:** 1.4 (decisões da 9D, M1–M6); 1.3 (o "Entrar" fica na página; a capa no cartaz passa à SPEC-015 15D; 9D na moldura
-> da SPEC-016 16A)
+> **Versão:** 1.5 (decisões da 9D que o Figma não fechava, M7–M13); 1.4 (decisões da 9D, M1–M6); 1.3
+> (o "Entrar" fica na página; a capa no cartaz passa à SPEC-015 15D; 9D na moldura da SPEC-016 16A)
 >
-> **Atualizada em:** 09/10/2026
+> **Atualizada em:** 11/10/2026
 >
 > **Aprovada em:** 04/10/2026
 >
@@ -52,6 +52,18 @@ Privy no navegador, que valida os fluxos adiados (ativação da conta, e-mail de
 | M5  | O ingresso traz a cidade do evento (SPEC-008 v1.5), mostrada ao lado da data ou do local.                                                                                                                                                                                                                                                                         |
 | M6  | Próximos: o próximo evento no Destaque largo do Cartão de evento e os demais em grade de destaques, 3 por linha no desktop; no celular, o destaque e as linhas. Anteriores: cartões em linha, 4 por linha no desktop e um por linha no celular. A contagem é "Em N dias" até dois dias antes, "Amanhã" na véspera, "Hoje" no dia e "Agora" do início ao fim.      |
 
+### Decisões da 9D que o Figma não fechava (11/10/2026)
+
+| #   | Decisão                                                                                                                                                                                                                                                                                                           |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M7  | O cartão inteiro abre o primeiro ingresso do evento, pela emissão, como "Mostrar ingresso": os cartões da grade, as linhas do celular e os cartões de Anteriores. "Ver evento", no Destaque largo do desktop, leva à página do evento (`/e/[slug]`).                                                              |
+| M8  | O voltar do ingresso aberto leva à aba do evento: `/me/tickets` para um evento Próximo e `/me/tickets?aba=anteriores` para um Anterior (M2). Emenda a M4.                                                                                                                                                         |
+| M9  | O local segue o Figma em cada superfície: o Destaque largo do desktop traz o local e o endereço com a cidade; o destaque do celular, a grade e o Ingresso, o local e a cidade; as linhas do celular e Anteriores, a data e a cidade; o cabeçalho do ingresso aberto, o local e a cidade. Parte nula fica de fora. |
+| M10 | A API recusando a sessão (`401`) em Meus ingressos ou no ingresso encerra a sessão Privy, e a moldura abre a identificação (SPEC-016 S17), como no sistema do produtor.                                                                                                                                           |
+| M11 | No celular, deslizar entre os ingressos usa o `Carousel` do shadcn/ui (embla), com os pontos de paginação. A lista do evento fica no layout de `/me/tickets`, e deslizar troca a rota sem recarregar a tela.                                                                                                      |
+| M12 | Teto de 200 ingressos da SPEC-008, com a ordem pela data do evento: quem passar disso perde os eventos mais distantes. Aceito no piloto, como dívida consciente.                                                                                                                                                  |
+| M13 | Sem nenhum ingresso, Próximos mostra "Meus ingressos vazio" e Anteriores, "Anteriores vazio"; com ingressos só em Anteriores, Próximos mostra "Sem próximos".                                                                                                                                                     |
+
 ## 4. Entregas
 
 | Parte | Conteúdo                                                                                                                          |
@@ -64,7 +76,10 @@ Privy no navegador, que valida os fluxos adiados (ativação da conta, e-mail de
 Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. A 9C vem em três:
 9C.1, evento e escolha; 9C.2, do "Continuar" até o Pix na tela (criar o pedido, revisar e gerar o
 Pix, com os estados de cada passo); 9C.3, o acompanhamento depois do Pix (SSE, pagamento
-confirmado, ingresso pronto, pagamento não concluído e a ativação da conta ao confirmar).
+confirmado, ingresso pronto, pagamento não concluído e a ativação da conta ao confirmar). A 9D vem num
+PR, em quatro checkpoints: 9D.0, a cidade no ingresso (SPEC-008 v1.5); 9D.1, as peças do Design System
+(Cartão de evento, Controle segmentado, Ingresso Cancelado, carrossel e tokens); 9D.2, Meus ingressos;
+9D.3, o ingresso aberto.
 
 ## 5. Telas e rotas
 
@@ -239,6 +254,12 @@ criado no Figma em 09/10/2026; entra no snapshot `packages/ui/tokens/figma-token
   identificação; evento indisponível; Meus ingressos vazio, próximos e anteriores. Na 9D também: sem
   próximos, anteriores vazio e erro com "Tentar de novo"; o ingresso aberto com a troca entre os
   ingressos do evento, o voltar, o emitindo que relê até ficar pronto e o evento cancelado sem QR.
+- **Casos de borda da 9D (11/10/2026):** trocar de ingresso com uma leitura em andamento nunca mostra o
+  QR do anterior; `/me/tickets/<id inválido>` (a API responde `400`) e o ingresso de outra pessoa
+  (`404`) abrem a página 404, não o erro; ingresso emitindo de evento cancelado aparece Cancelado, sem
+  reler; evento sem término que já começou é Anterior e nunca "Agora"; a virada do dia no fuso de
+  Brasília; `?aba=` inválida abre Próximos; o selo do tipo compara o tipo, não o nome; a API recusando
+  a sessão leva à identificação (M10).
 - **Conferência visual:** cada tela em 360 e 1440 comparada com o nó do §5, registrada no PR.
 - **Backend (9A):** unitários e integração dos dois passos, da cotação vencida, do total alterado,
   da disponibilidade pública e do código.
