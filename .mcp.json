@@ -3,6 +3,10 @@
     "stellar-raven": {
       "type": "http",
       "url": "https://raven.stellar.buzz/mcp"
+    },
+    "privy-docs": {
+      "type": "http",
+      "url": "https://docs.privy.io/mcp"
     }
   }
 }

@@ -91,7 +91,8 @@ Os testes de integração usam PostgreSQL e Redis reais definidos em `docker-com
 - [Ferramentas de desenvolvimento e skills](./docs/02-project/development-tooling.md)
 
 As skills instaladas no escopo do projeto ficam em `.agents/skills`, com origem e hashes registrados
-em `skills-lock.json`. Credenciais e configurações MCP do usuário não são versionadas.
+em `skills-lock.json`; o Claude Code lê a cópia em `.claude/skills`. Credenciais e configurações MCP
+do usuário não são versionadas: o `.mcp.json` traz só servidores públicos e sem credencial.
 
 ## Branches
 

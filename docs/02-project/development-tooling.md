@@ -16,12 +16,21 @@ O projeto atualmente inclui:
 - Stellar: agentic payments, assets, cross-chain, dApp, data, smart contracts, standards e ZK
   proofs.
 
+O Claude Code lê as skills de `.claude/skills/`, não de `.agents/skills/`. Lá fica uma cópia das que
+o Access usa: BlindPay, Privy e, da Stellar, assets, cross-chain, dApp, data, smart contracts e
+standards. Ao instalar ou atualizar uma skill em `.agents/skills/`, copie a pasta para
+`.claude/skills/` no mesmo commit, para as duas não divergirem.
+
 O diretório `.aider-desk/` é apenas um adaptador local gerado pelo instalador e não é versionado.
 
 ## Conexões MCP
 
 Conexões MCP são configuradas no ambiente de cada pessoa. A configuração global e seus tokens não
 devem ser copiados para o repositório.
+
+A exceção é o `.mcp.json` da raiz, que o Claude Code carrega no projeto: ele versiona só servidores
+públicos e sem credencial, hoje Stellar Raven (o login fica com cada pessoa) e Privy Docs. O
+BlindPay, que opera a API com chave, fica sempre no ambiente de cada pessoa.
 
 ### Stellar Raven
 
