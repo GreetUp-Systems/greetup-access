@@ -13,6 +13,8 @@ export interface PublicEvent {
   slug: string;
   name: string;
   description: string | null;
+  /** The cover on R2 (SPEC-015 15A); null without one. */
+  coverUrl: string | null;
   venueName: string | null;
   address: string | null;
   startsAt: string;

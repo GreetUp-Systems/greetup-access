@@ -10,8 +10,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * Root layout of the public site (D-29). Dark only for now: the light mode of the site is reviewed
- * with SPEC-016; the producer system has its own root layout that follows the system theme.
+ * Root layout of the public site (D-29). Dark only until SPEC-016 16C, which decides the site's light
+ * mode with the Início (S15); the producer system has its own root layout that follows the system
+ * theme.
  */
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
