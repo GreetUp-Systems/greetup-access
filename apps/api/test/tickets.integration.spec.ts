@@ -58,6 +58,9 @@ const users = {
 } as const;
 type TestUser = (typeof users)[keyof typeof users];
 
+// Seeded with the IBGE base by the migration (SPEC-015 15A).
+const saoPaulo = { code: 3550308, name: "São Paulo", uf: "SP" };
+
 const notUsed = (): never => {
   throw new Error("not used");
 };
@@ -132,7 +135,12 @@ describe("buyer tickets integration", () => {
     const producer = await ownerPrisma.producerProfile.create({
       data: { userId: seller.id, displayName: "Produtora" },
     });
-    const createEvent = async (name: string, daysAhead: number, coverKey: string | null) =>
+    const createEvent = async (
+      name: string,
+      daysAhead: number,
+      coverKey: string | null,
+      cityCode: number | null,
+    ) =>
       ownerPrisma.event.create({
         data: {
           producerId: producer.id,
@@ -142,10 +150,16 @@ describe("buyer tickets integration", () => {
           capacity: 10,
           status: "PUBLISHED",
           coverKey,
+          cityCode,
         },
       });
-    const later = await createEvent("Later", 20, `events/${randomUUID()}/${randomUUID()}.webp`);
-    const sooner = await createEvent("Sooner", 5, null);
+    const later = await createEvent(
+      "Later",
+      20,
+      `events/${randomUUID()}/${randomUUID()}.webp`,
+      saoPaulo.code,
+    );
+    const sooner = await createEvent("Sooner", 5, null, null);
     const createType = async (eventId: string) =>
       ownerPrisma.ticketType.create({
         data: { eventId, producerId: producer.id, name: "Pista", priceCents: 5_000, quantity: 5 },
@@ -251,7 +265,7 @@ describe("buyer tickets integration", () => {
     ]);
     expect(response.body.tickets[0]).toMatchObject({
       status: "pending_mint",
-      event: { id: seeded.sooner.id, name: "Sooner", coverUrl: null },
+      event: { id: seeded.sooner.id, name: "Sooner", coverUrl: null, city: null },
       ticketType: { name: "Pista" },
       onchain: null,
     });
@@ -261,6 +275,7 @@ describe("buyer tickets integration", () => {
         id: seeded.later.id,
         name: "Later",
         coverUrl: `https://covers.test/${seeded.later.coverKey}`,
+        city: saoPaulo,
       },
       onchain: {
         contractId: config.stellarTicketContractId,
@@ -281,9 +296,11 @@ describe("buyer tickets integration", () => {
     const issued = await get(users.a, `/api/me/tickets/${seeded.issued.id}`).expect(200);
     const qr = app.get(TicketQrService);
     expect(qr.verify(issued.body.qrToken as string, seeded.buyerA.id)).toBe(true);
+    expect(issued.body.event.city).toEqual(saoPaulo);
 
     const pending = await get(users.a, `/api/me/tickets/${seeded.pending.id}`).expect(200);
     expect(pending.body.qrToken).toBeNull();
+    expect(pending.body.event.city).toBeNull();
 
     await get(users.b, `/api/me/tickets/${seeded.issued.id}`)
       .expect(404)

@@ -1,11 +1,11 @@
 # SPEC-008 — Área do comprador
 
-> **Status:** 7A e 7B implementadas; e-mail real pendente do smoke pelo front
+> **Status:** 7A, 7B e v1.5 implementadas; e-mail real pendente do smoke pelo front
 >
 > **Versão:** 1.5 (emenda da SPEC-014 9D: cidade do evento no ingresso; 1.4: capa do evento no
 > ingresso e grafia única do QR)
 >
-> **Atualizada em:** 09/10/2026
+> **Atualizada em:** 11/10/2026
 >
 > **Aprovada em:** 04/10/2026
 >
@@ -294,7 +294,7 @@ E-mail real pelo Resend no smoke ponta a ponta da compra (SPEC-005 §15).
 ## 13. Definição de pronto
 
 - [x] 7A: meus ingressos, QR assinado e SSE, com testes.
-- [ ] v1.5: cidade do evento no ingresso, com teste de integração (entra com a SPEC-014 9D).
+- [x] v1.5: cidade do evento no ingresso, com teste de integração (SPEC-014 9D, 11/10/2026).
 - [x] 7B: `NotifyWorker` com um e-mail por compra, idempotente, com testes.
 - [x] Build, lint, typecheck, unitários e integração passam.
 - [ ] E-mail real entregue no smoke ponta a ponta.

@@ -1,3 +1,5 @@
+import { type CityView } from "../cities/cities.types";
+
 export interface TicketsConfig {
   qrSecret: string;
   stellarNetwork: "testnet";
@@ -28,6 +30,7 @@ export interface TicketView {
     venueName: string | null;
     address: string | null;
     coverUrl: string | null;
+    city: CityView | null;
   };
   ticketType: { id: string; name: string };
   purchaseId: string;
