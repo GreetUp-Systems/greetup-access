@@ -3,6 +3,7 @@
 import { Button } from "@access/ui/components/button";
 import {
   Carousel,
+  type CarouselApi,
   CarouselContent,
   CarouselDots,
   CarouselItem,
@@ -19,8 +20,8 @@ import { Ticket } from "@access/ui/components/ticket";
 import { TopBar } from "@access/ui/components/top-bar";
 import { ArrowLeft, Check, ChevronRight, Ticket as TicketIcon } from "lucide-react";
 import Link from "next/link";
-import { notFound, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { notFound, usePathname, useRouter } from "next/navigation";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 import type { TicketView } from "../../_lib/api/tickets";
 import { formatTicketDateTime } from "../../_lib/format";
@@ -49,30 +50,32 @@ const ticketPath = (id: string) => `/me/tickets/${id}`;
  * 465:7950). The route names one ticket; the screen shows the tickets of its event with that one
  * selected. Desktop: the event, the list of its tickets and the selected Ingresso beside them;
  * choosing another one changes the route. Phone: the Barra superior and the tickets in a carousel,
- * swiping changes the route without leaving the screen (M11). The QR comes from the ticket read on
- * its own, never from the list, and only for a valid ticket of an event not cancelled.
+ * swiping changes the route without leaving the screen (M11). The selected ticket is the one the
+ * address names, which follows the swipe and the history. The QR comes from the ticket read on its
+ * own, never from the list, and only for a valid ticket of an event not cancelled.
  */
 export function TicketScreen({ ticketId }: { ticketId: string }) {
   const router = useRouter();
+  // The ticket the address names: a swipe changes it with replaceState and the history restores
+  // it, while the route's segment (ticketId) can stay on the one first opened.
+  const pathname = usePathname();
+  const shownId = pathname.slice(pathname.lastIndexOf("/") + 1);
   const { state: list, retry, details, readTickets } = useMyTickets();
-  // The ticket in view: the route's, then the one swiped to.
-  const [selectedId, setSelectedId] = useState(ticketId);
-  useEffect(() => setSelectedId(ticketId), [ticketId]);
   const [now] = useState(() => new Date());
 
   const routeDetail = details[ticketId];
   const group = useMemo<EventTickets | null>(() => {
-    if (list.status === "ready") {
-      const listed = list.tickets.find((ticket) => ticket.id === ticketId);
-      if (listed !== undefined) {
-        return groupByEvent(list.tickets).find((each) => each.event.id === listed.event.id) ?? null;
-      }
+    if (list.status !== "ready") {
+      return null;
     }
-    // Not in the list (it failed, or the ticket is past its 200): the ticket alone, once read.
-    if (routeDetail?.status === "ready") {
-      return { event: routeDetail.ticket.event, tickets: [routeDetail.ticket] };
+    const listed = list.tickets.find((ticket) => ticket.id === ticketId);
+    if (listed !== undefined) {
+      return groupByEvent(list.tickets).find((each) => each.event.id === listed.event.id) ?? null;
     }
-    return null;
+    // Past the list's 200 (M12): the ticket alone, once read.
+    return routeDetail?.status === "ready"
+      ? { event: routeDetail.ticket.event, tickets: [routeDetail.ticket] }
+      : null;
   }, [list, ticketId, routeDetail]);
 
   // The route's ticket at once; the others of its event as soon as the list names them.
@@ -105,12 +108,10 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const selectFromSwipe = useCallback(
     (index: number) => {
       const ticket = group?.tickets[index];
-      if (ticket === undefined) {
-        return;
+      if (ticket !== undefined) {
+        // The route follows without a navigation, so the carousel stays where it is (M11).
+        window.history.replaceState(null, "", ticketPath(ticket.id));
       }
-      setSelectedId(ticket.id);
-      // The route follows without a navigation, so the carousel stays where it is (M11).
-      window.history.replaceState(null, "", ticketPath(ticket.id));
     },
     [group],
   );
@@ -119,7 +120,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     notFound();
   }
   if (group === null) {
-    const failed = list.status === "failed" || routeDetail?.status === "failed";
+    const failed =
+      list.status === "failed" || (list.status === "ready" && routeDetail?.status === "failed");
     return failed ? (
       <LoadFailed
         onRetry={() => {
@@ -133,10 +135,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   }
 
   const { event, tickets } = group;
-  const selectedIndex = Math.max(
-    0,
-    tickets.findIndex((ticket) => ticket.id === selectedId),
-  );
+  const indexOf = (id: string) => tickets.findIndex((ticket) => ticket.id === id);
+  const selectedIndex = indexOf(shownId) >= 0 ? indexOf(shownId) : Math.max(0, indexOf(ticketId));
   const selected = tickets[selectedIndex] ?? tickets[0];
   const back = backHref(event, now);
   const cancelled = event.status === "cancelled";
@@ -152,9 +152,12 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   return (
     <>
       {/* Phone: the Barra superior, over the frame's margin, with the back (M8). */}
-      <div className="-mx-4 -mt-2 md:hidden">
-        <TopBar type="navigation" title={event.name} onBack={() => router.push(back)} />
-      </div>
+      <TopBar
+        type="navigation"
+        title={event.name}
+        onBack={() => router.push(back)}
+        className="-mx-4 -mt-2 md:hidden"
+      />
       <Button asChild variant="secondary" size="icon-m" className="hidden md:inline-flex">
         <Link href={back} aria-label="Voltar">
           <ArrowLeft aria-hidden />
@@ -208,18 +211,13 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
 
         <div className="md:w-1/3 md:shrink-0">
           <div className="md:hidden">
-            <Carousel
-              opts={{ startIndex: selectedIndex }}
-              onSelectedIndexChange={selectFromSwipe}
-              aria-label={ticketsHeading(tickets.length)}
-            >
-              <CarouselContent>
-                {tickets.map((ticket) => (
-                  <CarouselItem key={ticket.id}>{opened(ticket)}</CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselDots className="mt-4" />
-            </Carousel>
+            <TicketCarousel
+              key={groupIds}
+              label={ticketsHeading(tickets.length)}
+              slides={tickets.map((ticket) => ({ id: ticket.id, content: opened(ticket) }))}
+              selectedIndex={selectedIndex}
+              onSelect={selectFromSwipe}
+            />
             {caption === null ? null : (
               <p className="mt-2-5 text-center type-body-s text-text-tertiary">{caption}</p>
             )}
@@ -228,6 +226,42 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * The tickets of the event on the phone. The carousel opens on the selected one and then moves by
+ * itself; a selection that does not come from it (the history) scrolls it there. Its options never
+ * change after it opens, so a swipe is never cut by embla starting over.
+ */
+function TicketCarousel({
+  label,
+  slides,
+  selectedIndex,
+  onSelect,
+}: {
+  label: string;
+  slides: ReadonlyArray<{ id: string; content: ReactNode }>;
+  selectedIndex: number;
+  onSelect: (index: number) => void;
+}) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [opts] = useState(() => ({ startIndex: selectedIndex }));
+  useEffect(() => {
+    if (api !== undefined && api.selectedScrollSnap() !== selectedIndex) {
+      api.scrollTo(selectedIndex, true);
+    }
+  }, [api, selectedIndex]);
+
+  return (
+    <Carousel opts={opts} setApi={setApi} onSelectedIndexChange={onSelect} aria-label={label}>
+      <CarouselContent>
+        {slides.map((slide) => (
+          <CarouselItem key={slide.id}>{slide.content}</CarouselItem>
+        ))}
+      </CarouselContent>
+      <CarouselDots className="mt-4" />
+    </Carousel>
   );
 }
 

@@ -32,6 +32,19 @@ const ticketCard = (page: Page, text: string) =>
 const qrOf = (page: Page, text: string) =>
   ticketCard(page, text).getByRole("img", { name: "QR Code do ingresso" });
 
+/** Drags the phone's carousel from right to left, to the next ticket. */
+async function swipeLeft(page: Page): Promise<void> {
+  const box = await page.getByRole("region", { name: /ingressos?$/ }).boundingBox();
+  if (box === null) {
+    throw new Error("The carousel has no box.");
+  }
+  const y = box.y + box.height / 3;
+  await page.mouse.move(box.x + box.width - 20, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 20, y, { steps: 12 });
+  await page.mouse.up();
+}
+
 test.describe("Meus ingressos", () => {
   test("Próximos shows the next event and the others, each opening its first ticket", async ({
     page,
@@ -157,16 +170,7 @@ test.describe("opened ticket", () => {
     if (isPhone(page)) {
       await expect(visible(page, "Ingresso 1 de 2 · deslize para ver o outro")).toBeVisible();
       // Swipe to the second ticket: the route follows (M11).
-      const carousel = page.getByRole("region", { name: "Seus 2 ingressos" });
-      const box = await carousel.boundingBox();
-      if (box === null) {
-        throw new Error("The carousel has no box.");
-      }
-      const y = box.y + box.height / 3;
-      await page.mouse.move(box.x + box.width - 20, y);
-      await page.mouse.down();
-      await page.mouse.move(box.x + 20, y, { steps: 12 });
-      await page.mouse.up();
+      await swipeLeft(page);
       await expect(visible(page, "Ingresso 2 de 2 · deslize para ver o outro")).toBeVisible();
       await expect(page).toHaveURL(`/me/tickets/${ticketId(0, 1)}`);
       await expect(qrOf(page, "AX-0043")).toBeVisible();
@@ -190,6 +194,63 @@ test.describe("opened ticket", () => {
       await page.getByRole("link", { name: "Voltar" }).click();
     }
     await expect(page).toHaveURL("/me/tickets");
+  });
+
+  test("the history brings back the ticket that was in view", async ({ page }, info) => {
+    await useBuyer(page, "full", info);
+    await page.goto(`/me/tickets/${ticketId(0, 0)}`);
+    await expect(qrOf(page, "AX-0042")).toBeVisible();
+    if (isPhone(page)) {
+      await swipeLeft(page);
+      await expect(page).toHaveURL(`/me/tickets/${ticketId(0, 1)}`);
+      await page.getByRole("button", { name: "Voltar" }).click();
+    } else {
+      await page.getByRole("link", { name: /Ingresso 2 · Pista/ }).click();
+      await expect(page).toHaveURL(`/me/tickets/${ticketId(0, 1)}`);
+      await page.getByRole("link", { name: "Voltar" }).click();
+    }
+    await expect(page).toHaveURL("/me/tickets");
+    await page.goBack();
+    await expect(page).toHaveURL(`/me/tickets/${ticketId(0, 1)}`);
+    await expect(qrOf(page, "AX-0043")).toBeVisible();
+    if (isPhone(page)) {
+      await expect(visible(page, "Ingresso 2 de 2 · deslize para ver o outro")).toBeVisible();
+    } else {
+      await expect(page.getByRole("link", { name: /Ingresso 2 · Pista/ })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+    }
+  });
+
+  test("moves between the tickets with the keyboard", async ({ page }, info) => {
+    await useBuyer(page, "full", info);
+    await page.goto(`/me/tickets/${ticketId(0, 0)}`);
+    await expect(qrOf(page, "AX-0042")).toBeVisible();
+    if (isPhone(page)) {
+      await page.getByRole("region", { name: "Seus 2 ingressos" }).focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(visible(page, "Ingresso 2 de 2 · deslize para ver o outro")).toBeVisible();
+    } else {
+      await page.getByRole("link", { name: /Ingresso 2 · Pista/ }).focus();
+      await page.keyboard.press("Enter");
+    }
+    await expect(page).toHaveURL(`/me/tickets/${ticketId(0, 1)}`);
+  });
+
+  test("a failed list offers Tentar de novo instead of a ticket without its event's others", async ({
+    page,
+  }, info) => {
+    await useBuyer(page, "failure-once", info);
+    await page.goto(`/me/tickets/${ticketId(0, 0)}`);
+    await expect(visible(page, "Sem conexão")).toBeVisible();
+    await page.getByRole("button", { name: "Tentar de novo" }).click();
+    await expect(qrOf(page, "AX-0042")).toBeVisible();
+    if (isPhone(page)) {
+      await expect(visible(page, "Ingresso 1 de 2 · deslize para ver o outro")).toBeVisible();
+    } else {
+      await expect(page.getByRole("heading", { name: "Seus 2 ingressos" })).toBeVisible();
+    }
   });
 
   test("goes back to Anteriores from a past event, whose ticket stays valid", async ({

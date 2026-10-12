@@ -45,7 +45,8 @@ type CarouselProps = ComponentProps<"div"> & {
 
 /**
  * shadcn/ui Carousel (embla), horizontal. One slide at a time, swiped on the phone and moved with
- * the arrow keys; the position goes to CarouselDots and to `onSelectedIndexChange`. Without the
+ * the arrow keys once it has the focus (it is a tab stop, with the focus ring of border/accent); the
+ * position goes to CarouselDots and to `onSelectedIndexChange`. Without the
  * shadcn arrows for now: the tickets of an event are swiped (SPEC-014 M11), and the vitrine's
  * arrows come with SPEC-016 16C.
  */
@@ -109,7 +110,12 @@ function Carousel({
         role="region"
         aria-roledescription="carrossel"
         data-slot="carousel"
-        className={cn("relative", className)}
+        // A tab stop of its own, so the arrow keys reach it even when no slide has a control.
+        tabIndex={0}
+        className={cn(
+          "relative rounded-lg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-border-accent",
+          className,
+        )}
         {...props}
       >
         {children}

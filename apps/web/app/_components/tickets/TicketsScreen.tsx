@@ -221,6 +221,7 @@ function Past({ groups, now }: { groups: EventTickets[]; now: Date }) {
           <EventCard
             asChild
             type="row"
+            heading="h2"
             state={cardState(group.event, now) === "cancelled" ? "cancelled" : "past"}
             title={group.event.name}
             coverUrl={group.event.coverUrl}

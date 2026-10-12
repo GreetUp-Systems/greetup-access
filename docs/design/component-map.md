@@ -253,7 +253,7 @@ que abre por inteiro (M7), com o foco de `border/accent`; `heading` dá o nível
 | Estado = Atual · Padrão | `480:8`, `480:9` | `size/dot-active` × `size/dot` em `text/primary`; `size/dot` em `text/tertiary` |
 
 Desliza entre os ingressos do evento no celular (SPEC-014 M11), um por vez, e anda com as setas do
-teclado. Sem as setas do shadcn por enquanto: a vitrine as traz na SPEC-016 16C. Os pontos ficam numa
+teclado: o carrossel é uma parada do Tab, com o foco de `border/accent`. Sem as setas do shadcn por enquanto: a vitrine as traz na SPEC-016 16C. Os pontos ficam numa
 linha com `space/1-5` entre eles e são decorativos: a legenda da tela diz qual ingresso está à vista.
 
 ### Progresso · `progress.tsx` (shadcn/ui)
