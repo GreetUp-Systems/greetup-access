@@ -13,6 +13,7 @@ const ticketInclude = {
       venueName: true,
       address: true,
       coverKey: true,
+      city: { select: { ibgeCode: true, name: true, uf: true } },
     },
   },
   ticketType: { select: { id: true, name: true } },

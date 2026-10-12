@@ -13,7 +13,8 @@ import { Identification } from "../identification/Identification";
 import { AccountMenu, AccountSheet } from "./AccountMenu";
 import { ProducerContext, type ProducerContextValue } from "./ProducerContext";
 import { ProducerSidebar, ProducerTabBar } from "./ProducerNavigation";
-import { AccountSkeleton, ProducerFailed, ProducerLoading } from "./ProducerStates";
+import { LoadFailed } from "../LoadFailed";
+import { AccountSkeleton, ProducerLoading } from "./ProducerStates";
 import { useProducerSystem } from "./useProducerSystem";
 
 interface ProducerShellProps {
@@ -122,13 +123,7 @@ export function ProducerShell({ defaultOpen, children }: ProducerShellProps) {
         eventCount={context === null ? null : activeEventCount(context.events, new Date())}
         account={account}
       >
-        {failed ? (
-          <ProducerFailed onRetry={system.retry} />
-        ) : loading ? (
-          <ProducerLoading />
-        ) : (
-          children
-        )}
+        {failed ? <LoadFailed onRetry={system.retry} /> : loading ? <ProducerLoading /> : children}
       </Frame>
       {context === null ? null : (
         <AccountSheet

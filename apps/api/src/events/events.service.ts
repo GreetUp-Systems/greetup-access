@@ -13,7 +13,7 @@ import { type ZodType } from "zod";
 
 import { type AuthenticatedPrincipal } from "../auth/auth.types";
 import { CitiesRepository } from "../cities/cities.repository";
-import { type CityView } from "../cities/cities.types";
+import { toCityView } from "../cities/cities.types";
 import {
   COVER_STORAGE,
   type CoverStorage,
@@ -666,10 +666,6 @@ export class EventsService {
     return category === null ? null : (category.toLowerCase() as EventCategoryView);
   }
 
-  private toCityView(city: EventSummaryRecord["city"]): CityView | null {
-    return city === null ? null : { code: city.ibgeCode, name: city.name, uf: city.uf };
-  }
-
   // Without storage configured there is no public origin to serve the key from.
   private coverUrl(coverKey: string | null): string | null {
     return coverKey === null || this.coverStorage === null
@@ -686,7 +682,7 @@ export class EventsService {
       category: this.toCategoryView(event.category),
       coverUrl: this.coverUrl(event.coverKey),
       venueName: event.venueName,
-      city: this.toCityView(event.city),
+      city: toCityView(event.city),
       address: event.address,
       startsAt: event.startsAt.toISOString(),
       endsAt: event.endsAt?.toISOString() ?? null,
@@ -729,7 +725,7 @@ export class EventsService {
       category: this.toCategoryView(event.category),
       coverUrl: this.coverUrl(event.coverKey),
       venueName: event.venueName,
-      city: this.toCityView(event.city),
+      city: toCityView(event.city),
       address: event.address,
       startsAt: event.startsAt.toISOString(),
       endsAt: event.endsAt?.toISOString() ?? null,

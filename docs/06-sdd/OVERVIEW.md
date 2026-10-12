@@ -46,9 +46,9 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 4. a próxima SPEC permanece bloqueada até build, lint, typecheck e testes da etapa ativa passarem;
 5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
 
-**SPEC ativa:** [`SPEC-014 — App web · Compra`](./SPEC-014-web-purchase.md), parte 9D (área do
-comprador), a próxima da sequência do app web: SPEC-015 15A e 15B e SPEC-016 16A prontas → 9D → 15C →
-15D → validação real → 16B a 16D. Os smokes que dependem da assinatura do usuário (3C da
+**SPEC ativa:** [`SPEC-015 — App web · Produtor`](./SPEC-015-web-producer.md), parte 15C, a próxima
+da sequência do app web: SPEC-015 15A e 15B, SPEC-016 16A e SPEC-014 9D prontas → 15C → 15D →
+validação real → 16B a 16D. Os smokes que dependem da assinatura do usuário (3C da
 SPEC-003 e ponta a ponta da SPEC-005) são validados pelo app web. Production usa o mesmo modelo de
 signer (D-24) e fica liberada só na etapa explícita de habilitação de Pubnet/USDC.
 
@@ -131,14 +131,14 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | SPEC-005 purchase        | **6A a 6D implementadas em 04/10/2026; smoke ponta a ponta pendente** — [nova versão](./SPEC-005-purchase.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-005-purchase.md)                                                                                 |
 | SPEC-006 contracts       | **Implementada e implantada na Testnet em 03/10/2026** — [nova versão](./SPEC-006-ticket-contract.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-006-contracts.md)                                                                                        |
 | SPEC-007 mint worker     | **Absorvida pela SPEC-005 (parte 6C)** — [arquivada](../_archive/06-sdd/SPEC-007-mint-worker.md)                                                                                                                                                                    |
-| SPEC-008 buyer area      | **7A e 7B implementadas em 04/10/2026; e-mail real pendente do smoke pelo front; v1.5 (cidade no ingresso) entra com a 9D** — [nova versão](./SPEC-008-buyer-area.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md)                      |
+| SPEC-008 buyer area      | **7A, 7B e v1.5 implementadas** (v1.5, a cidade no ingresso, com a SPEC-014 9D em 12/10/2026); e-mail real pendente do smoke pelo front — [nova versão](./SPEC-008-buyer-area.md). [Versão anterior arquivada](../_archive/06-sdd/SPEC-008-ticket-read.md)          |
 | SPEC-009 checkin         | Dividir: online na fase 1, offline na fase 2                                                                                                                                                                                                                        |
 | SPEC-010 finance         | Reescrever: não há escrow — [arquivada](../_archive/06-sdd/SPEC-010-finance.md)                                                                                                                                                                                     |
 | SPEC-011 withdrawal      | Reescrever: saque é payout da BlindPay — [arquivada](../_archive/06-sdd/SPEC-011-withdrawal.md)                                                                                                                                                                     |
 | SPEC-012 dashboard       | Reduzir: polling em vez de WebSocket                                                                                                                                                                                                                                |
 | SPEC-013 pipeline        | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig                                                                                                                                                                                                             |
-| SPEC-014 web purchase    | **Em implementação:** 9A, 9B e 9C prontas; 9D em implementação desde 11/10/2026 (M1–M13), na moldura do site (SPEC-016 16A) — [nova versão](./SPEC-014-web-purchase.md)                                                                                             |
-| SPEC-015 web producer    | **Em implementação (v1.5):** sistema do produtor; 15A (backend) pronta em 08/10/2026 e 15B (esqueleto e Painel) em 09/10/2026; a seguir 16A → 9D → 15C → 15D → validação real — [SPEC](./SPEC-015-web-producer.md)                                                  |
+| SPEC-014 web purchase    | **9A a 9D implementadas** (9D em 12/10/2026, PR #34, M1–M13); falta a validação real na Testnet, depois da 15C e da 15D — [nova versão](./SPEC-014-web-purchase.md)                                                                                                 |
+| SPEC-015 web producer    | **Em implementação (v1.5):** sistema do produtor; 15A (backend) pronta em 08/10/2026 e 15B (esqueleto e Painel) em 09/10/2026; a seguir 15C → 15D → validação real — [SPEC](./SPEC-015-web-producer.md)                                                             |
 | SPEC-016 web public site | **Em implementação (v1.1):** site público; 16A (moldura, Conta e a página do evento com o cabeçalho do site) pronta em 11/10/2026 (PR #33); 16B a 16D depois da validação da SPEC-015 — [SPEC](./SPEC-016-web-public-site.md)                                       |
 
 As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Identidade e Q-03

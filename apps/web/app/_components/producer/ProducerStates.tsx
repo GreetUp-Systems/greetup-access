@@ -1,7 +1,5 @@
 "use client";
 
-import { Alert, AlertDescription, AlertTitle } from "@access/ui/components/alert";
-import { Button } from "@access/ui/components/button";
 import { Skeleton } from "@access/ui/components/skeleton";
 
 import { TextSkeleton } from "../TextSkeleton";
@@ -52,24 +50,6 @@ export function AccountSkeleton() {
         <TextSkeleton text="Casa Fluida" type="type-body-m-strong" height="h-3" />
         <TextSkeleton text="voce@email.com" type="type-body-s" height="h-3" />
       </div>
-    </div>
-  );
-}
-
-/**
- * Figma: Desktop · Sistema · Erro (430:17034) and Mobile (430:17265): the system could not load;
- * the connection notice of the checkout and "Tentar de novo".
- */
-export function ProducerFailed({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="flex flex-col items-start gap-4">
-      <Alert tone="danger" className="md:max-w-content-column">
-        <AlertTitle>Sem conexão</AlertTitle>
-        <AlertDescription>
-          Não conseguimos falar com o Access. Confira a internet e tente de novo.
-        </AlertDescription>
-      </Alert>
-      <Button onClick={onRetry}>Tentar de novo</Button>
     </div>
   );
 }

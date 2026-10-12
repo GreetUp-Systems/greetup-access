@@ -1,12 +1,12 @@
 # SPEC-014 — App web · Compra
 
-> **Status:** 9A, 9B e 9C implementadas; 9D em implementação desde 11/10/2026 (M1–M13), na moldura do
-> site (SPEC-016 16A)
+> **Status:** 9A a 9D implementadas (9D no PR #34, 12/10/2026); falta a validação real na Testnet
+> (§11), depois da SPEC-015 15C e 15D
 >
 > **Versão:** 1.5 (decisões da 9D que o Figma não fechava, M7–M13); 1.4 (decisões da 9D, M1–M6); 1.3
 > (o "Entrar" fica na página; a capa no cartaz passa à SPEC-015 15D; 9D na moldura da SPEC-016 16A)
 >
-> **Atualizada em:** 11/10/2026
+> **Atualizada em:** 12/10/2026
 >
 > **Aprovada em:** 04/10/2026
 >
@@ -155,6 +155,24 @@ Estados (9D)" e "Ingresso aberto · Estados (9D)"), com o Destaque largo do Cart
 | Ingresso · Cancelado              | `465:7927`  | `465:7913`  | O Ingresso Cancelado, sem QR; no desktop, "Este evento foi cancelado. Fale com quem organiza sobre o reembolso." |
 | Ingresso · Carregando             | `465:7950`  | `465:7936`  | Esqueletos no topo, na lista e na placa do ingresso                                                              |
 
+Ajustes feitos no Figma em 11/10/2026, ao implementar a 9D:
+
+- **Anteriores sem o selo Utilizado (M3):** o Cartão de evento ganhou a variante Linha · Anterior
+  (`480:49`), esmaecida e sem selo, usada em `157:2232` e `157:2067`; Utilizado fica para o check-in.
+- **Ponto de paginação** (`480:10`, página "Avatar e indicadores"): os pontos do ingresso no celular,
+  antes retângulos soltos, em `154:3551`, `465:7881`, `465:7904` e `465:7927`.
+- **Valores na escala:**
+  - o cabeçalho da página tem o título centrado no Controle segmentado, e o conteúdo vem 32 abaixo;
+  - o rodapé fica 80 abaixo da grade, como a moldura;
+  - no ingresso aberto, a coluna tem 736 e fica a 64 do ingresso, como no checkout;
+  - selos e contagem usam `space/2-5`;
+  - a arte do Destaque usa `size/card-art`;
+  - a Linha usa `space/3`;
+  - o Controle segmentado usa `size/segmented-control`.
+- **Exemplos:**
+  - a segunda linha do celular passou a Feira Criativa, na ordem de M2;
+  - as datas perderam o zero à esquerda.
+
 ## 7. Arquitetura do app
 
 - **Login:** `@privy-io/react-auth` sem UI pronta (`useLoginWithEmail`): as telas de e-mail e
@@ -240,8 +258,14 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api
 NEXT_PUBLIC_PRIVY_APP_ID=
 ```
 
-A 9D acrescenta o token `size/feature-art` (560, a arte do Destaque largo do Cartão de evento),
-criado no Figma em 09/10/2026; entra no snapshot `packages/ui/tokens/figma-tokens.json` com o código.
+A 9D acrescenta ao snapshot `packages/ui/tokens/figma-tokens.json` estes tokens, criados no Figma em
+09 e 11/10/2026:
+
+- `size/feature-art` (560): a arte do Destaque largo do Cartão de evento;
+- `size/card-art` (172): a arte do Destaque;
+- `size/segmented-control` (328): o Controle segmentado no desktop;
+- `size/dot` e `size/dot-active` (6 e 18): o Ponto de paginação;
+- `space/2-5` (10): o recuo dos selos e da contagem.
 
 ## 11. Testes
 
@@ -280,9 +304,11 @@ criado no Figma em 09/10/2026; entra no snapshot `packages/ui/tokens/figma-token
 
 - [x] 9A: dois passos, página pública ampliada, código do ingresso e CORS, com testes.
 - [x] Telas do §6 desenhadas no Figma e revisadas pelo Matheus (04/10/2026).
-- [ ] Estados da 9D (§6, 09/10/2026) revisados pelo Matheus.
+- [ ] Estados da 9D (§6, 09/10/2026) revisados pelo Matheus. Ajustados no Figma em 11/10/2026 (§6),
+      a revisar no PR #34.
 - [x] 9B: login, identificação e base do app, com conferência visual (PR #22). Login real validado no app em 05/10/2026 (mesma conta e wallet); a ativação Stellar, recusada pela Privy no servidor, passa a assinar no navegador (D-28).
 - [x] 9C: compra de ponta a ponta com a API simulada e conferência visual. 9C.1 (página do evento e escolha do ingresso) no PR #24; 9C.2 (checkout até o Pix) no PR #27, conferida pelo Matheus com a API simulada em 06/10/2026; 9C.3 (acompanhamento até o ingresso pronto) no PR #28.
-- [ ] 9D: área do comprador com conferência visual.
-- [ ] Build, lint, typecheck, unitários, integração e ponta a ponta passam.
+- [x] 9D: área do comprador com conferência visual (PR #34): 9D.0 (cidade no ingresso), 9D.1 (Design
+      System), 9D.2 (Meus ingressos) e 9D.3 (ingresso aberto).
+- [x] Build, lint, typecheck, unitários, integração e ponta a ponta passam (12/10/2026).
 - [ ] Validação real na Testnet executada (§11).

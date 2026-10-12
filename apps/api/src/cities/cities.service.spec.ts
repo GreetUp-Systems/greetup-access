@@ -1,5 +1,17 @@
 import { CitiesRepository } from "./cities.repository";
 import { CitiesService, normalizeCityName } from "./cities.service";
+import { toCityView } from "./cities.types";
+
+describe("toCityView", () => {
+  it("answers the IBGE code as code, with name and UF, and null without a city", () => {
+    expect(toCityView({ ibgeCode: 3550308, name: "São Paulo", uf: "SP" })).toEqual({
+      code: 3550308,
+      name: "São Paulo",
+      uf: "SP",
+    });
+    expect(toCityView(null)).toBeNull();
+  });
+});
 
 describe("normalizeCityName", () => {
   it("drops accents and case, and tidies spaces and typographic apostrophes", () => {

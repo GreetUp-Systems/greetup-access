@@ -65,7 +65,11 @@ function TabsContent({ className, ...props }: ComponentProps<typeof TabsPrimitiv
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn("outline-none", className)}
+      // Radix makes the panel a tab stop: the same focus ring as the triggers.
+      className={cn(
+        "rounded-lg outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-solid focus-visible:outline-border-accent",
+        className,
+      )}
       {...props}
     />
   );

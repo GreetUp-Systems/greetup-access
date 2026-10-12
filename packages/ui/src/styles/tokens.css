@@ -106,6 +106,12 @@
   --size-dashboard-aside: 360px;
   --size-footer-brand: 320px;
   --size-account-content: 880px;
+  --size-feature-art: 560px;
+  --size-dot: 6px;
+  --size-dot-active: 18px;
+  --space-2-5: 10px;
+  --size-card-art: 172px;
+  --size-segmented-control: 328px;
   --icon-current: var(--color-icon-primary);
 }
 
@@ -246,6 +252,12 @@
   --spacing-dashboard-aside: var(--size-dashboard-aside);
   --spacing-footer-brand: var(--size-footer-brand);
   --spacing-account-content: var(--size-account-content);
+  --spacing-feature-art: var(--size-feature-art);
+  --spacing-dot: var(--size-dot);
+  --spacing-dot-active: var(--size-dot-active);
+  --spacing-2-5: var(--space-2-5);
+  --spacing-card-art: var(--size-card-art);
+  --spacing-segmented-control: var(--size-segmented-control);
   --shadow-glow-accent: 0 0 24px 0 var(--color-effect-glow);
   --shadow-focus-ring: 0 0 0 2px var(--color-bg-canvas), 0 0 0 4px var(--color-effect-focus);
   --shadow-elevation-1: 0 4px 12px -2px #00000029, 0 1px 2px 0 #0000003d;

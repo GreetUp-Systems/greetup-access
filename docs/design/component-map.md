@@ -154,16 +154,23 @@ com ícone `size/icon-xl`.
 
 ### Ingresso · `ticket.tsx` (composição)
 
-| Figma                      | Nó       | Código                                                                         |
-| -------------------------- | -------- | ------------------------------------------------------------------------------ |
-| Ingresso                   | `56:409` | `<Ticket state eventName dateTime place ticketTypeName code qrValue>`          |
-| Estado = Válido · Emitindo |          | `state="valid" \| "issuing"` (Utilizado, Transferido e Cancelado vêm com a 9D) |
+| Figma                                  | Nó       | Código                                                                     |
+| -------------------------------------- | -------- | -------------------------------------------------------------------------- |
+| Ingresso                               | `56:409` | `<Ticket state eventName dateTime place ticketTypeName code qrValue>`      |
+| Estado = Válido · Emitindo · Cancelado |          | `state="valid" \| "issuing" \| "cancelled"` (`59:161`, `59:325`, `59:486`) |
 
 O Topo usa duas artes exportadas do componente: a luz (`ticket-top.svg`), que estica com a largura,
 e os arcos (`ticket-arcs.svg`), no tamanho e no lugar do Figma a partir da borda esquerda. A placa do
 QR é sempre `brand/creme` com módulos escuros, em qualquer modo; Emitindo mostra o esqueleto
 (`ticket-qr-skeleton.svg`) com a Sobreposição (`59:385`). Nas telas de acompanhamento, a coluna
 principal do desktop usa `size/content-column` (520).
+
+Cancelado (SPEC-014 9D) põe as duas metades e a perfuração em `border/danger`, tira a luz e os arcos e
+troca a placa pelo Carimbo girado 8° (`bg/danger-subtle`, borda `stroke/focus`, Heading/H4): o QR nunca
+aparece, mesmo com `qrValue` (M3). Utilizado e Transferido entram com o check-in (SPEC-009) e a
+transferência.
+As três partes levam `data-slot` (`ticket-top`, `ticket-perforation`, `ticket-base`): o esqueleto do
+ingresso aberto (Ingresso · Carregando, `465:7936`) pinta o topo e a base no tamanho deles.
 
 ### QR Code · `qr-code.tsx`
 
@@ -204,6 +211,50 @@ Negativa · Neutra). A seta acompanha a cor, e a direção também é lida pelo 
 
 `<Tabs>`, `<TabsList>`, `<TabsTrigger value count>` e `<TabsContent>` (`283:18`): só a variante de
 linha, com a contagem na cápsula e o sublinhado `stroke/indicator` na selecionada.
+
+### Controle segmentado · `segmented-control.tsx` (shadcn/ui Tabs)
+
+| Figma               | Nó        | Código                                                      |
+| ------------------- | --------- | ----------------------------------------------------------- |
+| Controle segmentado | `154:520` | `<Tabs value onValueChange>` + `<SegmentedControl>`         |
+| Opção               |           | `<SegmentedControlItem value>`, a vista em `<TabsContent>`  |
+| Selecionada = 1 · 2 |           | `data-[state=active]`, a lente (`glass/lens` + `glass/rim`) |
+
+Duas vistas da mesma lista (Próximos e Anteriores, SPEC-014 M2): é a lista de um Tabs, com a semântica
+de abas e as setas do teclado. Ocupa a largura do conteúdo no celular; no desktop, ao lado do título,
+`size/segmented-control` (328). Hover segue a Aba de seção; pressionado e foco, a Barra de abas.
+
+### Cartão de evento · `event-card.tsx` (composição)
+
+| Figma                                  | Nó                  | Código                                                                         |
+| -------------------------------------- | ------------------- | ------------------------------------------------------------------------------ |
+| Tipo = Destaque                        | `154:521`           | `<EventCard type="feature" title date place countdown badges coverUrl action>` |
+| Tipo = Destaque largo                  | `468:70`            | `type="wide"` + `secondaryAction` ("Ver evento")                               |
+| Tipo = Linha                           | `154:562`           | `<EventCard type="row" state title detail tickets coverUrl>`                   |
+| Estado = Padrão · Anterior · Cancelado | `480:49`, `154:586` | `state="default" \| "past" \| "cancelled"` (Utilizado vem com o check-in)      |
+| Mostrar capa                           |                     | `coverUrl`; `null` mostra a arte da marca                                      |
+| Mostrar ação · Mostrar ver evento      |                     | `action`, `secondaryAction` (Botão/Inverso L, Botão/Fantasma L)                |
+
+Os eventos de Meus ingressos (SPEC-014 M1, M6). Destaque: a arte no topo com `size/card-art` (172) de
+altura e a Contagem em vidro sobre ela. Destaque largo: o próximo evento no desktop, a arte com
+`size/feature-art` (560) ao lado. Linha: a Miniatura, o título e o detalhe; Anterior e Cancelado
+esmaecidos, e o Cancelado com o Status. Sem capa, a arte da marca exportada do componente com Mostrar
+capa desligada (`cover-card.svg`, `cover-feature.svg` e a Miniatura). Selos e Contagem são cápsulas
+`size/status-m` com `space/2-5` nas laterais. Com `asChild`, o filho único (um link) vira o cartão,
+que abre por inteiro (M7), com o foco de `border/accent`; `heading` dá o nível do título.
+
+### Carrossel e Ponto de paginação · `carousel.tsx` (shadcn/ui Carousel, embla)
+
+| Figma                   | Nó               | Código                                                                          |
+| ----------------------- | ---------------- | ------------------------------------------------------------------------------- |
+| (sem componente)        |                  | `<Carousel opts onSelectedIndexChange>`, `<CarouselContent>`                    |
+|                         |                  | `<CarouselItem>`                                                                |
+| Ponto de paginação      | `480:10`         | `<CarouselDots>`                                                                |
+| Estado = Atual · Padrão | `480:8`, `480:9` | `size/dot-active` × `size/dot` em `text/primary`; `size/dot` em `text/tertiary` |
+
+Desliza entre os ingressos do evento no celular (SPEC-014 M11), um por vez, e anda com as setas do
+teclado: o carrossel é uma parada do Tab, com o foco de `border/accent`. Sem as setas do shadcn por enquanto: a vitrine as traz na SPEC-016 16C. Os pontos ficam numa
+linha com `space/1-5` entre eles e são decorativos: a legenda da tela diz qual ingresso está à vista.
 
 ### Progresso · `progress.tsx` (shadcn/ui)
 
@@ -308,10 +359,8 @@ preenchimento em `currentColor`, quando a primeira tela precisar: já estão `la
 | ------------------------- | -------------- | ----------------------------------------------------------------------------- |
 | Botão de ícone/Destrutivo | `42:258`       | Tamanho × Estado                                                              |
 | Card                      | `51:358`       | Tipo × Estado × Espaço                                                        |
-| Ingresso (restante)       | `56:409`       | Estado (Utilizado, Transferido, Cancelado)                                    |
+| Ingresso (restante)       | `56:409`       | Estado (Utilizado, Transferido)                                               |
 | Stat Card                 | `114:184`      | Estado × Variação × Tamanho                                                   |
-| Controle segmentado       | `154:520`      | Selecionada                                                                   |
-| Cartão de evento          | `154:601`      | Tipo × Estado                                                                 |
 | Resultado do leitor (UX)  | `119:447`      | Estado (Verificando, Válido, Já utilizado, Inválido, Cancelado, Outro evento) |
 
 ## Telas

@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 
 import { type AuthenticatedPrincipal } from "../auth/auth.types";
+import { toCityView } from "../cities/cities.types";
 import { COVER_STORAGE, type CoverStorage } from "../common/storage/cover-storage.types";
 import { UsersRepository } from "../users/users.repository";
 import { TicketQrService } from "./ticket-qr.service";
@@ -69,6 +70,7 @@ export class TicketsService {
           ticket.event.coverKey === null || this.coverStorage === null
             ? null
             : this.coverStorage.publicUrl(ticket.event.coverKey),
+        city: toCityView(ticket.event.city),
       },
       ticketType: { id: ticket.ticketType.id, name: ticket.ticketType.name },
       purchaseId: ticket.purchaseId,

@@ -955,6 +955,37 @@
           "type": "FLOAT",
           "web": "var(--size-account-content)",
           "values": { "Value": 880 }
+        },
+        {
+          "name": "size/feature-art",
+          "type": "FLOAT",
+          "web": "var(--size-feature-art)",
+          "values": { "Value": 560 }
+        },
+        { "name": "size/dot", "type": "FLOAT", "web": "var(--size-dot)", "values": { "Value": 6 } },
+        {
+          "name": "size/dot-active",
+          "type": "FLOAT",
+          "web": "var(--size-dot-active)",
+          "values": { "Value": 18 }
+        },
+        {
+          "name": "space/2-5",
+          "type": "FLOAT",
+          "web": "var(--space-2-5)",
+          "values": { "Value": 10 }
+        },
+        {
+          "name": "size/card-art",
+          "type": "FLOAT",
+          "web": "var(--size-card-art)",
+          "values": { "Value": 172 }
+        },
+        {
+          "name": "size/segmented-control",
+          "type": "FLOAT",
+          "web": "var(--size-segmented-control)",
+          "values": { "Value": 328 }
         }
       ]
     },

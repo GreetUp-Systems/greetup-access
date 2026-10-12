@@ -4,6 +4,13 @@ import { Alert, AlertDescription, AlertTitle } from "@access/ui/components/alert
 import { Avatar, AvatarFallback } from "@access/ui/components/avatar";
 import { Button, type ButtonProps } from "@access/ui/components/button";
 import {
+  Carousel,
+  CarouselContent,
+  CarouselDots,
+  CarouselItem,
+} from "@access/ui/components/carousel";
+import { EventCard } from "@access/ui/components/event-card";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,6 +29,7 @@ import {
 } from "@access/ui/components/fill-icons";
 import { Input, type InputProps } from "@access/ui/components/input";
 import { Progress } from "@access/ui/components/progress";
+import { SegmentedControl, SegmentedControlItem } from "@access/ui/components/segmented-control";
 import {
   Sidebar,
   SidebarAccountButton,
@@ -38,6 +46,7 @@ import {
 import { Step, Steps, type StepState } from "@access/ui/components/step";
 import { TabBar, TabBarItem } from "@access/ui/components/tab-bar";
 import { Tabs, TabsList, TabsTrigger } from "@access/ui/components/tabs";
+import { Ticket as TicketCard, type TicketState } from "@access/ui/components/ticket";
 import { TooltipProvider } from "@access/ui/components/tooltip";
 import { Trend } from "@access/ui/components/trend";
 import {
@@ -82,13 +91,23 @@ const preview = (state: string): Preview | undefined =>
 const noop = (): void => undefined;
 
 // Widths of the Figma component pages' frames, only to lay the catalog out like Figma: a field
-// column (320), a phone (360) and the toast (328, "Largura 328" in its description).
+// column (320), a phone (360), the toast and the segmented control (328, "Largura 328" in their
+// descriptions).
 const frame = {
   field: { width: 320 },
   phone: { width: 360 },
   toast: { width: 328 },
+  segmentedControl: { width: 328 },
   // The sidebar items (224, inside the 256 panel) and room for the open account menu.
   navItem: { width: 224 },
+  // Ingresso (56:409): its variants are 340 wide.
+  ticket: { width: 340 },
+  // Cartão de evento (154:601): the phone (328), a desktop grid card (384), an Anteriores card (282)
+  // and the Destaque largo (1200, the page's content).
+  card: { width: 328 },
+  gridCard: { width: 384 },
+  pastCard: { width: 282 },
+  wideCard: { width: 1200 },
   menu: { height: 300 },
 } as const;
 
@@ -148,7 +167,25 @@ const tones = [
   { tone: "warning", title: "O total mudou", message: "Confira o novo total antes de pagar." },
 ] as const;
 
+// Figma: Ingresso (56:409), Válido · Emitindo · Cancelado. Cancelado gets a code and a QR token to
+// show that the QR stays hidden (SPEC-014 M3).
+const ticketStates: Array<{ state: TicketState; code: string | null; qrValue?: string }> = [
+  { state: "valid", code: "AX-0042", qrValue: "access:ticket:AX-0042" },
+  { state: "issuing", code: null },
+  { state: "cancelled", code: "AX-0042", qrValue: "access:ticket:AX-0042" },
+];
+
 const navStates = ["default", "hover", "focus", "selected"] as const;
+
+// Figma: Controle segmentado (154:520), Selecionada = 1 · 2; then the states it borrows from Aba de
+// seção and Barra de abas: hover and pressed on Anteriores, focus on the selected Próximos.
+const segmentedPreviews = [
+  { selected: "upcoming", state: "default" },
+  { selected: "past", state: "default" },
+  { selected: "upcoming", state: "hover" },
+  { selected: "upcoming", state: "pressed" },
+  { selected: "upcoming", state: "focus" },
+] as const;
 const stepStates: Array<{ state: StepState; action?: string }> = [
   { state: "done" },
   { state: "current", action: "Continuar" },
@@ -369,6 +406,105 @@ export function Catalog({
         </div>
       </Section>
 
+      <Section id="event-card" title="Cartão de evento">
+        <div className="flex flex-col gap-8">
+          <div className="flex flex-wrap items-start gap-8">
+            <EventCard
+              type="feature"
+              heading="h2"
+              title="Festival de Inverno"
+              coverUrl={null}
+              date="Seg, 12 out · 21h"
+              place="Casa Fluida · São Paulo"
+              countdown="Em 6 dias"
+              badges={["2 ingressos", "Pista"]}
+              action={
+                <Button variant="inverse" size="l">
+                  Mostrar ingresso
+                </Button>
+              }
+              style={frame.card}
+            />
+            <EventCard
+              type="feature"
+              asChild
+              title="Noite de Jazz"
+              coverUrl={null}
+              date="Qui, 5 nov · 20h"
+              place="Blue Note · Rio de Janeiro"
+              countdown="Em 30 dias"
+              badges={["1 ingresso", "Pista"]}
+              style={frame.gridCard}
+            >
+              <a href="#event-card" />
+            </EventCard>
+            <div className="flex flex-col gap-3" style={frame.card}>
+              <EventCard
+                type="row"
+                asChild
+                state="default"
+                title="Noite de Jazz"
+                coverUrl={null}
+                detail="Qui, 5 nov · Rio de Janeiro"
+                tickets="1 ingresso · Pista"
+              >
+                <a href="#event-card" />
+              </EventCard>
+              <EventCard
+                type="row"
+                asChild
+                state="past"
+                title="Show de Verão"
+                coverUrl={null}
+                detail="Dom, 21 dez · Salvador"
+              >
+                <a href="#event-card" />
+              </EventCard>
+              <EventCard
+                type="row"
+                asChild
+                state="cancelled"
+                title="Workshop de Foto"
+                coverUrl={null}
+                detail="Ter, 28 out · Belo Horizonte"
+              >
+                <a href="#event-card" />
+              </EventCard>
+            </div>
+            <EventCard
+              type="row"
+              state="past"
+              title="Noite de Poesia"
+              coverUrl={null}
+              detail="Sex, 9 mai · São Paulo"
+              style={frame.pastCard}
+            />
+          </div>
+          <EventCard
+            type="wide"
+            heading="h2"
+            title="Festival de Inverno"
+            coverUrl={null}
+            date="Seg, 12 de outubro, 21h"
+            place="Casa Fluida · Rua Augusta, 1200, São Paulo"
+            countdown="Em 6 dias"
+            badges={["2 ingressos", "Pista"]}
+            action={
+              <Button variant="inverse" size="l">
+                Mostrar ingresso
+              </Button>
+            }
+            secondaryAction={
+              <Button variant="ghost" size="l">
+                Ver evento
+              </Button>
+            }
+            className="hidden md:flex"
+            style={frame.wideCard}
+          />
+        </div>
+      </Section>
+
       <Section id="top-bar" title="Barra superior">
         <div className="grid w-max grid-cols-2 gap-x-10 gap-y-6">
           {(["navigation", "brand", "modal"] as const).map((type) =>
@@ -405,6 +541,30 @@ export function Catalog({
               </div>
             )),
           )}
+        </div>
+      </Section>
+
+      <Section id="carousel" title="Carrossel · Ponto de paginação">
+        <div className="flex flex-wrap items-start gap-10">
+          {[0, 1].map((startIndex) => (
+            <Carousel
+              key={startIndex}
+              opts={{ startIndex }}
+              aria-label="Ingressos do evento"
+              style={frame.card}
+            >
+              <CarouselContent>
+                {["Ingresso 1", "Ingresso 2", "Ingresso 3"].map((label) => (
+                  <CarouselItem key={label}>
+                    <div className="flex h-qr-plate items-center justify-center rounded-lg border border-border-subtle bg-bg-surface type-body-m text-text-secondary">
+                      {label}
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselDots className="mt-4" />
+            </Carousel>
+          ))}
         </div>
       </Section>
 
@@ -464,6 +624,24 @@ export function Catalog({
         </div>
       </Section>
 
+      <Section id="ticket" title="Ingresso">
+        <div className="flex flex-wrap items-start gap-8">
+          {ticketStates.map(({ state, code, qrValue }) => (
+            <TicketCard
+              key={state}
+              state={state}
+              eventName="Festival de Inverno"
+              dateTime="Seg, 12 out · 21:00"
+              place="Casa Fluida · São Paulo"
+              ticketTypeName="Pista"
+              code={code}
+              qrValue={qrValue}
+              style={frame.ticket}
+            />
+          ))}
+        </div>
+      </Section>
+
       <Section id="logo" title="Logo">
         <div className="flex items-center gap-8">
           <Logo />
@@ -499,6 +677,33 @@ export function Catalog({
             </TabsTrigger>
           </TabsList>
         </Tabs>
+      </Section>
+
+      <Section id="segmented-control" title="Controle segmentado">
+        <div className="grid w-max grid-cols-2 gap-x-10 gap-y-6">
+          {segmentedPreviews.map(({ selected, state }) => (
+            <Tabs
+              key={`${selected}-${state}`}
+              defaultValue={selected}
+              style={frame.segmentedControl}
+            >
+              <SegmentedControl aria-label="Meus ingressos">
+                <SegmentedControlItem
+                  value="upcoming"
+                  data-preview-state={state === "focus" ? preview(state) : undefined}
+                >
+                  Próximos
+                </SegmentedControlItem>
+                <SegmentedControlItem
+                  value="past"
+                  data-preview-state={state === "focus" ? undefined : preview(state)}
+                >
+                  Anteriores
+                </SegmentedControlItem>
+              </SegmentedControl>
+            </Tabs>
+          ))}
+        </div>
       </Section>
 
       <TooltipProvider>
