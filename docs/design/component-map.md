@@ -169,6 +169,8 @@ Cancelado (SPEC-014 9D) põe as duas metades e a perfuração em `border/danger`
 troca a placa pelo Carimbo girado 8° (`bg/danger-subtle`, borda `stroke/focus`, Heading/H4): o QR nunca
 aparece, mesmo com `qrValue` (M3). Utilizado e Transferido entram com o check-in (SPEC-009) e a
 transferência.
+As três partes levam `data-slot` (`ticket-top`, `ticket-perforation`, `ticket-base`): o esqueleto do
+ingresso aberto (Ingresso · Carregando, `465:7936`) pinta o topo e a base no tamanho deles.
 
 ### QR Code · `qr-code.tsx`
 

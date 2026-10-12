@@ -78,6 +78,7 @@ function Ticket({
       {...props}
     >
       <div
+        data-slot="ticket-top"
         className={cn(
           "relative isolate flex flex-col gap-4 overflow-hidden rounded-t-xl rounded-b-lg border bg-bg-surface p-6",
           cancelled ? "border-border-danger" : "border-border-subtle",
@@ -130,7 +131,7 @@ function Ticket({
       </div>
 
       {/* Perfuração: a dashed line between the two parts. */}
-      <div aria-hidden className="px-6">
+      <div aria-hidden data-slot="ticket-perforation" className="px-6">
         <svg
           className={cn(
             "block h-px w-full",
@@ -142,6 +143,7 @@ function Ticket({
       </div>
 
       <div
+        data-slot="ticket-base"
         className={cn(
           "flex flex-col items-center gap-4 rounded-lg border bg-bg-surface p-6",
           cancelled ? "border-border-danger" : "border-border-subtle",
