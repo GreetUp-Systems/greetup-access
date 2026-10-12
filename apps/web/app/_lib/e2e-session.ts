@@ -7,8 +7,9 @@ import { publicEnv } from "./env";
 
 /**
  * The key a test sets in the browser to choose the session (Playwright's addInitScript): "1" for
- * the buyer, "anonymous" for a visitor, or the name of a producer scenario the simulated API
- * answers (e2e/mock-api.mjs). "Sair" writes "anonymous", so the next page stays signed out.
+ * the buyer, "buyer:<scenario>" for the buyer with the tickets of a Meus ingressos scenario,
+ * "anonymous" for a visitor, or the name of a producer scenario; the simulated API answers each
+ * (e2e/mock-api.mjs). "Sair" writes "anonymous", so the next page stays signed out.
  */
 export const E2E_SESSION_KEY = "access-e2e-session";
 export const E2E_ANONYMOUS = "anonymous";
@@ -35,8 +36,8 @@ export interface E2ESession {
 export type E2EState = E2ESession | typeof E2E_ANONYMOUS;
 
 /**
- * The session a stored value asks for: the buyer for "1", the visitor for "anonymous", a producer
- * scenario otherwise.
+ * The session a stored value asks for: the buyer for "1" and for a "buyer:" scenario, the visitor
+ * for "anonymous", a producer scenario otherwise.
  */
 export function e2eSessionFor(value: string | null): E2EState | null {
   if (value === null || value === "") {
@@ -45,9 +46,13 @@ export function e2eSessionFor(value: string | null): E2EState | null {
   if (value === E2E_ANONYMOUS) {
     return E2E_ANONYMOUS;
   }
-  return value === "1"
-    ? { token: E2E_TOKEN, account: e2eAccount }
-    : { token: `${E2E_TOKEN}:${value}`, account: e2eProducerAccount };
+  if (value === "1") {
+    return { token: E2E_TOKEN, account: e2eAccount };
+  }
+  return {
+    token: `${E2E_TOKEN}:${value}`,
+    account: value.startsWith("buyer:") ? e2eAccount : e2eProducerAccount,
+  };
 }
 
 /**

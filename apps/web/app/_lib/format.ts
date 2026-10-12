@@ -133,6 +133,17 @@ export function formatDaysUntil(startsAt: string, now: Date): string {
   return days === 1 ? "Amanhã" : `Em ${days} dias`;
 }
 
+/** "Seg, 12 out · 21h": the start on an event card (Figma: Cartão de evento, 154:601). */
+export function formatShortDateTime(startsAt: string): string {
+  return `${formatShortDate(startsAt)} · ${time(parts(startsAt))}`;
+}
+
+/** "Qui, 5 nov": the day of an event in a row, without the time. */
+export function formatShortDate(iso: string): string {
+  const p = parts(iso);
+  return `${capitalize(p.weekday.slice(0, 3))}, ${p.day} ${p.month.slice(0, 3)}`;
+}
+
 /** "Sáb, 12 out · 21:00": the date and time on a ticket (Figma: Ingresso, 56:409). */
 export function formatTicketDateTime(startsAt: string): string {
   const p = parts(startsAt);

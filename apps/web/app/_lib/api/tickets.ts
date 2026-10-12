@@ -15,6 +15,10 @@ export interface TicketView {
     endsAt: string | null;
     venueName: string | null;
     address: string | null;
+    /** The event's cover (SPEC-015, D-30); null without one, and the brand's art shows instead. */
+    coverUrl: string | null;
+    /** The IBGE city (SPEC-008 v1.5); null on an event without one. */
+    city: { code: number; name: string; uf: string } | null;
   };
   ticketType: { id: string; name: string };
   purchaseId: string;
@@ -25,11 +29,33 @@ export interface TicketView {
     transactionHash: string | null;
     explorerUrl: string | null;
   } | null;
+}
+
+/** One ticket read on its own: the list's item plus the QR token. */
+export interface TicketDetailView extends TicketView {
   /** The signed QR token, only for an issued ticket (SPEC-008 §6). */
   qrToken: string | null;
 }
 
+/** The buyer's tickets, by event date and then issuance, up to 200 (SPEC-008 §5). */
+export function listTickets(
+  token: string,
+  signal?: AbortSignal,
+): Promise<{ tickets: TicketView[] }> {
+  return apiRequest<{ tickets: TicketView[] }>("/me/tickets", {
+    token,
+    ...(signal === undefined ? {} : { signal }),
+  });
+}
+
 /** One of the buyer's tickets, with its QR token once issued; another user's answers 404. */
-export function getTicket(token: string, ticketId: string): Promise<TicketView> {
-  return apiRequest<TicketView>(`/me/tickets/${encodeURIComponent(ticketId)}`, { token });
+export function getTicket(
+  token: string,
+  ticketId: string,
+  signal?: AbortSignal,
+): Promise<TicketDetailView> {
+  return apiRequest<TicketDetailView>(`/me/tickets/${encodeURIComponent(ticketId)}`, {
+    token,
+    ...(signal === undefined ? {} : { signal }),
+  });
 }

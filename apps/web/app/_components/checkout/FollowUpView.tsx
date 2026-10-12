@@ -5,7 +5,7 @@ import { Ticket } from "@access/ui/components/ticket";
 import { CircleCheck, LoaderCircle } from "lucide-react";
 
 import type { PurchaseView } from "../../_lib/api/purchases";
-import type { TicketView } from "../../_lib/api/tickets";
+import type { TicketDetailView } from "../../_lib/api/tickets";
 import { issuingLead, issuingStep, readyLead } from "../../_lib/checkout";
 import { formatTicketDateTime } from "../../_lib/format";
 
@@ -22,7 +22,7 @@ export function FollowUpView({
 }: {
   purchase: PurchaseView;
   /** The first ticket once issued; null while issuing. */
-  ticket: TicketView | null;
+  ticket: TicketDetailView | null;
   onTickets: () => void;
   onBack: () => void;
 }) {

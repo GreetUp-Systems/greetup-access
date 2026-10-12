@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 
 const port = Number(process.env.MOCK_API_PORT ?? 3101);
+const uuidV4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const day = 24 * 60 * 60 * 1000;
 // The test session's token (app/_lib/e2e-session.ts).
 const token = "e2e-session-token";
@@ -283,7 +284,13 @@ function ticketView(record, ticket) {
     id: ticket.id,
     status: ticket.status,
     code: minted ? `AX-${String(ticket.tokenId).padStart(4, "0")}` : null,
-    event: { id: record.eventId, status: "published", ...record.event },
+    event: {
+      id: record.eventId,
+      status: "published",
+      coverUrl: null,
+      city: cities.saoPaulo,
+      ...record.event,
+    },
     ticketType: record.ticketType,
     purchaseId: record.id,
     issuedAt: minted ? new Date().toISOString() : null,
@@ -292,6 +299,219 @@ function ticketView(record, ticket) {
       : null,
     qrToken: minted ? `qr.${ticket.id}.e2e` : null,
   };
+}
+
+// --- Meus ingressos (SPEC-014 9D). A buyer scenario rides on the token, like the producer's:
+// "e2e-session-token:buyer:<scenario>" (app/_lib/e2e-session.ts). The events follow the Figma
+// screens, at days from today; the covers come from this process, so the cards load offline.
+const coverColors = {
+  inverno: ["#3b0f3a", "#c63fa0"],
+  jazz: ["#0f1b3d", "#e8c26a"],
+  feira: ["#fdf3e1", "#ff7a3d"],
+  makers: ["#c9f0df", "#ff6b57"],
+};
+
+function coverSvg(name) {
+  const [background, accent] = coverColors[name] ?? ["#2a1028", "#c63fa0"];
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="${background}"/><circle cx="980" cy="300" r="260" fill="${accent}"/></svg>`;
+}
+
+const coverUrl = (name) => `http://localhost:${port}/covers/${name}.svg`;
+
+const buyerCities = {
+  saoPaulo: { code: 3550308, name: "São Paulo", uf: "SP" },
+  rio: { code: 3304557, name: "Rio de Janeiro", uf: "RJ" },
+  curitiba: { code: 4106902, name: "Curitiba", uf: "PR" },
+  recife: { code: 2611606, name: "Recife", uf: "PE" },
+  salvador: { code: 2927408, name: "Salvador", uf: "BA" },
+  bh: { code: 3106200, name: "Belo Horizonte", uf: "MG" },
+  campinas: { code: 3509502, name: "Campinas", uf: "SP" },
+};
+
+// [key, name, days from today, venue, address, city, has a cover, status, its tickets' types]
+const buyerEvents = [
+  [
+    "inverno",
+    "Festival de Inverno",
+    6,
+    "Casa Fluida",
+    "Rua Augusta, 1200",
+    "saoPaulo",
+    true,
+    "published",
+    ["Pista", "Pista"],
+  ],
+  [
+    "jazz",
+    "Noite de Jazz",
+    30,
+    "Blue Note",
+    "Av. Atlântica, 1910",
+    "rio",
+    true,
+    "published",
+    ["Pista"],
+  ],
+  [
+    "feira",
+    "Feira Criativa",
+    39,
+    "Parque da Cidade",
+    "Rua Eng. Ostoja Roguski, 690",
+    "curitiba",
+    true,
+    "published",
+    ["Geral"],
+  ],
+  [
+    "makers",
+    "Encontro de Makers",
+    104,
+    "Porto Digital",
+    "Rua do Apolo, 181",
+    "recife",
+    true,
+    "published",
+    ["Geral"],
+  ],
+  [
+    "verao",
+    "Show de Verão",
+    -40,
+    "Concha Acústica",
+    "Ladeira da Fonte, s/n",
+    "salvador",
+    false,
+    "published",
+    ["Pista"],
+  ],
+  [
+    "foto",
+    "Workshop de Foto",
+    -10,
+    "Estúdio Luz",
+    "Rua Sergipe, 1440",
+    "bh",
+    false,
+    "cancelled",
+    ["Pista", "Pista"],
+  ],
+  [
+    "junina",
+    "Festa Junina",
+    -110,
+    "Arraial do Largo",
+    "Largo do Rosário, 1",
+    "campinas",
+    false,
+    "published",
+    ["Pista"],
+  ],
+  [
+    "poesia",
+    "Noite de Poesia",
+    -150,
+    "Livraria Aurora",
+    "Rua Fradique Coutinho, 900",
+    "saoPaulo",
+    false,
+    "published",
+    ["Pista"],
+  ],
+];
+
+// Ticket ids are UUID v4, like the API's; another person's ticket answers 404.
+const buyerTicketId = (event, index) =>
+  `9d000000-0000-4000-8000-${String(event * 10 + index + 1).padStart(12, "0")}`;
+
+function buyerTickets(scenario, reads) {
+  const today = Date.now();
+  const tickets = [];
+  buyerEvents.forEach(([key, name, days, venueName, address, city, cover, status, types], e) => {
+    const startsAt = new Date(today + days * day);
+    startsAt.setUTCMinutes(0, 0, 0);
+    if (scenario === "past" && days >= 0 && status !== "cancelled") {
+      return;
+    }
+    const event = {
+      id: `9d000000-0000-4000-9000-${String(e + 1).padStart(12, "0")}`,
+      slug: key,
+      name,
+      status,
+      startsAt: startsAt.toISOString(),
+      endsAt: null,
+      venueName,
+      address,
+      coverUrl: cover ? coverUrl(key) : null,
+      city: buyerCities[city],
+    };
+    types.forEach((typeName, index) => {
+      // "issuing": the first event's second ticket is still being issued until its third read.
+      const issuing = scenario === "issuing" && e === 0 && index === 1 && reads < 3;
+      const tokenId = 42 + e * 10 + index;
+      tickets.push({
+        id: buyerTicketId(e, index),
+        status: issuing ? "pending_mint" : "issued",
+        code: issuing ? null : `AX-${String(tokenId).padStart(4, "0")}`,
+        event,
+        ticketType: { id: `${key}-${typeName.toLowerCase()}`, name: typeName },
+        purchaseId: `9d000000-0000-4000-a000-${String(e + 1).padStart(12, "0")}`,
+        issuedAt: issuing ? null : new Date(today - (30 - index) * day).toISOString(),
+        onchain: issuing
+          ? null
+          : { contractId: "CTICKET", tokenId, transactionHash: null, explorerUrl: null },
+        // The API signs the token of any issued ticket, cancelled event or not (SPEC-014 M3).
+        qrToken: issuing ? null : `qr.${buyerTicketId(e, index)}.e2e`,
+      });
+    });
+  });
+  return tickets;
+}
+
+function withoutQr(ticket) {
+  const listed = { ...ticket };
+  delete listed.qrToken;
+  return listed;
+}
+
+// "<scenario>~<test>": what follows "~" keeps the reads of tests running side by side apart.
+function buyerScenario(authorization) {
+  const prefix = `Bearer ${token}:buyer:`;
+  return authorization?.startsWith(prefix)
+    ? authorization.slice(prefix.length).split("~")[0]
+    : undefined;
+}
+
+function ticketFound(ticket) {
+  return ticket === undefined ? [404, { code: "ticket_not_found", message: "" }] : [200, ticket];
+}
+
+// GET /api/me/tickets and /api/me/tickets/:id.
+function myTickets(authorization, ticketId) {
+  const scenario = buyerScenario(authorization);
+  const key = `${authorization} ${ticketId ?? "list"}`;
+  const reads = (calls.get(key) ?? 0) + 1;
+  calls.set(key, reads);
+  if (scenario === undefined) {
+    // The checkout's buyer: the tickets of the orders paid in this run.
+    const tickets = [...purchases.values()].flatMap((record) =>
+      record.tickets.map((ticket) => ticketView(record, ticket)),
+    );
+    return ticketId === undefined
+      ? [200, { tickets: tickets.map(withoutQr) }]
+      : ticketFound(tickets.find((ticket) => ticket.id === ticketId));
+  }
+  if (scenario === "expired") {
+    return [401, { code: "invalid_auth_token", message: "" }];
+  }
+  if (ticketId === undefined) {
+    if (scenario === "failure-once" && reads === 1) {
+      return unavailable;
+    }
+    const tickets = scenario === "empty" ? [] : buyerTickets(scenario, 0);
+    return [200, { tickets: tickets.map(withoutQr) }];
+  }
+  return ticketFound(buyerTickets(scenario, reads).find((ticket) => ticket.id === ticketId));
 }
 
 // --- The producer system (SPEC-015 §6). The test session names its scenario after the token,
@@ -657,7 +877,11 @@ createServer(async (request, response) => {
     return;
   }
 
-  if (url === "/api/producers/me" && request.headers.authorization === `Bearer ${token}`) {
+  if (
+    url === "/api/producers/me" &&
+    (request.headers.authorization === `Bearer ${token}` ||
+      buyerScenario(request.headers.authorization) !== undefined)
+  ) {
     // The test buyer has an account and no producer profile, as the API answers (SPEC-016 §6).
     send(response, ...noProducer);
     return;
@@ -677,20 +901,31 @@ createServer(async (request, response) => {
     return;
   }
 
-  if (url.startsWith("/api/me/tickets/")) {
-    if (request.headers.authorization !== `Bearer ${token}`) {
+  const cover = /^\/covers\/([a-z]+)\.svg$/.exec(url);
+  if (cover !== null) {
+    response.writeHead(200, { "Content-Type": "image/svg+xml" });
+    response.end(coverSvg(cover[1]));
+    return;
+  }
+
+  const myTicket = /^\/api\/me\/tickets(?:\/([^/?]+))?$/.exec(url);
+  if (myTicket !== null) {
+    const authorization = request.headers.authorization;
+    if (authorization !== `Bearer ${token}` && buyerScenario(authorization) === undefined) {
       send(response, 401, { code: "invalid_auth_token", message: "" });
       return;
     }
-    const id = decodeURIComponent(url.slice("/api/me/tickets/".length));
-    for (const record of purchases.values()) {
-      const ticket = record.tickets.find((candidate) => candidate.id === id);
-      if (ticket !== undefined) {
-        send(response, 200, ticketView(record, ticket));
-        return;
-      }
+    const id = myTicket[1] === undefined ? undefined : decodeURIComponent(myTicket[1]);
+    // The API checks the id is a UUID v4 before reading it (ParseUUIDPipe): Nest's 400, no code.
+    if (id !== undefined && !uuidV4.test(id)) {
+      send(response, 400, {
+        message: "Validation failed (uuid v4 is expected)",
+        error: "Bad Request",
+        statusCode: 400,
+      });
+      return;
     }
-    send(response, 404, { code: "ticket_not_found", message: "" });
+    send(response, ...myTickets(authorization, id));
     return;
   }
 

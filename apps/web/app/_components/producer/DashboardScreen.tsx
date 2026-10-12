@@ -38,11 +38,11 @@ import {
 } from "../../_lib/producer/dashboard";
 import { nextEvent } from "../../_lib/producer/events";
 import { useSession } from "../../_lib/session";
+import { LoadFailed } from "../LoadFailed";
 import { MeanwhileCard, NextEventCard, RecentSalesCard, SetupCard } from "./DashboardCards";
 import { CreateEventButton, EventsCard } from "./EventsCard";
 import { PageHeader } from "./PageHeader";
 import { useProducer } from "./ProducerContext";
-import { ProducerFailed } from "./ProducerStates";
 import { SalesOverview } from "./SalesOverview";
 
 const recentLimit = 3;
@@ -281,7 +281,7 @@ export function DashboardScreen() {
           <MeanwhileCard className="md:w-dashboard-aside md:shrink-0" />
         </div>
       ) : data.failed ? (
-        <ProducerFailed onRetry={data.retry} />
+        <LoadFailed onRetry={data.retry} />
       ) : (
         <div className="contents md:flex md:items-start md:gap-6">
           <SalesOverview

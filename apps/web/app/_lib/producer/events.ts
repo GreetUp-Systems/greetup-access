@@ -9,8 +9,11 @@ export const eventTabs: ReadonlyArray<{ tab: EventTab; label: string }> = [
   { tab: "ended", label: "Encerrados" },
 ];
 
-/** Over when its end, or its start without an end, is in the past. */
-export function isOver(event: ProducerEvent, now: Date): boolean {
+/**
+ * Over when its end, or its start without an end, is in the past. Meus ingressos splits Próximos
+ * and Anteriores by the same rule (SPEC-014 M2).
+ */
+export function isOver(event: Pick<ProducerEvent, "startsAt" | "endsAt">, now: Date): boolean {
   return new Date(event.endsAt ?? event.startsAt).getTime() < now.getTime();
 }
 

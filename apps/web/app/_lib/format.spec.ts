@@ -8,6 +8,8 @@ import {
   formatEventStart,
   formatPrice,
   formatReais,
+  formatShortDate,
+  formatShortDateTime,
   formatShortDayMonth,
   formatTicketDateTime,
   formatTimeAgo,
@@ -115,5 +117,14 @@ describe("Painel formats", () => {
     // 21:00 on 7/10 in São Paulo: tomorrow there, though the same UTC day.
     expect(formatDaysUntil("2026-10-08T00:00:00Z", now)).toBe("Amanhã");
     expect(formatDaysUntil("2026-10-13T00:00:00Z", now)).toBe("Em 6 dias");
+  });
+});
+
+describe("formatShortDateTime and formatShortDate", () => {
+  it("writes the start of a card and the day of a row in Brasília, without zero padding", () => {
+    expect(formatShortDateTime("2026-10-13T00:00:00.000Z")).toBe("Seg, 12 out · 21h");
+    expect(formatShortDateTime("2026-11-05T23:30:00.000Z")).toBe("Qui, 5 nov · 20h30");
+    expect(formatShortDate("2026-11-05T23:00:00.000Z")).toBe("Qui, 5 nov");
+    expect(formatShortDate("2027-05-09T22:00:00.000Z")).toBe("Dom, 9 mai");
   });
 });

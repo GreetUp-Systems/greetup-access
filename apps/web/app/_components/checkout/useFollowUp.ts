@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { followPurchase, getPurchase, type PurchaseView } from "../../_lib/api/purchases";
-import { getTicket, type TicketView } from "../../_lib/api/tickets";
+import { getTicket, type TicketDetailView } from "../../_lib/api/tickets";
 import { useSession } from "../../_lib/session";
 
 // After the stream (its 15 minutes, or a failure to open it), the order is read at this pace.
@@ -21,9 +21,9 @@ const followed = (status: PurchaseView["status"]): boolean =>
 export function useFollowUp(
   purchase: PurchaseView | null,
   onPurchase: (purchase: PurchaseView) => void,
-): { ticket: TicketView | null } {
+): { ticket: TicketDetailView | null } {
   const { getToken, requestActivation } = useSession();
-  const [ticket, setTicket] = useState<TicketView | null>(null);
+  const [ticket, setTicket] = useState<TicketDetailView | null>(null);
   const tokenRef = useRef(getToken);
   tokenRef.current = getToken;
 
