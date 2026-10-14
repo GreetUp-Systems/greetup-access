@@ -2,11 +2,11 @@
 
 > **Status:** aprovada em 07/10/2026
 >
-> **Versão:** 1.5 (15C: Criar perfil leva ao Painel quem já tem perfil; 15D: a capa no cartaz da
-> página do evento, vinda da SPEC-016 S21; 1.4: estados do sistema, Eventos e Perfil aprovados no
-> Figma)
+> **Versão:** 1.6 (decisões da 15C, R1–R9); 1.5 (15C: Criar perfil leva ao Painel quem já tem
+> perfil; 15D: a capa no cartaz da página do evento, vinda da SPEC-016 S21; 1.4: estados do sistema,
+> Eventos e Perfil aprovados no Figma)
 >
-> **Atualizada em:** 09/10/2026
+> **Atualizada em:** 14/10/2026
 >
 > **Depende de:** SPEC-003 (onboarding do produtor), SPEC-004 (eventos), SPEC-005 (compras),
 > SPEC-014 (base do web, identificação, assinatura no navegador), SPEC-016 16A (moldura do site, antes
@@ -66,6 +66,20 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 | E1  | Capa do evento em 16:9, enviada do navegador direto ao Cloudflare R2 por URL assinada (D-30): JPG, PNG ou WebP até 5 MB; fora de 16:9, a imagem é cortada no centro na exibição. Obrigatória para publicar (07/10/2026).                                                                                                                                                                                    |
 | E2  | Categoria do evento, de uma lista fixa: Shows, Festas, Teatro, Stand-up, Esportes, Festivais, Infantil, Cursos e Gastronomia. Obrigatória para publicar.                                                                                                                                                                                                                                                    |
 | E3  | Cidade do evento escolhida da base do IBGE (código, nome e UF), separada do endereço, que fica com rua e número. Obrigatória para publicar.                                                                                                                                                                                                                                                                 |
+
+### Decisões da 15C (14/10/2026)
+
+| #   | Decisão                                                                                                                                                                                                                                                                                                                                                                            |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | Envio da verificação que ficou sem resposta não trava o produtor: depois de um prazo, um novo envio faz a API conferir na BlindPay se o cadastro chegou a ser criado; se chegou, a tentativa passa a ser ele; se não, a pendente é encerrada e o novo envio segue. O IP sai da chave de repetição do envio (SPEC-003 v1.7).                                                        |
+| R2  | "Corrigir e enviar de novo" repassa pelos Termos (cada aceite vale para um cadastro só), reabre Seus dados com os dados da tentativa recusada, lidos antes, e pede os documentos de novo. Uma tentativa que falha na criação não esconde a recusa anterior: ela volta a ser a atual (SPEC-003 v1.7). Emenda a P4.                                                                  |
+| R3  | "Conta com erro" aparece quando a preparação da conta de recebimento falhou de vez (`stellar.status` `failed`); "Tentar de novo" prepara de novo e pede a assinatura.                                                                                                                                                                                                              |
+| R4  | O motivo da recusa aparece como uma frase em português ("A verificação não foi aprovada. Confira seus dados e documentos e envie de novo.") e, abaixo, o motivo de cada aviso como a BlindPay o informou, em "Detalhe informado pela BlindPay": a BlindPay não publica a lista de códigos. Emenda o §8.                                                                            |
+| R5  | Tamanho dos arquivos: antes de fechar, um arquivo de 5 a 8 MB é enviado à BlindPay Development. Aceito, o limite fica em 10 MB; recusado, o navegador reduz as fotos antes do envio e o PDF fica em até 3 MB (a documentação da BlindPay diverge entre 3 e 5 MB).                                                                                                                  |
+| R6  | O sistema do produtor inteiro retoma a conta de recebimento em segundo plano (prepara sem assinar, confere o envio e registra a carteira na BlindPay) enquanto ela estiver a caminho, com limite de tentativas; quando falta a assinatura, quem pede é o Recebimento.                                                                                                              |
+| R7  | No navegador, as preparações de conta (a do comprador, ao entrar, e a do produtor) correm numa fila, uma depois da outra, para não pedirem duas assinaturas juntas.                                                                                                                                                                                                                |
+| R8  | Campos: Estado e tipo de documento em lista nativa com o visual do Campo de texto; nascimento digitado com máscara DD/MM/AAAA; CPF com os dígitos verificadores conferidos no navegador; telefone enviado em formato internacional (+55); só documentos brasileiros (RG, CNH ou passaporte brasileiro); selfie só JPG ou PNG; o botão de arquivo diz "Escolher" também no celular. |
+| R9  | O Recebimento no celular tem a raiz da aba (as etapas e o resultado) e páginas internas para Termos, Seus dados e Documentos (`/producer/receiving/terms`, `/data`, `/documents`), com voltar e sem abas; a trilha "Perfil e conta" do desktop sai, porque Recebimento é item da navegação.                                                                                        |
 
 ## 4. Entregas
 
@@ -198,8 +212,9 @@ producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta 
   com progresso, e a lista abaixo nos resultados.
 - **Conta de recebimento:** "Preparando…" até `stellar.status` ficar ativo. Uma falha vira o toast
   "Conta de recebimento" com "Tentar de novo", sem bloquear a verificação (D-23).
-- **Termos:** `POST /api/producers/onboarding/tos` com `redirectUrl` = `/producer/receiving`; volta
-  com `tos_id` na URL, que fica no `sessionStorage` até a submissão e sai da URL.
+- **Termos:** `POST /api/producers/onboarding/tos` com `redirectUrl` = a origem do web +
+  `/producer/receiving` (a API devolve `{ url }` da BlindPay); volta com `tos_id` na URL, que fica no
+  `sessionStorage` até a submissão e sai da URL.
 - **Seus dados:** nome, sobrenome, CPF (`taxId`), nascimento, telefone e endereço no Brasil (CEP,
   estado, endereço, complemento opcional, cidade; `country: "BR"`). Ficam só na memória da página até
   o envio; recarregar volta à etapa.
@@ -209,13 +224,14 @@ producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta 
   (`type: "individual"`, `kycType: "standard"`).
 - **Resultados**, por `GET /api/producers/me` (no celular, a raiz da aba Recebimento):
 
-| Estado da API                                                             | Tela                  | O que acontece                                                                                     |
-| ------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------- |
-| `compliance.status` `verifying`                                           | Em análise            | "Criar evento" leva ao rascunho                                                                    |
-| `compliance.status` `compliance_request` ou `approved_rfi` com RFI aberto | Pendência             | Seções do RFI (`GET .../rfi`) com o texto da compliance como veio; resposta única (`POST .../rfi`) |
-| `compliance.status` `rejected`                                            | Recusado              | Motivo lido na hora (15A); "Corrigir e enviar de novo" reabre Seus dados preenchido (P4)           |
-| `onboardingStatus` `wallet_registration_pending`                          | Liberando recebimento | O app chama `.../stellar/activate` de novo para registrar a carteira `bw_...`                      |
-| `onboardingStatus` `ready`                                                | Pronto                | "Criar evento"                                                                                     |
+| Estado da API                                                             | Tela                  | O que acontece                                                                                                              |
+| ------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `compliance.status` `verifying`                                           | Em análise            | "Criar evento" leva ao rascunho                                                                                             |
+| `compliance.status` `compliance_request` ou `approved_rfi` com RFI aberto | Pendência             | Seções do RFI (`GET .../rfi`) com o texto da compliance como veio; resposta única (`POST .../rfi`)                          |
+| `compliance.status` `rejected`                                            | Recusado              | Motivo lido na hora (15A), como na R4; "Corrigir e enviar de novo" repassa pelos Termos e reabre Seus dados preenchido (R2) |
+| `stellar.status` `failed`                                                 | Conta com erro        | "Tentar de novo" prepara a conta de novo e pede a assinatura (R3)                                                           |
+| `onboardingStatus` `wallet_registration_pending`                          | Liberando recebimento | O app chama `.../stellar/activate` de novo para registrar a carteira `bw_...`                                               |
+| `onboardingStatus` `ready`                                                | Pronto                | "Criar evento"                                                                                                              |
 
 - **Campos do RFI:** cada seção mostra `title` e `description` sem alteração; campo com `items` vira
   lista; campo de arquivo (chave terminada em `_file` ou `_files`, ou `multiple: true`) vira Envio de
@@ -280,7 +296,7 @@ invalid_cover` vira o estado Erro da capa; `409 producer_not_ready` volta ao Pub
 - **`GET /api/producers/onboarding/customer`:** lê na BlindPay (`GET /customers/{id}`) a tentativa
   atual e devolve `{ status, reasons: [{ code, message }], draft }`. `status` é o `kyc_status` da
   BlindPay; `reasons` são os `kyc_warnings` não resolvidos (código da AiPrise e mensagem em inglês;
-  o web mostra o texto em português pelo código), e os `fraud_warnings` ficam fora (P3); `draft`, os
+  o web mostra a frase em português e a mensagem como veio, R4), e os `fraud_warnings` ficam fora (P3); `draft`, os
   dados sem arquivo para preencher a nova tentativa (nome, sobrenome, nascimento `YYYY-MM-DD`, CPF,
   telefone, endereço com o país, e o país e o tipo do documento). Nada é gravado nem logado. Sem
   tentativa, `404 blindpay_customer_not_found`; falha da BlindPay, `503
@@ -371,7 +387,10 @@ a ponta da SPEC-005.
 - detalhe de taxas (D-27), gráficos e comparações além do Painel (SPEC-012), saldo e saque;
 - check-in (entra como item da navegação com a SPEC-009);
 - e-mails de aviso ao produtor; recorte ou tratamento da capa no servidor; edição do nome público;
-  troca manual de tema.
+  troca manual de tema;
+- novo aceite quando a BlindPay atualiza os termos: a cotação do Pix passa a ser recusada para o
+  produtor que não aceitou a versão nova, e o Access ainda não tem como pedir o aceite (SPEC-003 §18).
+  Dívida registrada em 14/10/2026, a resolver antes da abertura ao mercado.
 
 ## 13. Definição de pronto
 

@@ -3,9 +3,10 @@
 > **Status:** gates 3A/3B e implementação automatizada de 3C (v1.4) validados localmente; smokes
 > reais BlindPay e Stellar/Privy/BlindPay pendentes
 >
-> **Versão:** 1.6 (assinatura do produtor no navegador, D-28)
+> **Versão:** 1.7 (envio de verificação pendurado e nova tentativa após recusa, SPEC-015 R1 e R2);
+> 1.6 (assinatura do produtor no navegador, D-28)
 >
-> **Atualizada em:** 05/10/2026
+> **Atualizada em:** 14/10/2026
 >
 > **Aprovada em:** 30/09/2026
 >
@@ -361,6 +362,19 @@ vem do `User`, e a wallet será vinculada somente no gate 3C.
 Cria um novo `BlindPayCustomer`, torna-o a tentativa atual e retorna apenas identificadores/estado
 necessários. Se a tentativa atual não estiver rejeitada, uma nova criação retorna
 `409 customer_attempt_already_active`.
+
+Emendas da v1.7 (SPEC-015 R1 e R2, 14/10/2026):
+
+- **Tentativa pendurada:** uma tentativa ainda `PENDING` (o envio à BlindPay não teve resposta
+  definitiva) há mais que um prazo deixa de travar o produtor. O próximo envio confere na BlindPay se
+  o cadastro foi criado, pelo `external_id` do produtor. Criado, a tentativa pendente passa a ser
+  ele, e a resposta é a dela. Não criado, a pendente é encerrada (`FAILED`, fora da atual) e o novo
+  envio segue. Dentro do prazo, segue o `409`.
+- **Chave de repetição:** o IP deixa de compor a chave enviada à BlindPay. Repetir o mesmo envio de
+  outra rede volta a ser a mesma tentativa.
+- **Recusa preservada:** uma nova tentativa que falha na criação (`422 customer_creation_failed`)
+  devolve a condição de atual à tentativa que ela substituiu. Assim, a recusa anterior, com o motivo
+  e o rascunho, continua visível.
 
 ### `GET /api/producers/onboarding/rfi`
 
