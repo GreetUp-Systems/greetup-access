@@ -356,7 +356,9 @@ Recebe um único PDF, JPEG ou PNG de até 3 MB, mantém o buffer apenas durante 
 disco ou banco pelo Access. O limite segue a SPEC-015 R5: em 30/10/2026 a BlindPay Development recusou
 arquivos de 5,2 MB com `FILES_TOO_LARGE` (o limite dela é de 5 MiB), então o navegador reduz as fotos
 antes do envio e o PDF fica em até 3 MB. A BlindPay também confere o tipo pelo conteúdo do arquivo
-(`FILES_TYPE_NOT_ALLOWED`).
+(`FILES_TYPE_NOT_ALLOWED`). Arquivo vazio, de outro tipo ou acima de 3 MB recebe
+`400 invalid_onboarding_file`. A recepção do upload tem um teto de 10 MB só para proteger a memória:
+acima dele, a resposta é `413` antes do serviço.
 
 ### `POST /api/producers/onboarding/customer`
 
@@ -376,18 +378,25 @@ Emendas da v1.7 (SPEC-015 R1 e R2, 14/10/2026), revistas na v1.8 (30/10/2026):
   rede volta a ser a mesma tentativa. O IP que chegava à API era o do proxy da hospedagem, não o do
   produtor.
 - **Tentativa pendurada:** uma tentativa ainda `PENDING` (o envio à BlindPay não teve resposta
-  definitiva) é confirmada pelo webhook: um `customer.new` com um `re_` que o Access não conhece e
-  `external_id` igual ao id de um produtor cuja tentativa atual está `PENDING` é adotado por ela, que
-  passa a `CREATED` com o status do evento e grava o Outbox se for operacional, na mesma transação.
-  A listagem de customers da BlindPay não filtra por `external_id`, por isso a confirmação não é
-  feita por busca. Sem adoção em 10 minutos, um envio com outra chave encerra a pendente (`FAILED`,
-  fora da atual) e segue; dentro do prazo, segue o `409`.
+  definitiva) é confirmada pelo webhook: um evento de customer (`customer.new` ou `customer.update`)
+  com um `re_` que o Access não conhece e `external_id` igual ao id de um produtor cuja tentativa
+  atual está `PENDING` é adotado por ela, que passa a `CREATED` com o status do evento e grava o
+  Outbox se for operacional, na mesma transação. Status desconhecido é adotado como `verifying`, sem
+  liberar o produtor. Só é adotado o customer criado depois do início da tentativa, com tolerância de
+  2 minutos entre os relógios; sem `created_at` no evento, não há adoção. A listagem de customers da
+  BlindPay não filtra por `external_id`, por isso a confirmação não é feita por busca.
+- **Prazo da pendente:** 10 minutos, contados do último envio dela; reenviar o mesmo envio (mesma
+  chave) conta como envio novo e reinicia o prazo. Vencido o prazo, um envio com outra chave encerra
+  a pendente (`FAILED`, fora da atual) e segue; dentro dele, segue o `409`. Duas cópias do mesmo
+  envio recebem a mesma tentativa; dois envios diferentes sobre a mesma pendente vencida deixam uma
+  só atual, e o outro recebe `409`.
 - **Customer órfão:** `customer.new` ou `customer.update` de um `re_` desconhecido que não pode ser
-  adotado (sem tentativa pendente do mesmo produtor, ou com `external_id` desconhecido) é reconhecido
-  com `2xx` e gera alerta sanitizado, em vez de ser reenviado pela BlindPay até ela desistir.
+  adotado (sem tentativa pendente do mesmo produtor, criado antes dela ou com `external_id`
+  desconhecido) é reconhecido com `2xx` e gera alerta sanitizado, em vez de ser reenviado pela
+  BlindPay até ela desistir.
 - **Recusa preservada:** uma nova tentativa que falha na criação (`422 customer_creation_failed`)
-  devolve a condição de atual à tentativa que ela substituiu. Assim, a recusa anterior, com o motivo
-  e o rascunho, continua visível.
+  devolve a condição de atual à última tentativa criada, a recusada. Assim, a recusa anterior, com o
+  motivo e o rascunho, continua visível.
 
 ### `GET /api/producers/onboarding/rfi`
 
@@ -620,11 +629,14 @@ Com PostgreSQL real e fakes apenas para BlindPay:
 - body, documento e respostas de RFI não ficam no banco;
 - v1.8: o corpo enviado à BlindPay não tem `ip_address`, e o mesmo envio de IPs diferentes é a
   mesma tentativa com a mesma chave; a tentativa atual `PENDING` dentro do prazo responde `409` sem
-  chamar a BlindPay; vencida, ela é encerrada e o envio novo vira a atual, também com dois envios
-  simultâneos; o webhook adota a pendente pelo `external_id` (com Outbox se operacional, uma vez
-  só sob replay) e reconhece o customer órfão sem mudar nada; a nova tentativa que falha na criação
-  devolve a condição de atual à recusada, e a primeira tentativa que falha não devolve nada; arquivo
-  acima de 3 MB é recusado.
+  chamar a BlindPay; o reenvio da mesma chave reinicia o prazo; vencida, ela é encerrada e o envio
+  novo vira a atual, também com dois envios simultâneos e com duas cópias do mesmo envio (uma
+  tentativa, a mesma resposta); o webhook adota a pendente pelo `external_id` (com Outbox se
+  operacional, uma vez só sob replay e com dois eventos simultâneos do mesmo customer), adota status
+  desconhecido como `verifying`, não religa produtor com tentativa já criada e reconhece o customer
+  órfão, inclusive o criado antes da tentativa, sem mudar nada; a nova tentativa que falha na
+  criação devolve a condição de atual à última recusada, e a primeira tentativa que falha não
+  devolve nada; arquivo acima de 3 MB recebe `400 invalid_onboarding_file`, e acima de 10 MB, `413`.
 
 ### Integração 3C
 
@@ -638,8 +650,9 @@ Com PostgreSQL real e fakes apenas para BlindPay:
 - configuração aceita Testnet com USDB e USDC de teste e rejeita combinações de rede, passphrase,
   código ou issuer incompatíveis, inclusive Pubnet;
 - configuração Stellar ocorre sem customer operacional, e `bw_...` só após o KYC;
-- v1.8: erro passageiro ao montar não grava `failed`; falha definitiva grava; uma nova chamada
-  sobre `failed` prepara de novo; `activation_signature_stale` também para o produtor.
+- v1.8: erro passageiro ao montar não grava `failed` e, sobre `failed`, o mantém; falha definitiva
+  grava; uma nova chamada sobre `failed` prepara de novo; `activation_signature_stale` também para o
+  produtor.
 
 ### Smoke tests manuais
 
