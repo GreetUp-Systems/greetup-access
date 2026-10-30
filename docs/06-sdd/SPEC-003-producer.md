@@ -714,8 +714,9 @@ CI.
 - [x] Aprovação operacional gera exatamente um `producer.kyc_approved` sanitizado.
 - [ ] Smoke test com a instância BlindPay development confirma ToS, customer, webhook e RFI reais.
 - [x] Build, lint, typecheck e suítes unitária/de integração passam na revisão final.
-- [ ] v1.8: IP fora do cadastro, tentativa pendurada confirmada pelo webhook com prazo de 10 minutos,
-      customer órfão, recusa preservada, `failed` só definitivo e arquivos até 3 MB, com testes.
+- [x] v1.8: IP fora do cadastro, tentativa pendurada confirmada pelo webhook com prazo de 10 minutos,
+      customer órfão, recusa preservada, `failed` só definitivo e arquivos até 3 MB, com testes (PR
+      #35, 30/10/2026).
 - [ ] v1.9: eventos do customer gravados na ordem do `updated_at` da BlindPay, com testes.
 
 Validação parcial em 2026-10-02: ToS, upload e customer individual foram executados contra a
