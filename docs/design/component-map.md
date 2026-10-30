@@ -120,6 +120,11 @@ seis `<InputOTPSlot>`. Aceita colar e o preenchimento automático do sistema.
 Com `asChild`, o filho (um botão ou link) vira o item, com hover e foco. O ícone e a seta são
 `icon/secondary` (no hover a seta fica `icon/primary`; selecionado, os dois `icon/accent`).
 
+Como lista de opções (o tipo de documento em Documentos · 1, `547:10491` e `547:10342`; SPEC-015
+R8), o item é um `<label>` com um `<input type="radio">` escondido: Selecionado é a opção marcada,
+com o `check` em `<ItemActions>`, e o foco do rádio desenha a borda interna do item
+(`has-focus-visible:`). As setas do teclado andam entre as opções, como em qualquer grupo de rádio.
+
 ### Janela · `dialog.tsx` (shadcn/ui)
 
 As janelas sobre a película (`148:1945`, `148:2183`, `176:5744`): `<Dialog>` com `<DialogContent>`,
