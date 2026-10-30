@@ -43,6 +43,21 @@ sempre termina no Figma.
    props.
 5. **Textos** vêm do design (ou da SPEC de front, quando ela os define).
 
+## Usabilidade
+
+Padrão de qualidade de toda tela, no Figma e no código (definido pelo Matheus em 30/10/2026).
+
+1. **Formulário sem rolar.** Cada tela de preenchimento cabe inteira no quadro (360 × 780 no
+   celular, 1440 × 900 no desktop), com a ação principal à vista. Se não cabe, vira passos.
+2. **Um passo de cada vez.** Fluxo com muita informação é dividido em passos curtos e claros, com o
+   progresso à vista e "Voltar" sem perder o que já foi preenchido. Nunca pedir tudo de uma vez.
+3. **Menos digitação.** Teclado certo para cada campo (numérico em CPF, telefone e CEP), máscara e
+   preenchimento automático do navegador; o que o sistema já sabe não é perguntado de novo.
+4. **Erro que ensina.** A mensagem aparece junto do campo, ao sair dele, dizendo como corrigir; o que
+   foi digitado nunca se perde.
+5. **Nenhuma tela sem saída.** Espera diz o que está acontecendo e o que vem depois; falha oferece
+   "Tentar de novo" ou o caminho para corrigir.
+
 ## Tailwind e tokens
 
 O gerador transforma cada variável do Figma em tema do Tailwind, pelo nome da sintaxe de código:
