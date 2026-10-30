@@ -127,7 +127,12 @@ export class ProducerStellarActivationService {
         ),
       );
     } catch (error) {
-      await this.repository.markFailed(user.id, claimed.id, this.failureCode(error));
+      // failed records only a definitive failure (SPEC-003 v1.8): a transient one keeps the state.
+      if (error instanceof StellarProviderError && error.retryable) {
+        await this.repository.releaseSigning(user.id, claimed, provisioning);
+      } else {
+        await this.repository.markFailed(user.id, claimed.id, this.failureCode(error));
+      }
       throw this.mapActivationError(error);
     }
   }

@@ -75,6 +75,37 @@ export class ProducerStellarRepository {
     });
   }
 
+  /**
+   * Gives back a SIGNING claim whose transaction could not be built for a transient reason: the
+   * record returns to its previous state, and a stale SIGNING one to PENDING (SPEC-003 v1.8). Only
+   * this claim is given back: another request that took over the stale claim keeps its own.
+   */
+  releaseSigning(
+    userId: string,
+    claimed: Pick<StellarProvisioningRecord, "id" | "updatedAt">,
+    previous: Pick<StellarProvisioningRecord, "status" | "transactionHash" | "failureCode">,
+  ): Promise<void> {
+    return this.tenantContext.withProducerContext(userId, async (transaction, producerId) => {
+      await transaction.stellarAccountProvisioning.updateMany({
+        where: {
+          id: claimed.id,
+          producerId,
+          status: "SIGNING",
+          transactionHash: null,
+          updatedAt: claimed.updatedAt,
+        },
+        data:
+          previous.status === "SIGNING"
+            ? { status: "PENDING", failureCode: null }
+            : {
+                status: previous.status,
+                transactionHash: previous.transactionHash,
+                failureCode: previous.failureCode,
+              },
+      });
+    });
+  }
+
   /** Keeps the prepared transaction, without signatures, for the browser to sign (D-28). */
   savePrepared(
     userId: string,

@@ -36,8 +36,10 @@ import {
   type PreparedStellarProvisioning,
   type StellarAccountState,
   type StellarGateway,
+  StellarProviderError,
   type StellarTransactionStatus,
 } from "../src/common/stellar/stellar.types";
+import { STALE_CUSTOMER_ATTEMPT_MS } from "../src/producers/producer-onboarding.repository";
 import { stellarTestConfig } from "./test-stellar-config";
 import { ticketsTestConfig } from "./test-tickets-config";
 
@@ -179,9 +181,16 @@ class FakeBlindPayGateway implements BlindPayGateway {
   attempt: BlindPayCustomerAttempt | undefined;
   attemptError: BlindPayProviderError | undefined;
   attemptReads: string[] = [];
+  // Runs after BlindPay "created" the customer and before the API hears back, like a webhook that
+  // arrives while the request is still in flight.
+  onCustomerCreated: ((customerId: string) => Promise<void>) | undefined;
+  // BlindPay replays the response of a repeated Idempotency-Key with an identical body.
+  private readonly customerIdsByKey = new Map<string, string>();
   private customerSequence = 0;
 
   reset(): void {
+    this.customerIdsByKey.clear();
+    this.onCustomerCreated = undefined;
     this.attempt = undefined;
     this.attemptError = undefined;
     this.attemptReads = [];
@@ -223,8 +232,15 @@ class FakeBlindPayGateway implements BlindPayGateway {
       this.nextCustomerError = undefined;
       throw error;
     }
+    const replayed = this.customerIdsByKey.get(idempotencyKey);
+    if (replayed !== undefined) {
+      return { id: replayed };
+    }
     this.customerSequence += 1;
-    return { id: `re_test_${this.customerSequence}` };
+    const id = `re_test_${this.customerSequence}`;
+    this.customerIdsByKey.set(idempotencyKey, id);
+    await this.onCustomerCreated?.(id);
+    return { id };
   }
 
   async getCustomerKycStatus(): Promise<BlindPayKycStatusValue> {
@@ -295,6 +311,7 @@ class FakeStellarGateway implements StellarGateway {
   readonly states = new Map<string, StellarAccountState>();
   readonly transactionStatuses = new Map<string, StellarTransactionStatus>();
   buildInputs: Array<{ producerAddress: string; state: StellarAccountState }> = [];
+  nextBuildError: StellarProviderError | undefined;
   submissionInputs: Array<{
     prepared: PreparedStellarProvisioning;
     producerAddress: string;
@@ -305,6 +322,7 @@ class FakeStellarGateway implements StellarGateway {
     this.states.clear();
     this.transactionStatuses.clear();
     this.buildInputs = [];
+    this.nextBuildError = undefined;
     this.submissionInputs = [];
   }
 
@@ -317,6 +335,11 @@ class FakeStellarGateway implements StellarGateway {
     state: StellarAccountState,
   ): Promise<PreparedStellarProvisioning> {
     this.buildInputs.push({ producerAddress, state });
+    if (this.nextBuildError !== undefined) {
+      const error = this.nextBuildError;
+      this.nextBuildError = undefined;
+      throw error;
+    }
     return {
       transactionXdr: `xdr-${producerAddress}`,
       transactionHash: createHmac("sha256", "stellar-test")
@@ -500,6 +523,25 @@ describe("producer profile and RLS integration", () => {
     return createHmac("sha256", webhookSecretBytes)
       .update(Buffer.from(`${messageId}.${timestamp}.${rawBody}`, "utf8"))
       .digest("base64");
+  }
+
+  function deliverWebhook(payload: string, messageId: string) {
+    const timestamp = Math.floor(Date.now() / 1_000);
+    return request(app.getHttpServer())
+      .post("/api/webhooks/blindpay")
+      .set("Content-Type", "application/json")
+      .set("svix-id", messageId)
+      .set("svix-timestamp", String(timestamp))
+      .set("svix-signature", `v1,${signWebhook(payload, messageId, timestamp)}`)
+      .send(payload);
+  }
+
+  // Ages the pending attempt past the deadline that frees the producer (SPEC-003 v1.8).
+  async function ageAttempts(): Promise<void> {
+    const sentAt = new Date(Date.now() - STALE_CUSTOMER_ATTEMPT_MS - 60_000);
+    await ownerPrisma.blindPayCustomer.updateMany({
+      data: { createdAt: sentAt, updatedAt: sentAt },
+    });
   }
 
   it("requires authentication and a bootstrapped account", async () => {
@@ -793,10 +835,11 @@ describe("producer profile and RLS integration", () => {
     expect(blindPay.customerInputs[0]?.input).toMatchObject({
       email: users.a.email,
       external_id: expect.any(String),
-      ip_address: expect.any(String),
       type: "individual",
       kyc_type: "standard",
     });
+    // The body is the same from any network: BlindPay replays a key only for an identical body.
+    expect(blindPay.customerInputs[0]?.input).not.toHaveProperty("ip_address");
     expect(blindPay.customerInputs[0]?.input).not.toHaveProperty("idempotency_key");
 
     const stored = await ownerPrisma.blindPayCustomer.findMany();
@@ -878,6 +921,10 @@ describe("producer profile and RLS integration", () => {
       code: "customer_creation_failed",
       providerCode: "invalid_customer",
     });
+    // A first attempt has nothing to give the current flag back to.
+    await expect(ownerPrisma.blindPayCustomer.count({ where: { isCurrent: true } })).resolves.toBe(
+      0,
+    );
 
     const corrected = await createBlindPayCustomer();
     expect(corrected.status).toBe(200);
@@ -982,6 +1029,346 @@ describe("producer profile and RLS integration", () => {
       blindPay.customerInputs[0]?.idempotencyKey,
     );
     await expect(ownerPrisma.blindPayCustomer.count()).resolves.toBe(1);
+  });
+
+  it("blocks a new submission while an attempt is pending and closes it after the deadline", async () => {
+    await createProducer();
+    blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
+    expect((await createBlindPayCustomer()).status).toBe(503);
+
+    const blocked = await createBlindPayCustomer();
+    expect(blocked.status).toBe(409);
+    expect(blocked.body).toMatchObject({ code: "customer_attempt_already_active" });
+    expect(blindPay.customerInputs).toHaveLength(1);
+
+    await ageAttempts();
+    const resumed = await createBlindPayCustomer();
+    expect(resumed.status).toBe(200);
+    expect(resumed.body).toMatchObject({ customerId: "re_test_1", status: "verifying" });
+
+    const attempts = await ownerPrisma.blindPayCustomer.findMany({
+      orderBy: { createdAt: "asc" },
+    });
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]).toMatchObject({
+      creationStatus: "FAILED",
+      failureCode: "attempt_abandoned",
+      isCurrent: false,
+    });
+    expect(attempts[1]).toMatchObject({ creationStatus: "CREATED", isCurrent: true });
+  });
+
+  it("restarts the deadline when the same submission is sent again", async () => {
+    await createProducer();
+    blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
+    const idempotencyKey = randomUUID();
+    expect((await createBlindPayCustomer(idempotencyKey)).status).toBe(503);
+    await ageAttempts();
+
+    blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
+    expect((await createBlindPayCustomer(idempotencyKey)).status).toBe(503);
+
+    // The resend may still create the customer: a newer submission must not close it now.
+    const newer = await createBlindPayCustomer();
+    expect(newer.status).toBe(409);
+    expect(blindPay.customerInputs).toHaveLength(2);
+    await expect(ownerPrisma.blindPayCustomer.findMany()).resolves.toEqual([
+      expect.objectContaining({ creationStatus: "PENDING", isCurrent: true }),
+    ]);
+  });
+
+  it("answers both copies of a submission sent twice over a stale attempt with one attempt", async () => {
+    await createProducer();
+    blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
+    expect((await createBlindPayCustomer()).status).toBe(503);
+    await ageAttempts();
+
+    const idempotencyKey = randomUUID();
+    const responses = await Promise.all([
+      createBlindPayCustomer(idempotencyKey),
+      createBlindPayCustomer(idempotencyKey),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    expect(responses[0]?.body).toEqual(responses[1]?.body);
+    await expect(ownerPrisma.blindPayCustomer.count({ where: { isCurrent: true } })).resolves.toBe(
+      1,
+    );
+  });
+
+  it("keeps one current attempt when two submissions close a stale one together", async () => {
+    await createProducer();
+    blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
+    expect((await createBlindPayCustomer()).status).toBe(503);
+    await ageAttempts();
+
+    const responses = await Promise.all([createBlindPayCustomer(), createBlindPayCustomer()]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    await expect(ownerPrisma.blindPayCustomer.count({ where: { isCurrent: true } })).resolves.toBe(
+      1,
+    );
+    expect(blindPay.customerInputs).toHaveLength(2);
+  });
+
+  it("keeps the latest rejected attempt current when a new attempt fails to be created", async () => {
+    await createProducer();
+    for (const [index, customerId] of ["re_test_1", "re_test_2"].entries()) {
+      expect((await createBlindPayCustomer()).status).toBe(200);
+      await deliverWebhook(
+        JSON.stringify({
+          webhook_event: "customer.update",
+          id: customerId,
+          kyc_status: "rejected",
+        }),
+        `msg_customer_rejected_${index}`,
+      ).expect(200);
+    }
+
+    blindPay.nextCustomerError = new BlindPayProviderError(
+      "create_customer",
+      false,
+      422,
+      "invalid_customer",
+    );
+    const failed = await createBlindPayCustomer();
+    expect(failed.status).toBe(422);
+    expect(failed.body).toMatchObject({ code: "customer_creation_failed" });
+
+    const attempts = await ownerPrisma.blindPayCustomer.findMany({
+      orderBy: { createdAt: "asc" },
+    });
+    expect(attempts).toHaveLength(3);
+    expect(attempts[0]).toMatchObject({ externalCustomerId: "re_test_1", isCurrent: false });
+    expect(attempts[1]).toMatchObject({
+      externalCustomerId: "re_test_2",
+      kycStatus: "REJECTED",
+      isCurrent: true,
+    });
+    expect(attempts[2]).toMatchObject({ creationStatus: "FAILED", isCurrent: false });
+
+    const producer = await request(app.getHttpServer())
+      .get("/api/producers/me")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(200);
+    expect(producer.body).toMatchObject({ compliance: { status: "rejected" } });
+
+    // The reason and the draft of the rejected attempt are still read from BlindPay.
+    blindPay.attempt = {
+      status: "rejected",
+      warnings: [],
+      draft: {
+        firstName: "Ana",
+        lastName: "Produtora",
+        dateOfBirth: "1990-01-01",
+        taxId: "12345678900",
+        phoneNumber: "+5511999999999",
+        addressLine1: "Rua Teste 100",
+        addressLine2: null,
+        city: "Sao Paulo",
+        stateProvinceRegion: "SP",
+        postalCode: "01001000",
+        country: "BR",
+        idDocCountry: "BR",
+        idDocType: "PASSPORT",
+      },
+    };
+    await readAttempt().expect(200);
+    expect(blindPay.attemptReads).toEqual(["re_test_2"]);
+  });
+
+  it("adopts a pending attempt from the customer.new webhook through its external_id", async () => {
+    await createProducer();
+    blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
+    const idempotencyKey = randomUUID();
+    expect((await createBlindPayCustomer(idempotencyKey)).status).toBe(503);
+    const producer = await ownerPrisma.producerProfile.findFirstOrThrow();
+
+    const payload = JSON.stringify({
+      webhook_event: "customer.new",
+      id: "re_adopted_1",
+      kyc_status: "approved",
+      external_id: producer.id,
+      created_at: new Date().toISOString(),
+    });
+    for (let delivery = 0; delivery < 2; delivery += 1) {
+      await deliverWebhook(payload, "msg_customer_adopted").expect(200);
+    }
+
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      externalCustomerId: "re_adopted_1",
+      creationStatus: "CREATED",
+      kycStatus: "APPROVED",
+      isCurrent: true,
+    });
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(1);
+
+    // Repeating the same submission answers with the adopted customer, without calling BlindPay.
+    const repeated = await createBlindPayCustomer(idempotencyKey);
+    expect(repeated.status).toBe(200);
+    expect(repeated.body).toMatchObject({ customerId: "re_adopted_1", status: "approved" });
+    expect(blindPay.customerInputs).toHaveLength(1);
+  });
+
+  it("finishes a creation the webhook already adopted while the request was in flight", async () => {
+    await createProducer();
+    const producer = await ownerPrisma.producerProfile.findFirstOrThrow();
+    blindPay.onCustomerCreated = async (customerId) => {
+      await deliverWebhook(
+        JSON.stringify({
+          webhook_event: "customer.new",
+          id: customerId,
+          kyc_status: "approved",
+          external_id: producer.id,
+          created_at: new Date().toISOString(),
+        }),
+        "msg_customer_in_flight",
+      ).expect(200);
+    };
+
+    const created = await createBlindPayCustomer();
+
+    expect(created.status).toBe(200);
+    expect(created.body).toMatchObject({ customerId: "re_test_1", status: "approved" });
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      externalCustomerId: "re_test_1",
+      creationStatus: "CREATED",
+      kycStatus: "APPROVED",
+    });
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(1);
+  });
+
+  it("acknowledges customers it cannot adopt without changing any attempt", async () => {
+    await createProducer();
+    blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
+    expect((await createBlindPayCustomer()).status).toBe(503);
+    const producer = await ownerPrisma.producerProfile.findFirstOrThrow();
+    const before = await ownerPrisma.blindPayCustomer.findMany();
+
+    const now = new Date().toISOString();
+    const orphans = [
+      // Created an hour before this attempt began: it belongs to an earlier one.
+      {
+        id: "re_orphan_1",
+        external_id: producer.id,
+        created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      },
+      { id: "re_orphan_2", external_id: randomUUID(), created_at: now },
+      { id: "re_orphan_3", created_at: now },
+      { id: "re_orphan_4", external_id: "not-a-producer", created_at: now },
+    ];
+    for (const [index, orphan] of orphans.entries()) {
+      const payload = JSON.stringify({
+        webhook_event: "customer.new",
+        kyc_status: "approved",
+        ...orphan,
+      });
+      await deliverWebhook(payload, `msg_customer_orphan_${index}`).expect(200);
+    }
+
+    await expect(ownerPrisma.blindPayCustomer.findMany()).resolves.toEqual(before);
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(0);
+    await expect(
+      ownerPrisma.blindPayWebhookDelivery.count({ where: { processedAt: { not: null } } }),
+    ).resolves.toBe(orphans.length);
+  });
+
+  it("does not relink a producer whose current attempt is already created", async () => {
+    await createProducer();
+    expect((await createBlindPayCustomer()).status).toBe(200);
+    const producer = await ownerPrisma.producerProfile.findFirstOrThrow();
+    const before = await ownerPrisma.blindPayCustomer.findMany();
+
+    await deliverWebhook(
+      JSON.stringify({
+        webhook_event: "customer.new",
+        id: "re_other_1",
+        kyc_status: "approved",
+        external_id: producer.id,
+        created_at: new Date().toISOString(),
+      }),
+      "msg_customer_other",
+    ).expect(200);
+
+    await expect(ownerPrisma.blindPayCustomer.findMany()).resolves.toEqual(before);
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(0);
+  });
+
+  it("adopts a pending attempt as verifying when the status is unknown", async () => {
+    await createProducer();
+    blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
+    expect((await createBlindPayCustomer()).status).toBe(503);
+    const producer = await ownerPrisma.producerProfile.findFirstOrThrow();
+
+    await deliverWebhook(
+      JSON.stringify({
+        webhook_event: "customer.new",
+        id: "re_review_1",
+        kyc_status: "pending_review",
+        external_id: producer.id,
+        created_at: new Date().toISOString(),
+      }),
+      "msg_customer_unknown_status",
+    ).expect(200);
+
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      externalCustomerId: "re_review_1",
+      creationStatus: "CREATED",
+      kycStatus: "VERIFYING",
+    });
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(0);
+  });
+
+  it("links a pending attempt once when two events of its customer arrive together", async () => {
+    await createProducer();
+    blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
+    expect((await createBlindPayCustomer()).status).toBe(503);
+    const producer = await ownerPrisma.producerProfile.findFirstOrThrow();
+    const event = (webhookEvent: string, kycStatus: string) =>
+      JSON.stringify({
+        webhook_event: webhookEvent,
+        id: "re_together_1",
+        kyc_status: kycStatus,
+        external_id: producer.id,
+        created_at: new Date().toISOString(),
+      });
+
+    const deliveries = await Promise.all([
+      deliverWebhook(event("customer.new", "verifying"), "msg_together_new"),
+      deliverWebhook(event("customer.update", "approved"), "msg_together_update"),
+    ]);
+
+    expect(deliveries.map((delivery) => delivery.status)).toEqual([200, 200]);
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      externalCustomerId: "re_together_1",
+      creationStatus: "CREATED",
+    });
+    // Whatever the order, neither event is dropped as an orphan: the approval reached the Outbox.
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(1);
+    await expect(
+      ownerPrisma.blindPayWebhookDelivery.count({ where: { processedAt: { not: null } } }),
+    ).resolves.toBe(2);
+  });
+
+  it("accepts onboarding files up to 3 MB and refuses larger ones", async () => {
+    await createProducer();
+    const limit = 3 * 1024 * 1024;
+    const upload = (size: number) =>
+      request(app.getHttpServer())
+        .post("/api/producers/onboarding/files")
+        .set("Authorization", `Bearer ${users.a.token}`)
+        .set("Idempotency-Key", randomUUID())
+        .attach("file", Buffer.alloc(size, 1), {
+          filename: "document.pdf",
+          contentType: "application/pdf",
+        });
+
+    await upload(limit).expect(200);
+    const tooLarge = await upload(limit + 1).expect(400);
+    expect(tooLarge.body).toMatchObject({ code: "invalid_onboarding_file" });
+    // Above the memory guard the upload itself is refused before the service.
+    await upload(10 * 1024 * 1024 + 1).expect(413);
+    expect(blindPay.uploadInputs).toHaveLength(1);
   });
 
   it("validates an open RFI dynamically and forwards only declared answers", async () => {
@@ -1316,6 +1703,93 @@ describe("producer profile and RLS integration", () => {
     expect(stellar.buildInputs).toEqual([]);
     expect(stellar.submissionInputs).toEqual([]);
     expect(blindPay.walletRegistrations).toHaveLength(1);
+  });
+
+  it("keeps the previous state when building the transaction fails for a moment", async () => {
+    await createProducer();
+    stellar.nextBuildError = new StellarProviderError("build_provisioning", true, "timeout");
+
+    const unavailable = await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(503);
+    expect(unavailable.body).toMatchObject({ code: "stellar_activation_failed" });
+    await expect(ownerPrisma.stellarAccountProvisioning.findFirst()).resolves.toMatchObject({
+      status: "PENDING",
+      failureCode: null,
+    });
+    const producer = await request(app.getHttpServer())
+      .get("/api/producers/me")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(200);
+    expect(producer.body).toMatchObject({ stellar: { status: "pending" } });
+
+    const activated = await activateStellar();
+    expect(activated.body).toMatchObject({ status: "active" });
+  });
+
+  it("records a definitive build failure and prepares again on the next call", async () => {
+    await createProducer();
+    stellar.nextBuildError = new StellarProviderError("build_provisioning", false, "tx_malformed");
+
+    await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(502);
+    await expect(ownerPrisma.stellarAccountProvisioning.findFirst()).resolves.toMatchObject({
+      status: "FAILED",
+      failureCode: "tx_malformed",
+    });
+    const failed = await request(app.getHttpServer())
+      .get("/api/producers/me")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(200);
+    expect(failed.body).toMatchObject({ stellar: { status: "failed" } });
+
+    // "Tentar de novo" prepares again and asks for the signature.
+    const retried = await activateStellar();
+    expect(retried.body).toMatchObject({ status: "active" });
+    expect(stellar.buildInputs).toHaveLength(2);
+  });
+
+  it("keeps a failed account failed when the retry fails for a moment", async () => {
+    await createProducer();
+    stellar.nextBuildError = new StellarProviderError("build_provisioning", false, "tx_malformed");
+    await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(502);
+
+    stellar.nextBuildError = new StellarProviderError("build_provisioning", true, "timeout");
+    await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(503);
+
+    await expect(ownerPrisma.stellarAccountProvisioning.findFirst()).resolves.toMatchObject({
+      status: "FAILED",
+      failureCode: "tx_malformed",
+    });
+  });
+
+  it("asks for a new signature when the prepared producer activation went stale", async () => {
+    await createProducer();
+    const prepared = await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .expect(200);
+    const hash = prepared.body.hashToSign as string;
+    await ownerPrisma.stellarAccountProvisioning.updateMany({
+      data: { updatedAt: new Date(Date.now() - 60 * 60 * 1000) },
+    });
+
+    const stale = await request(app.getHttpServer())
+      .post("/api/producers/onboarding/stellar/activate/signature")
+      .set("Authorization", `Bearer ${users.a.token}`)
+      .send({ hash, signature: sign(users.a.key, hash) })
+      .expect(409);
+    expect(stale.body).toMatchObject({ code: "activation_signature_stale" });
+    expect(stellar.submissionInputs).toEqual([]);
   });
 
   it("requires current Privy wallet ownership before activation", async () => {
