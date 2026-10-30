@@ -57,6 +57,12 @@ export interface BlindPayCreatedCustomer {
   id: string;
 }
 
+/** The customer's KYC status and the version it belongs to: BlindPay's `updated_at`, when sent. */
+export interface BlindPayCustomerKyc {
+  kycStatus: BlindPayKycStatusValue;
+  updatedAt: Date | null;
+}
+
 export interface BlindPayBlockchainWallet {
   id: string;
   address: string;
@@ -127,7 +133,7 @@ export interface BlindPayGateway {
     input: Record<string, unknown>,
     idempotencyKey: string,
   ): Promise<BlindPayCreatedCustomer>;
-  getCustomerKycStatus(customerId: string): Promise<BlindPayKycStatusValue>;
+  getCustomerKyc(customerId: string): Promise<BlindPayCustomerKyc>;
   getCustomerAttempt(customerId: string): Promise<BlindPayCustomerAttempt>;
   getOpenRfi(customerId: string): Promise<BlindPayRfi | null>;
   submitRfi(customerId: string, answers: BlindPayRfiAnswers, idempotencyKey: string): Promise<void>;

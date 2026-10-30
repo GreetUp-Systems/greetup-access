@@ -31,16 +31,37 @@ describe("BlindPayHttpGateway", () => {
   it("reads the customer KYC status and rejects an unknown one as uncertain", async () => {
     const fetchMock = jest
       .spyOn(global, "fetch")
-      .mockResolvedValueOnce(json({ id: "re_test", kyc_status: "approved" }))
+      .mockResolvedValueOnce(
+        json({ id: "re_test", kyc_status: "approved", updated_at: "2026-10-30T12:01:00.123Z" }),
+      )
       .mockResolvedValueOnce(json({ id: "re_test", kyc_status: "unknown" }));
 
-    await expect(gateway.getCustomerKycStatus("re_test")).resolves.toBe("approved");
+    await expect(gateway.getCustomerKyc("re_test")).resolves.toEqual({
+      kycStatus: "approved",
+      updatedAt: new Date("2026-10-30T12:01:00.123Z"),
+    });
     expect(fetchMock.mock.calls[0]![0]).toBe(
       "https://api.blindpay.com/v1/instances/in_test/customers/re_test",
     );
-    await expect(gateway.getCustomerKycStatus("re_test")).rejects.toMatchObject({
+    await expect(gateway.getCustomerKyc("re_test")).rejects.toMatchObject({
       operation: "get_customer_invalid_response",
       retryable: true,
+    });
+  });
+
+  it("reads a customer without a valid updated_at as a status without version", async () => {
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(json({ id: "re_test", kyc_status: "verifying", updated_at: null }))
+      .mockResolvedValueOnce(json({ id: "re_test", kyc_status: "verifying", updated_at: "soon" }));
+
+    await expect(gateway.getCustomerKyc("re_test")).resolves.toEqual({
+      kycStatus: "verifying",
+      updatedAt: null,
+    });
+    await expect(gateway.getCustomerKyc("re_test")).resolves.toEqual({
+      kycStatus: "verifying",
+      updatedAt: null,
     });
   });
 

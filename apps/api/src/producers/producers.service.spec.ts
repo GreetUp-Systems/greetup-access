@@ -64,6 +64,7 @@ function producerWithKyc(
         customerType: "INDIVIDUAL",
         creationStatus: "CREATED",
         kycStatus,
+        providerUpdatedAt: null,
         isCurrent: true,
         externalBlockchainWalletId: null,
         failureCode: null,

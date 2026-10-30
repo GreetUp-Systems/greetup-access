@@ -16,6 +16,7 @@ import { type AuthenticatedPrincipal } from "../auth/auth.types";
 import {
   BLINDPAY_ALLOWED_REDIRECT_ORIGINS,
   BLINDPAY_GATEWAY,
+  type BlindPayCustomerKyc,
   type BlindPayGateway,
   type BlindPayKycStatusValue,
   type BlindPayProviderError,
@@ -196,12 +197,13 @@ export class ProducerOnboardingService {
 
     try {
       const created = await this.blindPay.createCustomer(providerInput, providerKey);
-      const kycStatus = await this.readInitialKycStatus(created.id);
+      const kyc = await this.readInitialKyc(created.id);
       const stored = await this.onboarding.markCreated(
         user.id,
         attempt.id,
         created.id,
-        storedKycStatus[kycStatus],
+        storedKycStatus[kyc.kycStatus],
+        kyc.updatedAt,
       );
       return this.toCustomerView(stored);
     } catch (error) {
@@ -536,17 +538,18 @@ export class ProducerOnboardingService {
 
   /**
    * The customer already exists at this point, so a failed read must not lose it: the status
-   * falls back to verifying and the customer lifecycle webhook brings the real one.
+   * falls back to verifying, without a version, and the customer lifecycle webhook brings the real
+   * one.
    */
-  private async readInitialKycStatus(customerId: string): Promise<BlindPayKycStatusValue> {
+  private async readInitialKyc(customerId: string): Promise<BlindPayCustomerKyc> {
     try {
-      return await this.blindPay.getCustomerKycStatus(customerId);
+      return await this.blindPay.getCustomerKyc(customerId);
     } catch (error) {
       if (!this.isProviderError(error)) {
         throw error;
       }
       this.logger.warn(`BlindPay customer ${customerId} status read failed (${error.operation}).`);
-      return "verifying";
+      return { kycStatus: "verifying", updatedAt: null };
     }
   }
 

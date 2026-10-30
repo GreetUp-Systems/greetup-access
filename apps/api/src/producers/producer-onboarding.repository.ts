@@ -107,14 +107,16 @@ export class ProducerOnboardingRepository {
   }
 
   /**
-   * PENDING → CREATED. When the customer.new webhook already adopted this attempt for the same
-   * customer, the stored attempt is returned as it is (SPEC-003 v1.8).
+   * PENDING → CREATED, with the status and the BlindPay version it was read at. When the
+   * customer.new webhook already adopted this attempt for the same customer, the stored attempt is
+   * returned as it is (SPEC-003 v1.8).
    */
   markCreated(
     userId: string,
     attemptId: string,
     externalCustomerId: string,
     kycStatus: StoredKycStatus,
+    providerUpdatedAt: Date | null,
   ): Promise<BlindPayCustomerRecord> {
     return this.tenantContext.withProducerContext(userId, async (transaction, producerId) => {
       const updated = await transaction.blindPayCustomer.updateMany({
@@ -123,6 +125,7 @@ export class ProducerOnboardingRepository {
           externalCustomerId,
           creationStatus: "CREATED",
           kycStatus,
+          providerUpdatedAt,
           failureCode: null,
         },
       });

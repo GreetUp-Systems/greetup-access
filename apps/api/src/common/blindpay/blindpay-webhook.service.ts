@@ -89,6 +89,7 @@ export class BlindPayWebhookService {
       const externalCustomerId = this.requiredString(payload, "id");
       const providerStatus = this.requiredString(payload, "kyc_status");
       const kycStatus = kycStatusMap[providerStatus as BlindPayKycStatusValue];
+      const updatedAt = this.optionalDate(payload, "updated_at");
       if (kycStatus === undefined) {
         this.logger.warn(
           `Unknown BlindPay KYC status for event ${verified.messageId} and resource ${externalCustomerId}.`,
@@ -107,6 +108,7 @@ export class BlindPayWebhookService {
             payload,
             externalCustomerId,
             kycStatus ?? "VERIFYING",
+            updatedAt,
           )
         ) {
           await this.markProcessed(transaction, verified.messageId);
@@ -132,10 +134,31 @@ export class BlindPayWebhookService {
 
       const wasOperational = operationalStatuses.has(customer.kycStatus ?? "");
       const isOperational = operationalStatuses.has(kycStatus);
-      await transaction.blindPayCustomer.update({
-        where: { id: customer.id },
-        data: { kycStatus },
+      // BlindPay does not deliver in order, so only a newer version of the customer changes it
+      // (SPEC-003 v1.9). The condition also settles two events of the customer processed together.
+      const applied = await transaction.blindPayCustomer.updateMany({
+        where:
+          updatedAt === null
+            ? { id: customer.id, providerUpdatedAt: null }
+            : {
+                id: customer.id,
+                OR: [{ providerUpdatedAt: null }, { providerUpdatedAt: { lt: updatedAt } }],
+              },
+        data: updatedAt === null ? { kycStatus } : { kycStatus, providerUpdatedAt: updatedAt },
       });
+      if (applied.count === 0) {
+        if (updatedAt === null) {
+          this.logger.warn(
+            `Ignored BlindPay customer event ${verified.messageId} for ${externalCustomerId} without updated_at.`,
+          );
+        } else {
+          this.logger.log(
+            `Ignored BlindPay customer event ${verified.messageId} for ${externalCustomerId}: the stored version is the same or newer.`,
+          );
+        }
+        await this.markProcessed(transaction, verified.messageId);
+        return;
+      }
 
       if (customer.isCurrent && !wasOperational && isOperational) {
         await this.publishKycApproved(transaction, customer.producerId, customer.id);
@@ -157,14 +180,11 @@ export class BlindPayWebhookService {
     payload: Record<string, unknown>,
     externalCustomerId: string,
     kycStatus: (typeof kycStatusMap)[keyof typeof kycStatusMap],
+    providerUpdatedAt: Date | null,
   ): Promise<boolean> {
     const producerId = this.optionalString(payload, "external_id");
-    const createdAt = new Date(this.optionalString(payload, "created_at") ?? "");
-    if (
-      producerId === undefined ||
-      !uuidPattern.test(producerId) ||
-      Number.isNaN(createdAt.getTime())
-    ) {
+    const createdAt = this.optionalDate(payload, "created_at");
+    if (producerId === undefined || !uuidPattern.test(producerId) || createdAt === null) {
       return false;
     }
 
@@ -177,7 +197,13 @@ export class BlindPayWebhookService {
 
     const adopted = await transaction.blindPayCustomer.updateMany({
       where: { id: attempt.id, isCurrent: true, creationStatus: "PENDING" },
-      data: { externalCustomerId, creationStatus: "CREATED", kycStatus, failureCode: null },
+      data: {
+        externalCustomerId,
+        creationStatus: "CREATED",
+        kycStatus,
+        providerUpdatedAt,
+        failureCode: null,
+      },
     });
     if (adopted.count !== 1) {
       return false;
@@ -327,6 +353,11 @@ export class BlindPayWebhookService {
   private optionalString(object: Record<string, unknown>, key: string): string | undefined {
     const value = object[key];
     return typeof value === "string" && value.length > 0 && value.length <= 255 ? value : undefined;
+  }
+
+  private optionalDate(object: Record<string, unknown>, key: string): Date | null {
+    const value = new Date(this.optionalString(object, key) ?? "");
+    return Number.isNaN(value.getTime()) ? null : value;
   }
 
   private async markProcessed(

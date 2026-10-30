@@ -16,6 +16,7 @@ import {
   BLINDPAY_GATEWAY,
   type BlindPayCreatedCustomer,
   type BlindPayCustomerAttempt,
+  type BlindPayCustomerKyc,
   type BlindPayGateway,
   type BlindPayKycStatusValue,
   BlindPayProviderError,
@@ -177,6 +178,8 @@ class FakeBlindPayGateway implements BlindPayGateway {
   openRfi: BlindPayRfi | null = null;
   nextCustomerError: BlindPayProviderError | undefined;
   nextCustomerKycStatus: BlindPayKycStatusValue = "verifying";
+  // BlindPay's OpenAPI lets updated_at be null; the tests on event order set it.
+  nextCustomerUpdatedAt: Date | null = null;
   nextKycReadError: BlindPayProviderError | undefined;
   attempt: BlindPayCustomerAttempt | undefined;
   attemptError: BlindPayProviderError | undefined;
@@ -202,6 +205,7 @@ class FakeBlindPayGateway implements BlindPayGateway {
     this.openRfi = null;
     this.nextCustomerError = undefined;
     this.nextCustomerKycStatus = "verifying";
+    this.nextCustomerUpdatedAt = null;
     this.nextKycReadError = undefined;
     this.customerSequence = 0;
   }
@@ -243,13 +247,13 @@ class FakeBlindPayGateway implements BlindPayGateway {
     return { id };
   }
 
-  async getCustomerKycStatus(): Promise<BlindPayKycStatusValue> {
+  async getCustomerKyc(): Promise<BlindPayCustomerKyc> {
     if (this.nextKycReadError !== undefined) {
       const error = this.nextKycReadError;
       this.nextKycReadError = undefined;
       throw error;
     }
-    return this.nextCustomerKycStatus;
+    return { kycStatus: this.nextCustomerKycStatus, updatedAt: this.nextCustomerUpdatedAt };
   }
 
   async getCustomerAttempt(customerId: string): Promise<BlindPayCustomerAttempt> {
@@ -1324,26 +1328,35 @@ describe("producer profile and RLS integration", () => {
     blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
     expect((await createBlindPayCustomer()).status).toBe(503);
     const producer = await ownerPrisma.producerProfile.findFirstOrThrow();
-    const event = (webhookEvent: string, kycStatus: string) =>
+    const event = (webhookEvent: string, kycStatus: string, updatedAt: string) =>
       JSON.stringify({
         webhook_event: webhookEvent,
         id: "re_together_1",
         kyc_status: kycStatus,
         external_id: producer.id,
         created_at: new Date().toISOString(),
+        updated_at: updatedAt,
       });
 
     const deliveries = await Promise.all([
-      deliverWebhook(event("customer.new", "verifying"), "msg_together_new"),
-      deliverWebhook(event("customer.update", "approved"), "msg_together_update"),
+      deliverWebhook(
+        event("customer.new", "verifying", "2026-10-30T12:00:00.000Z"),
+        "msg_together_new",
+      ),
+      deliverWebhook(
+        event("customer.update", "approved", "2026-10-30T12:01:00.000Z"),
+        "msg_together_update",
+      ),
     ]);
 
     expect(deliveries.map((delivery) => delivery.status)).toEqual([200, 200]);
+    // Whatever the order, neither event is dropped as an orphan and the newer version stays.
     await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
       externalCustomerId: "re_together_1",
       creationStatus: "CREATED",
+      kycStatus: "APPROVED",
+      providerUpdatedAt: new Date("2026-10-30T12:01:00.000Z"),
     });
-    // Whatever the order, neither event is dropped as an orphan: the approval reached the Outbox.
     await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(1);
     await expect(
       ownerPrisma.blindPayWebhookDelivery.count({ where: { processedAt: { not: null } } }),
@@ -1537,6 +1550,181 @@ describe("producer profile and RLS integration", () => {
     await expect(ownerPrisma.blindPayCustomer.findFirst()).resolves.toMatchObject({
       kycStatus: "APPROVED",
     });
+  });
+
+  // A customer event of re_test_1, the customer the first creation gets, at a BlindPay version.
+  const customerEvent = (webhookEvent: string, kycStatus: string, updatedAt?: string) =>
+    JSON.stringify({
+      webhook_event: webhookEvent,
+      id: "re_test_1",
+      kyc_status: kycStatus,
+      created_at: "2026-10-30T12:00:00.000Z",
+      ...(updatedAt === undefined ? {} : { updated_at: updatedAt }),
+    });
+
+  it("keeps the latest KYC status when an older event arrives late", async () => {
+    await createProducer();
+    expect((await createBlindPayCustomer()).status).toBe(200);
+
+    await deliverWebhook(
+      customerEvent("customer.update", "approved", "2026-10-30T12:01:00.000Z"),
+      "msg_customer_approved",
+    ).expect(200);
+    // The creation event, retried after the approval, still carries the first status.
+    await deliverWebhook(
+      customerEvent("customer.new", "verifying", "2026-10-30T12:00:00.000Z"),
+      "msg_customer_created_late",
+    ).expect(200);
+
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      kycStatus: "APPROVED",
+      providerUpdatedAt: new Date("2026-10-30T12:01:00.000Z"),
+    });
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(1);
+    await expect(
+      ownerPrisma.blindPayWebhookDelivery.count({ where: { processedAt: { not: null } } }),
+    ).resolves.toBe(2);
+  });
+
+  it("does not release the producer for an approval older than the stored status", async () => {
+    await createProducer();
+    expect((await createBlindPayCustomer()).status).toBe(200);
+
+    await deliverWebhook(
+      customerEvent("customer.update", "compliance_request", "2026-10-30T12:05:00.000Z"),
+      "msg_customer_paused",
+    ).expect(200);
+    await deliverWebhook(
+      customerEvent("customer.update", "approved", "2026-10-30T12:01:00.000Z"),
+      "msg_customer_approved_late",
+    ).expect(200);
+
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      kycStatus: "COMPLIANCE_REQUEST",
+    });
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(0);
+  });
+
+  it("settles two events of a customer processed together on the newer version", async () => {
+    await createProducer();
+    expect((await createBlindPayCustomer()).status).toBe(200);
+
+    const deliveries = await Promise.all([
+      deliverWebhook(
+        customerEvent("customer.update", "approved", "2026-10-30T12:01:00.000Z"),
+        "msg_customer_approved",
+      ),
+      deliverWebhook(
+        customerEvent("customer.new", "verifying", "2026-10-30T12:00:00.000Z"),
+        "msg_customer_created",
+      ),
+    ]);
+
+    expect(deliveries.map((delivery) => delivery.status)).toEqual([200, 200]);
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      kycStatus: "APPROVED",
+    });
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(1);
+  });
+
+  it("ignores an event with the same updated_at as the stored status", async () => {
+    await createProducer();
+    expect((await createBlindPayCustomer()).status).toBe(200);
+
+    await deliverWebhook(
+      customerEvent("customer.update", "approved", "2026-10-30T12:01:00.000Z"),
+      "msg_customer_approved",
+    ).expect(200);
+    await deliverWebhook(
+      customerEvent("customer.update", "rejected", "2026-10-30T12:01:00.000Z"),
+      "msg_customer_same_version",
+    ).expect(200);
+
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      kycStatus: "APPROVED",
+    });
+  });
+
+  it("applies an event without updated_at only while no dated status is stored", async () => {
+    await createProducer();
+    expect((await createBlindPayCustomer()).status).toBe(200);
+
+    await deliverWebhook(customerEvent("customer.update", "approved"), "msg_undated_1").expect(200);
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      kycStatus: "APPROVED",
+      providerUpdatedAt: null,
+    });
+
+    await deliverWebhook(
+      customerEvent("customer.update", "compliance_request", "2026-10-30T12:05:00.000Z"),
+      "msg_dated",
+    ).expect(200);
+    await deliverWebhook(customerEvent("customer.update", "approved"), "msg_undated_2").expect(200);
+
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      kycStatus: "COMPLIANCE_REQUEST",
+      providerUpdatedAt: new Date("2026-10-30T12:05:00.000Z"),
+    });
+    await expect(
+      ownerPrisma.blindPayWebhookDelivery.count({ where: { processedAt: { not: null } } }),
+    ).resolves.toBe(3);
+  });
+
+  it("stores the version read at creation and orders later events against it", async () => {
+    await createProducer();
+    blindPay.nextCustomerUpdatedAt = new Date("2026-10-30T12:00:30.000Z");
+    expect((await createBlindPayCustomer()).status).toBe(200);
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      kycStatus: "VERIFYING",
+      providerUpdatedAt: new Date("2026-10-30T12:00:30.000Z"),
+    });
+
+    await deliverWebhook(
+      customerEvent("customer.new", "verifying", "2026-10-30T12:00:00.000Z"),
+      "msg_customer_created",
+    ).expect(200);
+    await deliverWebhook(
+      customerEvent("customer.update", "approved", "2026-10-30T12:01:00.000Z"),
+      "msg_customer_approved",
+    ).expect(200);
+
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      kycStatus: "APPROVED",
+      providerUpdatedAt: new Date("2026-10-30T12:01:00.000Z"),
+    });
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(1);
+  });
+
+  it("stores the version of the event that adopts a pending attempt", async () => {
+    await createProducer();
+    blindPay.nextCustomerError = new BlindPayProviderError("create_customer", true, 503);
+    expect((await createBlindPayCustomer()).status).toBe(503);
+    const producer = await ownerPrisma.producerProfile.findFirstOrThrow();
+    const event = (webhookEvent: string, kycStatus: string, updatedAt: string) =>
+      JSON.stringify({
+        webhook_event: webhookEvent,
+        id: "re_adopted_1",
+        kyc_status: kycStatus,
+        external_id: producer.id,
+        created_at: new Date().toISOString(),
+        updated_at: updatedAt,
+      });
+
+    await deliverWebhook(
+      event("customer.update", "approved", "2026-10-30T12:01:00.000Z"),
+      "msg_adopting_update",
+    ).expect(200);
+    await deliverWebhook(
+      event("customer.new", "verifying", "2026-10-30T12:00:00.000Z"),
+      "msg_adopted_created_late",
+    ).expect(200);
+
+    await expect(ownerPrisma.blindPayCustomer.findFirstOrThrow()).resolves.toMatchObject({
+      externalCustomerId: "re_adopted_1",
+      kycStatus: "APPROVED",
+      providerUpdatedAt: new Date("2026-10-30T12:01:00.000Z"),
+    });
+    await expect(ownerPrisma.outboxEvent.count()).resolves.toBe(1);
   });
 
   // What the browser does: prepare, and when it needs the producer, sign the hash and send it.

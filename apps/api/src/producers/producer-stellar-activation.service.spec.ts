@@ -50,6 +50,7 @@ const customer = {
   customerType: "INDIVIDUAL" as const,
   creationStatus: "CREATED" as const,
   kycStatus: "APPROVED" as const,
+  providerUpdatedAt: null,
   isCurrent: true,
   externalBlockchainWalletId: null,
   failureCode: null,

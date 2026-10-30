@@ -4,6 +4,7 @@ import {
   type BlindPayBlockchainWallet,
   type BlindPayCustomerAttempt,
   type BlindPayCustomerDraft,
+  type BlindPayCustomerKyc,
   type BlindPayCustomerStatus,
   blindPayCustomerStatuses,
   type BlindPayGateway,
@@ -113,7 +114,7 @@ export class BlindPayHttpGateway implements BlindPayGateway {
     return { id };
   }
 
-  async getCustomerKycStatus(customerId: string): Promise<BlindPayKycStatusValue> {
+  async getCustomerKyc(customerId: string): Promise<BlindPayCustomerKyc> {
     const response = await this.requestJson(
       `/instances/${this.options.instanceId}/customers/${encodeURIComponent(customerId)}`,
       "get_customer",
@@ -129,7 +130,12 @@ export class BlindPayHttpGateway implements BlindPayGateway {
       throw new BlindPayProviderError("get_customer_invalid_response", true);
     }
 
-    return kycStatus as BlindPayKycStatusValue;
+    // updated_at is optional in BlindPay's OpenAPI; without it the status has no version.
+    const updatedAt = new Date(this.optionalString(data, "updated_at") ?? "");
+    return {
+      kycStatus: kycStatus as BlindPayKycStatusValue,
+      updatedAt: Number.isNaN(updatedAt.getTime()) ? null : updatedAt,
+    };
   }
 
   async getCustomerAttempt(customerId: string): Promise<BlindPayCustomerAttempt> {
