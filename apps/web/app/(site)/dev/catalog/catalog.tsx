@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@access/ui/components/dropdown-menu";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@access/ui/components/field";
+import { FileField, type FileFieldState } from "@access/ui/components/file-field";
 import {
   CalendarFill,
   HouseFill,
@@ -28,6 +29,7 @@ import {
   WalletFill,
 } from "@access/ui/components/fill-icons";
 import { Input, type InputProps } from "@access/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@access/ui/components/native-select";
 import { Progress } from "@access/ui/components/progress";
 import { SegmentedControl, SegmentedControlItem } from "@access/ui/components/segmented-control";
 import {
@@ -83,6 +85,8 @@ import { IdentificationView } from "../../../_components/identification/Identifi
 import { SiteAccountMenuContent } from "../../../_components/site/SiteAccountMenu";
 import { SiteFooter } from "../../../_components/site/SiteFooter";
 import { SiteHeader } from "../../../_components/site/SiteHeader";
+import { brazilianUfs } from "../../../_lib/producer/cep";
+import { onboardingFileAccept } from "../../../_lib/producer/onboarding-files";
 
 // Hover, focus and pressed are CSS states; the catalog forces them with data-preview-state.
 type Preview = "hover" | "pressed" | "focus";
@@ -102,6 +106,10 @@ const frame = {
   navItem: { width: 224 },
   // Ingresso (56:409): its variants are 340 wide.
   ticket: { width: 340 },
+  // Envio de arquivo (253:371): its variants are 480 wide; 286 in the phone screens of Documentos
+  // (547:11064).
+  fileField: { width: 480 },
+  fileFieldPhone: { width: 286 },
   // Cartão de evento (154:601): the phone (328), a desktop grid card (384), an Anteriores card (282)
   // and the Destaque largo (1200, the page's content).
   card: { width: 328 },
@@ -136,6 +144,9 @@ const fieldStates = ["default", "filled", "hover", "focus", "error", "disabled"]
 const fieldSizes: Array<NonNullable<InputProps["size"]>> = ["s", "m", "l"];
 
 const itemStates = ["default", "hover", "focus", "selected", "disabled"] as const;
+
+// Figma: Envio de arquivo (253:371), Vazio · Enviando · Enviado · Erro, with the component's texts.
+const fileFieldStates: FileFieldState[] = ["empty", "uploading", "sent", "error"];
 
 // Figma: Status (46:85), in the order of its page: ticket, payment, event and producer states.
 const statuses: StatusState[] = [
@@ -374,6 +385,71 @@ export function Catalog({
               </Field>
             )),
           )}
+        </div>
+      </Section>
+
+      <Section id="native-select" title="Campo de texto · Lista">
+        {/* Campo de texto with the chevron (Estado, 550:16860): the browser's own list (R8). */}
+        <div className="grid w-max grid-cols-3 items-start gap-x-6 gap-y-10">
+          {fieldStates.map((state) =>
+            fieldSizes.map((size) => (
+              <Field key={`${state}-${size}`} disabled={state === "disabled"} style={frame.field}>
+                <FieldLabel htmlFor={`select-${state}-${size}`}>Estado</FieldLabel>
+                <NativeSelect
+                  id={`select-${state}-${size}`}
+                  size={size}
+                  defaultValue={
+                    state === "filled" || state === "focus" || state === "error" ? "SP" : ""
+                  }
+                  aria-invalid={state === "error" || undefined}
+                  disabled={state === "disabled"}
+                  data-preview-state={preview(state)}
+                >
+                  <NativeSelectOption value="" disabled>
+                    Escolha
+                  </NativeSelectOption>
+                  {brazilianUfs.map((uf) => (
+                    <NativeSelectOption key={uf} value={uf}>
+                      {uf}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+                {state === "error" ? <FieldError>Preencha este campo.</FieldError> : null}
+              </Field>
+            )),
+          )}
+        </div>
+      </Section>
+
+      <Section id="file-field" title="Envio de arquivo">
+        <div className="flex flex-wrap items-start gap-10">
+          <div className="grid gap-6" style={frame.fileField}>
+            {fileFieldStates.map((state) => (
+              <FileField
+                key={state}
+                state={state}
+                title="Frente do documento"
+                detail="Fotos em JPG ou PNG; PDF até 3 MB."
+                accept={onboardingFileAccept.document}
+                onFileSelect={noop}
+              />
+            ))}
+          </div>
+          {/* As in the phone screens of Documentos (547:11064, 548:13471). */}
+          <div className="grid gap-6" style={frame.fileFieldPhone}>
+            {fileFieldStates.map((state) => (
+              <FileField
+                key={state}
+                state={state}
+                title="Frente do RG"
+                detail="Fotos em JPG ou PNG; PDF até 3 MB."
+                fileName="rg-frente.jpg"
+                error="PDF maior que 3 MB. Escolha outro arquivo."
+                accept={onboardingFileAccept.document}
+                onFileSelect={noop}
+              />
+            ))}
+          </div>
         </div>
       </Section>
 

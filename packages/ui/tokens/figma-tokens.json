@@ -986,6 +986,12 @@
           "type": "FLOAT",
           "web": "var(--size-segmented-control)",
           "values": { "Value": 328 }
+        },
+        {
+          "name": "size/focus-column",
+          "type": "FLOAT",
+          "web": "var(--size-focus-column)",
+          "values": { "Value": 560 }
         }
       ]
     },
