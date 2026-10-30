@@ -3,8 +3,9 @@
 > **Status:** gates 3A/3B e implementação automatizada de 3C (v1.4) validados localmente; smokes
 > reais BlindPay e Stellar/Privy/BlindPay pendentes
 >
-> **Versão:** 1.8 (o IP sai do cadastro, a tentativa pendurada é confirmada pelo webhook, `failed` só
-> em erro definitivo e arquivos até 3 MB, decisões da SPEC-015 15C); 1.7 (envio de verificação
+> **Versão:** 1.9 (eventos do customer fora de ordem: só grava a versão mais nova, pelo `updated_at`
+> da BlindPay); 1.8 (o IP sai do cadastro, a tentativa pendurada é confirmada pelo webhook, `failed`
+> só em erro definitivo e arquivos até 3 MB, decisões da SPEC-015 15C); 1.7 (envio de verificação
 > pendurado e nova tentativa após recusa, SPEC-015 R1 e R2); 1.6 (assinatura do produtor no
 > navegador, D-28)
 >
@@ -220,6 +221,7 @@ model BlindPayCustomer {
   customerType               BlindPayCustomerType           @map("customer_type")
   creationStatus             BlindPayCustomerCreationStatus @default(PENDING) @map("creation_status")
   kycStatus                  BlindPayKycStatus?             @map("kyc_status")
+  providerUpdatedAt          DateTime?                      @map("provider_updated_at")
   isCurrent                  Boolean                        @default(true) @map("is_current")
   externalBlockchainWalletId String?                        @unique @map("external_blockchain_wallet_id")
   failureCode                String?                        @map("failure_code") @db.VarChar(100)
@@ -380,11 +382,12 @@ Emendas da v1.7 (SPEC-015 R1 e R2, 14/10/2026), revistas na v1.8 (30/10/2026):
 - **Tentativa pendurada:** uma tentativa ainda `PENDING` (o envio à BlindPay não teve resposta
   definitiva) é confirmada pelo webhook: um evento de customer (`customer.new` ou `customer.update`)
   com um `re_` que o Access não conhece e `external_id` igual ao id de um produtor cuja tentativa
-  atual está `PENDING` é adotado por ela, que passa a `CREATED` com o status do evento e grava o
-  Outbox se for operacional, na mesma transação. Status desconhecido é adotado como `verifying`, sem
-  liberar o produtor. Só é adotado o customer criado depois do início da tentativa, com tolerância de
-  2 minutos entre os relógios; sem `created_at` no evento, não há adoção. A listagem de customers da
-  BlindPay não filtra por `external_id`, por isso a confirmação não é feita por busca.
+  atual está `PENDING` é adotado por ela, que passa a `CREATED` com o status e o `updated_at` do
+  evento e grava o Outbox se for operacional, na mesma transação. Status desconhecido é adotado
+  como `verifying`, sem liberar o produtor. Só é adotado o customer criado depois do início da
+  tentativa, com tolerância de 2 minutos entre os relógios; sem `created_at` no evento, não há
+  adoção. A listagem de customers da BlindPay não filtra por `external_id`, por isso a confirmação
+  não é feita por busca.
 - **Prazo da pendente:** 10 minutos, contados do último envio dela; reenviar o mesmo envio (mesma
   chave) conta como envio novo e reinicia o prazo. Vencido o prazo, um envio com outra chave encerra
   a pendente (`FAILED`, fora da atual) e segue; dentro dele, segue o `409`. Duas cópias do mesmo
@@ -419,10 +422,15 @@ Rota pública quanto ao Privy, mas autenticada pelos headers `svix-id`, `svix-ti
 4. aceitar `customer.new` e `customer.update` nesta SPEC; a criação também persiste o
    `kyc_status` inicial, pois em Development o customer pode nascer `approved` sem uma transição
    posterior. Desde 10/2026 a resposta da criação traz só `id` e `customer_id`: o status é lido por
-   `GET /customers/{id}` logo depois; se essa leitura falhar, o customer fica `verifying` e o
-   webhook traz o status real;
+   `GET /customers/{id}` logo depois, com o `updated_at` dele; se essa leitura falhar, o customer
+   fica `verifying`, sem data, e o webhook traz o status real;
 5. localizar o customer somente depois da validação;
-6. atualizar status e, na primeira entrada operacional, gravar Outbox na mesma transação;
+6. gravar o status só de uma versão mais nova do customer (v1.9): a BlindPay não entrega em ordem,
+   reenvia por horas as entregas que falharam e permite reenviar pelo painel. O `updated_at` do
+   evento precisa ser maior que o guardado em `providerUpdatedAt`, numa atualização condicional;
+   evento mais antigo, ou com o mesmo `updated_at`, é reconhecido sem mudar nada. Evento sem
+   `updated_at` (o campo é opcional no OpenAPI) só grava enquanto não há data guardada; depois, é
+   ignorado com alerta sanitizado. Na primeira entrada operacional, gravar Outbox na mesma transação;
 7. responder `2xx` também para entrega válida já processada.
 
 Eventos válidos ainda não consumidos são reconhecidos sem persistir payload sensível. Status novo
@@ -637,6 +645,10 @@ Com PostgreSQL real e fakes apenas para BlindPay:
   órfão, inclusive o criado antes da tentativa, sem mudar nada; a nova tentativa que falha na
   criação devolve a condição de atual à última recusada, e a primeira tentativa que falha não
   devolve nada; arquivo acima de 3 MB recebe `400 invalid_onboarding_file`, e acima de 10 MB, `413`.
+- v1.9: evento mais antigo que o status guardado (o `customer.new` reenviado depois da aprovação e um
+  `customer.update` fora de ordem) não muda nada nem libera o produtor; dois eventos simultâneos do
+  mesmo customer terminam na versão mais nova; o mesmo `updated_at` não muda nada; evento sem
+  `updated_at` grava só enquanto não há data guardada; a criação e a adoção guardam o `updated_at`.
 
 ### Integração 3C
 
@@ -704,6 +716,7 @@ CI.
 - [x] Build, lint, typecheck e suítes unitária/de integração passam na revisão final.
 - [ ] v1.8: IP fora do cadastro, tentativa pendurada confirmada pelo webhook com prazo de 10 minutos,
       customer órfão, recusa preservada, `failed` só definitivo e arquivos até 3 MB, com testes.
+- [ ] v1.9: eventos do customer gravados na ordem do `updated_at` da BlindPay, com testes.
 
 Validação parcial em 2026-10-02: ToS, upload e customer individual foram executados contra a
 instância Development. O customer nasceu `approved` na resposta síncrona. A assinatura, os handlers
