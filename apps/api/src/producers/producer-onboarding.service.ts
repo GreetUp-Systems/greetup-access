@@ -45,7 +45,11 @@ import {
 import { ProducersRepository, type ProducerProfileRecord } from "./producers.repository";
 
 const acceptedUploadTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
-const maxUploadBytes = 10 * 1024 * 1024;
+// BlindPay refuses files above 5 MiB; the web shrinks photos and keeps PDFs within this (R5).
+const maxOnboardingFileBytes = 3 * 1024 * 1024;
+// Memory guard of the upload itself: above it multer answers 413 before the service; between the
+// two, the service answers its coded invalid_onboarding_file.
+export const ONBOARDING_UPLOAD_CAP_BYTES = 10 * 1024 * 1024;
 const storedKycStatus = {
   verifying: "VERIFYING",
   approved: "APPROVED",
@@ -106,13 +110,13 @@ export class ProducerOnboardingService {
     if (
       file === undefined ||
       file.size === 0 ||
-      file.size > maxUploadBytes ||
+      file.size > maxOnboardingFileBytes ||
       !acceptedUploadTypes.has(file.mimetype) ||
       file.buffer.length !== file.size
     ) {
       throw new BadRequestException({
         code: "invalid_onboarding_file",
-        message: "The file must be a PDF, JPEG or PNG up to 10 MB.",
+        message: "The file must be a PDF, JPEG or PNG up to 3 MB.",
       });
     }
 
@@ -141,7 +145,6 @@ export class ProducerOnboardingService {
   async createCustomer(
     principal: AuthenticatedPrincipal,
     input: unknown,
-    requestIp: string,
     clientIdempotencyKey: string | undefined,
   ): Promise<CreatedCustomerView> {
     const { user, producer } = await this.requireProducer(principal);
@@ -151,12 +154,9 @@ export class ProducerOnboardingService {
     }
 
     const clientKey = this.parseIdempotencyKey(clientIdempotencyKey);
-    const providerInput = this.toProviderCustomerInput(
-      parsed.data,
-      user.email,
-      requestIp,
-      producer.id,
-    );
+    // The body is the same for the same intent from any network: BlindPay replays a key only for
+    // an identical body, so the request IP is not sent (SPEC-003 v1.8).
+    const providerInput = this.toProviderCustomerInput(parsed.data, user.email, producer.id);
     const providerKey = this.providerIdempotencyKey(
       producer.id,
       "customer",
@@ -169,13 +169,14 @@ export class ProducerOnboardingService {
     try {
       attempt = await this.onboarding.prepareCustomerAttempt(user.id, customerType, providerKey);
     } catch (error) {
-      if (error instanceof CustomerAttemptAlreadyActiveError) {
-        throw this.customerAttemptConflict();
-      }
-      if (!this.isUniqueConstraintError(error)) {
+      if (
+        !(error instanceof CustomerAttemptAlreadyActiveError) &&
+        !this.isUniqueConstraintError(error)
+      ) {
         throw error;
       }
 
+      // A concurrent request with this same submission may hold the attempt: answer with it.
       const winner = await this.onboarding.findByProviderIdempotencyKey(user.id, providerKey);
       if (winner === null) {
         throw this.customerAttemptConflict();
@@ -316,7 +317,6 @@ export class ProducerOnboardingService {
   private toProviderCustomerInput(
     input: CreateBlindPayCustomerInput,
     email: string,
-    requestIp: string,
     producerId: string,
   ): Record<string, unknown> {
     const common = {
@@ -333,7 +333,6 @@ export class ProducerOnboardingService {
       country: input.country,
       postal_code: input.postalCode,
       phone_number: input.phoneNumber,
-      ip_address: requestIp,
       ...(input.proofOfAddressDocType === undefined
         ? {}
         : { proof_of_address_doc_type: input.proofOfAddressDocType }),

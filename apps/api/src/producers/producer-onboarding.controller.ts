@@ -5,7 +5,6 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
-  Ip,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -14,7 +13,10 @@ import { FileInterceptor } from "@nestjs/platform-express";
 
 import { type AuthenticatedPrincipal } from "../auth/auth.types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
-import { ProducerOnboardingService } from "./producer-onboarding.service";
+import {
+  ONBOARDING_UPLOAD_CAP_BYTES,
+  ProducerOnboardingService,
+} from "./producer-onboarding.service";
 import {
   ProducerStellarActivationService,
   type StellarActivationView,
@@ -66,7 +68,7 @@ export class ProducerOnboardingController {
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
     FileInterceptor("file", {
-      limits: { files: 1, fileSize: 10 * 1024 * 1024 },
+      limits: { files: 1, fileSize: ONBOARDING_UPLOAD_CAP_BYTES },
     }),
   )
   uploadDocument(
@@ -82,10 +84,9 @@ export class ProducerOnboardingController {
   createCustomer(
     @CurrentUser() principal: AuthenticatedPrincipal,
     @Body() body: unknown,
-    @Ip() requestIp: string,
     @Headers("idempotency-key") idempotencyKey: string | undefined,
   ): Promise<CreatedCustomerView> {
-    return this.onboardingService.createCustomer(principal, body, requestIp, idempotencyKey);
+    return this.onboardingService.createCustomer(principal, body, idempotencyKey);
   }
 
   @Get("customer")

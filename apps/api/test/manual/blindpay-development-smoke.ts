@@ -250,7 +250,6 @@ async function run(): Promise<void> {
         idDocFrontFile: idDocument.fileUrl,
         selfieFile: selfie.fileUrl,
       },
-      "198.51.100.1",
       randomUUID(),
     );
 
