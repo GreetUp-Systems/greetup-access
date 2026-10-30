@@ -92,8 +92,9 @@ Sistema do produtor
 ├── /producer/events/[id]      Editor, tipos de ingresso, publicação    SPEC-015
 ├── /producer/receiving        Recebimento (etapa atual ou resultado)   SPEC-015
 │   ├── /terms                 Termos da BlindPay                       SPEC-015
-│   ├── /data                  Seus dados                               SPEC-015
-│   └── /documents             Documentos                               SPEC-015
+│   ├── /data                  Seus dados (3 passos)                    SPEC-015
+│   ├── /documents             Documentos (uma tela por item)           SPEC-015
+│   └── /rfi                   Pedido de informações da BlindPay        SPEC-015
 ├── /producer/profile          Perfil do produtor                       SPEC-015
 └── Check-in                   Leitor                                   SPEC-009
 ```
