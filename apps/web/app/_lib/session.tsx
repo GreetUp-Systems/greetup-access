@@ -18,6 +18,7 @@ import {
   activateAndConfirm,
   type ConfirmedActivation,
   producerActivationRoutes,
+  signatureRequired,
   type SignStellarHash,
 } from "./account-activation";
 import { type ActivationQueue, createActivationQueue } from "./activation-queue";
@@ -30,6 +31,24 @@ export type SessionState =
   | { status: "loading" }
   | { status: "anonymous" }
   | { status: "authenticated"; account: AccountView };
+
+export interface ProducerActivationOptions {
+  /** False resumes the receiving account without asking the wallet (SPEC-015 R6). */
+  sign?: boolean;
+}
+
+/** The producer's activation, signed or resumed without the wallet, in the page's queue (R7). */
+function runProducerActivation(
+  queue: ActivationQueue<ConfirmedActivation>,
+  getToken: () => Promise<string>,
+  signer: SignStellarHash,
+  options: ProducerActivationOptions,
+): Promise<ConfirmedActivation> {
+  const resume = options.sign === false;
+  return queue.run(resume ? "producer-resume" : "producer", () =>
+    activateAndConfirm(producerActivationRoutes, getToken, resume ? signatureRequired : signer),
+  );
+}
 
 interface SessionContextValue {
   state: SessionState;
@@ -50,10 +69,12 @@ interface SessionContextValue {
   /**
    * Prepares the producer's receiving account, signed in this browser (SPEC-015 §6, D-28), and
    * waits for the network. It runs after the buyer's activation has ended (R7); asked again while
-   * it waits or runs, it is the same run. Rejects with the API's error, the wallet's, or
-   * ActivationUnconfirmedError.
+   * it waits or runs, it is the same run. With `sign: false` it resumes without the wallet (R6):
+   * it prepares, follows a submitted transaction and registers the BlindPay wallet, and ends with
+   * SignatureRequiredError when a signature is missing. Rejects with the API's error, the
+   * wallet's, or ActivationUnconfirmedError.
    */
-  activateProducerAccount: () => Promise<ConfirmedActivation>;
+  activateProducerAccount: (options?: ProducerActivationOptions) => Promise<ConfirmedActivation>;
   logout: () => Promise<void>;
 }
 
@@ -95,10 +116,8 @@ function e2eSessionValue(
     completeLogin: () => Promise.resolve(account),
     abandonLogin: () => Promise.resolve(),
     requestActivation: () => undefined,
-    activateProducerAccount: () =>
-      queue.run("producer", () =>
-        activateAndConfirm(producerActivationRoutes, getToken, e2eSignature),
-      ),
+    activateProducerAccount: (options = {}) =>
+      runProducerActivation(queue, getToken, e2eSignature, options),
     logout: () => {
       signOut();
       return Promise.resolve();
@@ -193,15 +212,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       .catch(() => undefined);
   }, [activationRequested, state, user, getToken, signerFor, activations]);
 
-  const activateProducerAccount = useCallback((): Promise<ConfirmedActivation> => {
-    if (state.status !== "authenticated") {
-      return Promise.reject(noSession());
-    }
-    const sign = signerFor(state.account.wallet.address);
-    return activations.run("producer", () =>
-      activateAndConfirm(producerActivationRoutes, getToken, sign),
-    );
-  }, [state, getToken, signerFor, activations]);
+  const activateProducerAccount = useCallback(
+    (options: ProducerActivationOptions = {}): Promise<ConfirmedActivation> => {
+      if (state.status !== "authenticated") {
+        return Promise.reject(noSession());
+      }
+      const sign = signerFor(state.account.wallet.address);
+      return runProducerActivation(activations, getToken, sign, options);
+    },
+    [state, getToken, signerFor, activations],
+  );
 
   const completeLogin = useCallback(
     async (origin: BootstrapOrigin): Promise<AccountView> => {

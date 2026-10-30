@@ -2,6 +2,8 @@ import {
   activateAndConfirm,
   type ActivationRoutes,
   type ConfirmedActivation,
+  signatureRequired,
+  SignatureRequiredError,
   type SignStellarHash,
   type StellarActivationView,
 } from "./account-activation";
@@ -167,6 +169,32 @@ describe("the buyer's and the producer's activations in the queue (SPEC-015 R7)"
     expect(first).toEqual({ status: "active", transactionHash: hash });
     expect(second).toBe(first);
     expect(log.filter((step) => step.endsWith(":sign"))).toEqual(["producer:sign"]);
+  });
+
+  it("keeps the background resume apart from the signed run, one after the other (R6)", async () => {
+    const queue = createActivationQueue<ConfirmedActivation>();
+    const resumeRoutes = routes("resume", [signing]);
+    const signedRoutes = routes("producer", [signing, active]);
+
+    const resume = queue.run("producer-resume", () =>
+      activateAndConfirm(resumeRoutes, getToken, signatureRequired),
+    );
+    // The Recebimento asks for the signature while the resume runs: its own run, after it.
+    const signed = queue.run("producer", () =>
+      activateAndConfirm(signedRoutes, getToken, signer("producer"), {
+        wait: () => Promise.resolve(),
+      }),
+    );
+
+    await expect(resume).rejects.toBeInstanceOf(SignatureRequiredError);
+    await expect(signed).resolves.toEqual({ status: "active", transactionHash: hash });
+    expect(log).toEqual([
+      "resume:prepare",
+      "producer:prepare",
+      "producer:sign",
+      "producer:submit",
+      "producer:prepare",
+    ]);
   });
 
   it("lets the producer's activation run when the buyer's ends in error", async () => {
