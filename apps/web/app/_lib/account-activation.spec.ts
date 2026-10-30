@@ -5,6 +5,8 @@ import {
   ActivationUnconfirmedError,
   type ActivationRoutes,
   producerActivationRoutes,
+  signatureRequired,
+  SignatureRequiredError,
   type SignStellarHash,
   type StellarActivationView,
 } from "./account-activation";
@@ -229,5 +231,31 @@ describe("activateAndConfirm", () => {
     });
 
     await expect(activateAndConfirm(routes, getToken, signHash, { wait })).rejects.toBe(failure);
+  });
+
+  it("resumes without the wallet (R6): a transaction to sign ends the run unsigned", async () => {
+    const { routes, submitSignature } = scriptedRoutes([{ status: "signing", hashToSign: hash }], {
+      status: "submitted",
+      transactionHash: hash,
+    });
+
+    await expect(
+      activateAndConfirm(routes, getToken, signatureRequired, { wait }),
+    ).rejects.toBeInstanceOf(SignatureRequiredError);
+    expect(submitSignature).not.toHaveBeenCalled();
+  });
+
+  it("resumes without the wallet what needs no signature: follows a submitted one", async () => {
+    const { routes } = scriptedRoutes(
+      [
+        { status: "submitted", transactionHash: hash },
+        { status: "active", transactionHash: hash },
+      ],
+      { status: "submitted", transactionHash: hash },
+    );
+
+    await expect(
+      activateAndConfirm(routes, getToken, signatureRequired, { wait }),
+    ).resolves.toEqual({ status: "active", transactionHash: hash });
   });
 });

@@ -3,6 +3,7 @@
 import { createContext, useContext } from "react";
 
 import type { ProducerEvent, ProducerProfile } from "../../_lib/api/producer";
+import type { ReceivingAccount } from "./useReceivingAccount";
 
 export interface ProducerContextValue {
   producer: ProducerProfile;
@@ -16,6 +17,8 @@ export interface ProducerContextValue {
   reloadProducer: () => Promise<void>;
   /** Opens the account sheet, from the avatar at the top of a phone screen. */
   openAccount: () => void;
+  /** The receiving account resumed in the background (SPEC-015 R6) and its "Tentar de novo". */
+  account: ReceivingAccount;
 }
 
 export const ProducerContext = createContext<ProducerContextValue | null>(null);
