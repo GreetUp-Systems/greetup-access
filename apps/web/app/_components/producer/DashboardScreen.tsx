@@ -13,11 +13,10 @@ import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { getOpenRfi, type OpenRfi } from "../../_lib/api/onboarding";
 import {
-  getOpenRfi,
   getRecentSales,
   getSalesSummary,
-  type OpenRfi,
   type ProducerProfile,
   type RecentSale,
   type SalesPeriod,

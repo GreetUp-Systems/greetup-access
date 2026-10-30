@@ -32,6 +32,35 @@ describe("apiRequest", () => {
     expect(init?.body).toBe(JSON.stringify({ origin: "login" }));
   });
 
+  it("sends a FormData as multipart, leaving the Content-Type and its boundary to fetch", async () => {
+    fetchMock.mockResolvedValue(respond(200, { fileUrl: "https://files.example/rg.pdf" }));
+    const form = new FormData();
+    form.append("file", new Blob(["%PDF-1.7"], { type: "application/pdf" }), "rg.pdf");
+
+    await expect(
+      apiRequest("/producers/onboarding/files", {
+        method: "POST",
+        token: "tok",
+        body: form,
+        idempotencyKey: "key-1",
+      }),
+    ).resolves.toEqual({ fileUrl: "https://files.example/rg.pdf" });
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(init?.body).toBe(form);
+    expect(init?.headers).not.toHaveProperty("Content-Type");
+    expect(init?.headers).toMatchObject({
+      Authorization: "Bearer tok",
+      "Idempotency-Key": "key-1",
+    });
+  });
+
+  it("answers null for an empty success, as a 204", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await expect(apiRequest("/producers/onboarding/rfi", { method: "POST" })).resolves.toBeNull();
+  });
+
   it("turns an error response into an ApiError carrying the API code", async () => {
     fetchMock.mockResolvedValue(
       respond(409, { code: "purchase_total_changed", message: "The total changed." }),

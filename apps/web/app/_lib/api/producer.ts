@@ -65,13 +65,6 @@ export interface RecentSale {
   confirmedAt: string;
 }
 
-export interface OpenRfi {
-  id: string;
-  status: "pending" | "submitted" | "expired" | "cancelled";
-  expiresAt: string;
-  createdAt: string;
-}
-
 /** 404 `producer_not_found` when the account has no producer profile yet (SPEC-015 N5). */
 export function getProducer(token: string): Promise<ProducerProfile> {
   return apiRequest<ProducerProfile>("/producers/me", { token });
@@ -87,9 +80,4 @@ export function getSalesSummary(token: string, period: SalesPeriod): Promise<Sal
 
 export function getRecentSales(token: string, limit: number): Promise<RecentSale[]> {
   return apiRequest<RecentSale[]>(`/producers/me/sales/recent?limit=${limit}`, { token });
-}
-
-/** The open request for information of the current BlindPay customer, or null. */
-export function getOpenRfi(token: string): Promise<OpenRfi | null> {
-  return apiRequest<OpenRfi | null>("/producers/onboarding/rfi", { token });
 }
