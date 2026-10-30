@@ -717,7 +717,8 @@ CI.
 - [x] v1.8: IP fora do cadastro, tentativa pendurada confirmada pelo webhook com prazo de 10 minutos,
       customer órfão, recusa preservada, `failed` só definitivo e arquivos até 3 MB, com testes (PR
       #35, 30/10/2026).
-- [ ] v1.9: eventos do customer gravados na ordem do `updated_at` da BlindPay, com testes.
+- [x] v1.9: eventos do customer gravados na ordem do `updated_at` da BlindPay, com testes (PR #37,
+      30/10/2026).
 
 Validação parcial em 2026-10-02: ToS, upload e customer individual foram executados contra a
 instância Development. O customer nasceu `approved` na resposta síncrona. A assinatura, os handlers
