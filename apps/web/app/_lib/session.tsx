@@ -13,7 +13,14 @@ import {
   useState,
 } from "react";
 
-import { activateStellarAccount } from "./account-activation";
+import {
+  accountActivationRoutes,
+  activateAndConfirm,
+  type ConfirmedActivation,
+  producerActivationRoutes,
+  type SignStellarHash,
+} from "./account-activation";
+import { type ActivationQueue, createActivationQueue } from "./activation-queue";
 import { type AccountView, bootstrapAccount, type BootstrapOrigin } from "./api/account";
 import { ApiError } from "./api/client";
 import { E2E_ANONYMOUS, type E2EState, useE2ESession } from "./e2e-session";
@@ -40,35 +47,58 @@ interface SessionContextValue {
    * after "Entrar" and when a checkout sees its payment confirmed. Never blocks the screen.
    */
   requestActivation: () => void;
+  /**
+   * Prepares the producer's receiving account, signed in this browser (SPEC-015 §6, D-28), and
+   * waits for the network. It runs after the buyer's activation has ended (R7); asked again while
+   * it waits or runs, it is the same run. Rejects with the API's error, the wallet's, or
+   * ActivationUnconfirmedError.
+   */
+  activateProducerAccount: () => Promise<ConfirmedActivation>;
   logout: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+const noSession = (): ApiError =>
+  new ApiError(401, "session_expired", "There is no active session.", null);
+
+// The end-to-end build has no wallet: it signs with a fixed value, for the simulated API to take
+// (the simulated signature of SPEC-015 §10).
+const e2eSignature: SignStellarHash = () => Promise.resolve(`0x${"e2".repeat(64)}` as const);
+
 // The end-to-end build's visitor, or its signed-in buyer or producer (e2e-session.ts): no Privy.
 // "Sair" turns the test session into the visitor.
-function e2eSessionValue(e2e: E2EState, signOut: () => void): SessionContextValue {
+function e2eSessionValue(
+  e2e: E2EState,
+  signOut: () => void,
+  queue: ActivationQueue<ConfirmedActivation>,
+): SessionContextValue {
   if (e2e === E2E_ANONYMOUS) {
     return {
       state: { status: "anonymous" },
-      getToken: () =>
-        Promise.reject(new ApiError(401, "session_expired", "There is no active session.", null)),
+      getToken: () => Promise.reject(noSession()),
       completeLogin: () =>
         Promise.reject(
           new ApiError(401, "session_expired", "The test visitor never signs in.", null),
         ),
       abandonLogin: () => Promise.resolve(),
       requestActivation: () => undefined,
+      activateProducerAccount: () => Promise.reject(noSession()),
       logout: () => Promise.resolve(),
     };
   }
   const { token, account } = e2e;
+  const getToken = (): Promise<string> => Promise.resolve(token);
   return {
     state: { status: "authenticated", account },
-    getToken: () => Promise.resolve(token),
+    getToken,
     completeLogin: () => Promise.resolve(account),
     abandonLogin: () => Promise.resolve(),
     requestActivation: () => undefined,
+    activateProducerAccount: () =>
+      queue.run("producer", () =>
+        activateAndConfirm(producerActivationRoutes, getToken, e2eSignature),
+      ),
     logout: () => {
       signOut();
       return Promise.resolve();
@@ -82,17 +112,37 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const { session: e2e, signOut: e2eSignOut } = useE2ESession();
   const [state, setState] = useState<SessionState>({ status: "loading" });
   const [activationRequested, setActivationRequested] = useState(false);
+  // One queue for the page: the buyer's and the producer's activations, one at a time (R7).
+  const [activations] = useState(() => createActivationQueue<ConfirmedActivation>());
   // Only a session that existed when the page opened is restored; a login in progress is
   // completed by its own bootstrap, never by the restore (SPEC-014 §7).
   const openingChecked = useRef(false);
+  // A queued activation signs when its turn comes, with the wallet hook of that moment.
+  const signRawHashRef = useRef(signRawHash);
+  useEffect(() => {
+    signRawHashRef.current = signRawHash;
+  }, [signRawHash]);
 
   const getToken = useCallback(async (): Promise<string> => {
     const token = await getAccessToken();
     if (token === null) {
-      throw new ApiError(401, "session_expired", "There is no active session.", null);
+      throw noSession();
     }
     return token;
   }, [getAccessToken]);
+
+  const signerFor = useCallback(
+    (address: string): SignStellarHash =>
+      async (hash) => {
+        const { signature } = await signRawHashRef.current({
+          address,
+          chainType: "stellar",
+          hash,
+        });
+        return signature;
+      },
+    [],
+  );
 
   useEffect(() => {
     if (!ready) {
@@ -134,14 +184,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return;
     }
     setActivationRequested(false);
-    const address = state.account.wallet.address;
+    const sign = signerFor(state.account.wallet.address);
     // Activation is by intent and idempotent: if it fails here, the next intent (a confirmed
-    // payment) tries again, so it never blocks the navigation.
-    void activateStellarAccount(getToken, async (hash) => {
-      const { signature } = await signRawHash({ address, chainType: "stellar", hash });
-      return signature;
-    }).catch(() => undefined);
-  }, [activationRequested, state, user, getToken, signRawHash]);
+    // payment) tries again, so it never blocks the navigation. In the queue, it holds the
+    // producer's until the network confirms it or it fails (R7).
+    void activations
+      .run("account", () => activateAndConfirm(accountActivationRoutes, getToken, sign))
+      .catch(() => undefined);
+  }, [activationRequested, state, user, getToken, signerFor, activations]);
+
+  const activateProducerAccount = useCallback((): Promise<ConfirmedActivation> => {
+    if (state.status !== "authenticated") {
+      return Promise.reject(noSession());
+    }
+    const sign = signerFor(state.account.wallet.address);
+    return activations.run("producer", () =>
+      activateAndConfirm(producerActivationRoutes, getToken, sign),
+    );
+  }, [state, getToken, signerFor, activations]);
 
   const completeLogin = useCallback(
     async (origin: BootstrapOrigin): Promise<AccountView> => {
@@ -170,12 +230,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   // The test session is one stable value for the page, whatever Privy does underneath.
   const e2eValue = useMemo(
-    () => (e2e === null ? null : e2eSessionValue(e2e, e2eSignOut)),
-    [e2e, e2eSignOut],
+    () => (e2e === null ? null : e2eSessionValue(e2e, e2eSignOut, activations)),
+    [e2e, e2eSignOut, activations],
   );
   const value = useMemo(
-    () => e2eValue ?? { state, getToken, completeLogin, abandonLogin, requestActivation, logout },
-    [e2eValue, state, getToken, completeLogin, abandonLogin, requestActivation, logout],
+    () =>
+      e2eValue ?? {
+        state,
+        getToken,
+        completeLogin,
+        abandonLogin,
+        requestActivation,
+        activateProducerAccount,
+        logout,
+      },
+    [
+      e2eValue,
+      state,
+      getToken,
+      completeLogin,
+      abandonLogin,
+      requestActivation,
+      activateProducerAccount,
+      logout,
+    ],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

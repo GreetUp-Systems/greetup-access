@@ -20,6 +20,7 @@ export interface ApiRequestOptions {
   method?: "GET" | "POST";
   /** The Privy access token; omitted on public endpoints. */
   token?: string | null;
+  /** Sent as JSON; a FormData goes as multipart, with the boundary the browser writes. */
   body?: unknown;
   /** Same key for a repeated attempt, so the API answers the first result (SPEC-005 §9). */
   idempotencyKey?: string;
@@ -33,7 +34,8 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   if (token !== undefined && token !== null) {
     headers.Authorization = `Bearer ${token}`;
   }
-  if (body !== undefined) {
+  const form = body instanceof FormData;
+  if (body !== undefined && !form) {
     headers["Content-Type"] = "application/json";
   }
   if (idempotencyKey !== undefined) {
@@ -45,7 +47,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     response = await fetch(`${publicEnv.apiUrl}${path}`, {
       method,
       headers,
-      body: body === undefined ? null : JSON.stringify(body),
+      body: body === undefined ? null : form ? body : JSON.stringify(body),
       signal: signal ?? null,
       cache: "no-store",
     });

@@ -63,6 +63,45 @@ Com ícone (Ícone à esquerda/direita), o campo é o `input-group.tsx` do shadc
 size>` com `<InputGroupAddon align="inline-start" | "inline-end">` e `<InputGroupInput>`; a borda e
 os estados passam para o grupo. A busca das listas usa S com `size/search-field` (240).
 
+### Lista · `native-select.tsx` (shadcn/ui NativeSelect)
+
+| Figma                                               | Nó                                  | Código                                                                 |
+| --------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------- |
+| Campo de texto com Ícone à direita = `chevron-down` | `44:232` (`550:16860`, `548:11354`) | `<Field>` com `<FieldLabel>`, `<NativeSelect>` e as opções             |
+| Tamanho = S · M · L                                 |                                     | `<NativeSelect size="s" \| "m" \| "l">`                                |
+| Texto = "Escolha" (Estado = Padrão)                 |                                     | `<NativeSelectOption value="">`: em `text/tertiary` se for a escolhida |
+| Estado = Erro                                       |                                     | `aria-invalid` no `NativeSelect` + `<FieldError>`                      |
+| Estado = Desabilitado                               |                                     | `disabled` no `Field` e no `NativeSelect`                              |
+
+A lista nativa do navegador (SPEC-015 R8) com o visual do Campo de texto: Estado, em Seus dados, e
+os campos com `items` do pedido de informações. A seta é o `chevron-down` em `icon/secondary`, 16 no
+S e 20 no M e no L, e o texto para antes dela. O `className` vai para o invólucro (a largura do
+campo); o resto vai para o `<select>`.
+
+### Envio de arquivo · `file-field.tsx` (composição com o Button)
+
+| Figma                                      | Nó                                         | Código                                                                   |
+| ------------------------------------------ | ------------------------------------------ | ------------------------------------------------------------------------ |
+| Envio de arquivo                           | `253:371`                                  | `<FileField state title detail fileName error accept onFileSelect>`      |
+| Estado = Vazio · Enviando · Enviado · Erro | `253:286`, `253:309`, `253:326`, `253:348` | `state="empty" \| "uploading" \| "sent" \| "error"`                      |
+| Título · Detalhe                           |                                            | `title` · `detail` (os formatos); enviado, `fileName`; com erro, `error` |
+| Ação "Escolher" · "Trocar"                 |                                            | Botão/Secundário S (vazio e erro) · Botão/Fantasma S (enviado)           |
+
+Uma linha por arquivo (documentos da verificação, pedido de informações). O ícone vem do estado:
+`upload` em `icon/secondary`, `loader-circle` girando em `icon/accent`, `circle-check` em
+`icon/success` e `triangle-alert` em `icon/danger`, num quadro de 40 em `bg/subtle`; com erro, a
+borda e a linha ficam `border/danger` e `text/danger`. Enviando mostra "Enviando…" e não tem ação.
+O `<input type="file">` fica escondido, fora do Tab e do leitor de tela, com o `accept` do item; o
+botão é o controle, com o nome "Escolher" (ou "Trocar") e o título, e a linha é anunciada quando
+muda. No celular, o seletor do sistema oferece a câmera ou a galeria (sem `capture`); no desktop,
+o arquivo também pode ser solto sobre a linha. Quem recebe o arquivo confere tipo e tamanho
+(`app/_lib/producer/onboarding-files.ts`): o `accept` não vale para o arquivo solto.
+
+Validado em 30/10/2026: catálogo em 360 e 1440, nos modos escuro e claro, comparado no Figma com
+Envio de arquivo (`253:371`, os quatro estados em 480 de largura, 70 de altura), as linhas de 286 das
+telas de Documentos (`545:10328`, `547:11064`, `548:13471`, 110 de altura com o detalhe em três
+linhas) e o Estado de Seus dados (`550:16860`, `550:17179`).
+
 ### Código de 6 dígitos · `input-otp.tsx` (shadcn/ui)
 
 As caixas de "Identificação · Código" (`145:1506`, `148:2183`): `<InputOTP>` com `<InputOTPGroup>` e
