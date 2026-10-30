@@ -156,7 +156,7 @@ class FakeBlindPayGateway implements BlindPayGateway {
   async createCustomer(): Promise<never> {
     throw new Error("not used");
   }
-  async getCustomerKycStatus(): Promise<never> {
+  async getCustomerKyc(): Promise<never> {
     throw new Error("not used");
   }
   async getCustomerAttempt(): Promise<never> {

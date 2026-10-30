@@ -96,6 +96,7 @@ function producer(ready: boolean): ProducerProfileRecord {
         customerType: "INDIVIDUAL",
         creationStatus: "CREATED",
         kycStatus: ready ? "APPROVED" : "VERIFYING",
+        providerUpdatedAt: null,
         isCurrent: true,
         externalBlockchainWalletId: ready ? "bw_test" : null,
         failureCode: null,

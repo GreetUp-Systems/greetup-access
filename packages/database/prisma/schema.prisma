@@ -106,6 +106,7 @@ model BlindPayCustomer {
   customerType               BlindPayCustomerType           @map("customer_type")
   creationStatus             BlindPayCustomerCreationStatus @default(PENDING) @map("creation_status")
   kycStatus                  BlindPayKycStatus?             @map("kyc_status")
+  providerUpdatedAt          DateTime?                      @map("provider_updated_at")
   isCurrent                  Boolean                        @default(true) @map("is_current")
   externalBlockchainWalletId String?                        @unique @map("external_blockchain_wallet_id")
   failureCode                String?                        @map("failure_code") @db.VarChar(100)
