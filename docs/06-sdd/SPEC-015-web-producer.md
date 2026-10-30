@@ -2,11 +2,13 @@
 
 > **Status:** aprovada em 07/10/2026
 >
-> **Versão:** 1.6 (decisões da 15C, R1–R9); 1.5 (15C: Criar perfil leva ao Painel quem já tem
-> perfil; 15D: a capa no cartaz da página do evento, vinda da SPEC-016 S21; 1.4: estados do sistema,
-> Eventos e Perfil aprovados no Figma)
+> **Versão:** 1.7 (fecho da 15C: confirmação pelo webhook, textos do Figma, as mesmas rotas no
+> desktop, fila de ativação por confirmação, arquivos até 3 MB, os 82 quadros e o mapa de erros);
+> 1.6 (decisões da 15C, R1–R9); 1.5 (15C: Criar perfil leva ao Painel quem já tem perfil; 15D: a
+> capa no cartaz da página do evento, vinda da SPEC-016 S21; 1.4: estados do sistema, Eventos e
+> Perfil aprovados no Figma)
 >
-> **Atualizada em:** 14/10/2026
+> **Atualizada em:** 30/10/2026
 >
 > **Depende de:** SPEC-003 (onboarding do produtor), SPEC-004 (eventos), SPEC-005 (compras),
 > SPEC-014 (base do web, identificação, assinatura no navegador), SPEC-016 16A (moldura do site, antes
@@ -51,7 +53,7 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 | N2  | Desktop: barra lateral flutuante (Sidebar do shadcn, `variant="floating"`, `collapsible="icon"`, ⌘B), com Painel, Eventos e Recebimento e a conta no rodapé. Celular: Barra de abas Painel · Eventos · Recebimento e o avatar no topo, que abre a conta numa folha.                                                                                                                                         |
 | N3  | O menu da conta tem Perfil do produtor, Meus ingressos, Ir para o site e Sair, no desktop e no celular. Meus ingressos e Ir para o site levam ao site público.                                                                                                                                                                                                                                              |
 | N4  | Sem busca ⌘K nem paleta de comandos: a navegação tem três itens e a lista de Eventos tem a própria busca (08/10/2026).                                                                                                                                                                                                                                                                                      |
-| N5  | O sistema exige sessão e perfil de produtor. Sem sessão, a identificação da SPEC-014; sem perfil, Criar perfil, numa tela focada (logo e "Voltar ao site", sem a navegação). "Começar a vender", no site, leva até aqui.                                                                                                                                                                                    |
+| N5  | O sistema exige sessão e perfil de produtor. Sem sessão, a identificação da SPEC-014; sem perfil, Criar perfil, numa tela focada, sem a navegação: no desktop, logo e "Voltar ao site"; no celular, a Barra superior com voltar e "Vender ingressos" (v1.7, como as outras páginas internas). "Começar a vender", no site, leva até aqui.                                                                   |
 | N6  | O Painel tem ingressos vendidos e vendas com tendência contra o período anterior, o gráfico de vendas por dia e as vendas recentes, sem dados de quem comprou (15A). Gráficos e comparações além disso ficam para a SPEC-012.                                                                                                                                                                               |
 | N7  | Recebimento é item da navegação. No celular, a raiz da aba mostra o estado da verificação (em análise, pendência, recusado, liberando, pronto, erro); termos, dados e documentos abrem como páginas internas, com voltar e sem abas.                                                                                                                                                                        |
 | N8  | O logo acompanha o tema: a palavra "Access" usa `text/primary` (no Figma, ajustado; no código, entra na 15B). Hoje ela é branca fixa e some no modo claro.                                                                                                                                                                                                                                                  |
@@ -69,17 +71,17 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 
 ### Decisões da 15C (14/10/2026)
 
-| #   | Decisão                                                                                                                                                                                                                                                                                                                                                                            |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1  | Envio da verificação que ficou sem resposta não trava o produtor: depois de um prazo, um novo envio faz a API conferir na BlindPay se o cadastro chegou a ser criado; se chegou, a tentativa passa a ser ele; se não, a pendente é encerrada e o novo envio segue. O IP sai da chave de repetição do envio (SPEC-003 v1.7).                                                        |
-| R2  | "Corrigir e enviar de novo" repassa pelos Termos (cada aceite vale para um cadastro só), reabre Seus dados com os dados da tentativa recusada, lidos antes, e pede os documentos de novo. Uma tentativa que falha na criação não esconde a recusa anterior: ela volta a ser a atual (SPEC-003 v1.7). Emenda a P4.                                                                  |
-| R3  | "Conta com erro" aparece quando a preparação da conta de recebimento falhou de vez (`stellar.status` `failed`); "Tentar de novo" prepara de novo e pede a assinatura.                                                                                                                                                                                                              |
-| R4  | O motivo da recusa aparece como uma frase em português ("A verificação não foi aprovada. Confira seus dados e documentos e envie de novo.") e, abaixo, o motivo de cada aviso como a BlindPay o informou, em "Detalhe informado pela BlindPay": a BlindPay não publica a lista de códigos. Emenda o §8.                                                                            |
-| R5  | Tamanho dos arquivos: antes de fechar, um arquivo de 5 a 8 MB é enviado à BlindPay Development. Aceito, o limite fica em 10 MB; recusado, o navegador reduz as fotos antes do envio e o PDF fica em até 3 MB (a documentação da BlindPay diverge entre 3 e 5 MB).                                                                                                                  |
-| R6  | O sistema do produtor inteiro retoma a conta de recebimento em segundo plano (prepara sem assinar, confere o envio e registra a carteira na BlindPay) enquanto ela estiver a caminho, com limite de tentativas; quando falta a assinatura, quem pede é o Recebimento.                                                                                                              |
-| R7  | No navegador, as preparações de conta (a do comprador, ao entrar, e a do produtor) correm numa fila, uma depois da outra, para não pedirem duas assinaturas juntas.                                                                                                                                                                                                                |
-| R8  | Campos: Estado e tipo de documento em lista nativa com o visual do Campo de texto; nascimento digitado com máscara DD/MM/AAAA; CPF com os dígitos verificadores conferidos no navegador; telefone enviado em formato internacional (+55); só documentos brasileiros (RG, CNH ou passaporte brasileiro); selfie só JPG ou PNG; o botão de arquivo diz "Escolher" também no celular. |
-| R9  | O Recebimento no celular tem a raiz da aba (as etapas e o resultado) e páginas internas para Termos, Seus dados e Documentos (`/producer/receiving/terms`, `/data`, `/documents`), com voltar e sem abas; a trilha "Perfil e conta" do desktop sai, porque Recebimento é item da navegação.                                                                                        |
+| #   | Decisão                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | Envio da verificação que ficou sem resposta não trava o produtor (v1.7): a BlindPay não busca cadastro pelo `external_id`, então a API liga a tentativa pendente ao cadastro criado quando o webhook do customer chega com o id do produtor. Sem isso em 10 minutos desde o último envio, um envio novo encerra a pendente e segue; antes, o envio responde `409` e a tela mostra "Envio em processamento". O IP sai do cadastro (SPEC-003 v1.8). |
+| R2  | "Corrigir e enviar de novo" repassa pelos Termos (cada aceite vale para um cadastro só), reabre Seus dados com os dados da tentativa recusada, lidos antes, e pede os documentos de novo. Uma tentativa que falha na criação não esconde a recusa anterior: ela volta a ser a atual (SPEC-003 v1.7). Emenda a P4.                                                                                                                                 |
+| R3  | "Conta com erro" aparece quando a preparação da conta de recebimento falhou de vez (`stellar.status` `failed`); "Tentar de novo" prepara de novo e pede a assinatura.                                                                                                                                                                                                                                                                             |
+| R4  | A recusa (v1.7, texto do Figma) tem o título "A verificação foi recusada" e a frase "Confira seus dados e documentos e envie de novo. A nova verificação começa pelos termos e traz preenchidos os dados que você já informou."; abaixo, o motivo de cada aviso como a BlindPay o informou, em "Detalhe informado pela BlindPay": a BlindPay não publica a lista de códigos. Sem aviso, o quadro não aparece. Emenda o §8.                        |
+| R5  | Tamanho dos arquivos (v1.7): em 30/10/2026 a BlindPay Development recusou 5,2 MB com `FILES_TOO_LARGE` (o limite dela é de 5 MiB). O navegador reduz as fotos acima de 3 MB antes do envio, e o PDF vai até 3 MB; a API recusa acima disso (SPEC-003 v1.8).                                                                                                                                                                                       |
+| R6  | O sistema do produtor inteiro retoma a conta de recebimento em segundo plano (prepara sem assinar, confere o envio e registra a carteira na BlindPay) enquanto ela estiver a caminho, com limite de tentativas; quando falta a assinatura, quem pede é o Recebimento. A retomada não mexe em conta `failed`: só o "Tentar de novo" da Conta com erro (v1.7, R3).                                                                                  |
+| R7  | No navegador, as preparações de conta (a do comprador, ao entrar, e a do produtor) correm numa fila, para não pedirem duas assinaturas juntas. A seguinte só começa quando a anterior foi confirmada na rede (`active`) ou terminou em erro (v1.7): as duas usam a mesma carteira, e a do produtor montada antes de a do comprador entrar no ledger tentaria criar a conta de novo.                                                               |
+| R8  | Campos: Estado e tipo de documento em lista nativa com o visual do Campo de texto; nascimento digitado com máscara DD/MM/AAAA; CPF com os dígitos verificadores conferidos no navegador; telefone enviado em formato internacional (+55); só documentos brasileiros (RG, CNH ou passaporte brasileiro); selfie só JPG ou PNG; o botão de arquivo diz "Escolher" também no celular. Documentos avisa isso na descrição (v1.7).                     |
+| R9  | O Recebimento no celular tem a raiz da aba (as etapas e o resultado) e páginas internas para Termos, Seus dados e Documentos (`/producer/receiving/terms`, `/data`, `/documents`), com voltar e sem abas; a trilha "Perfil e conta" do desktop sai, porque Recebimento é item da navegação. As mesmas rotas valem no desktop, que mostra a lista e a etapa em cada uma (v1.7).                                                                    |
 
 ## 4. Entregas
 
@@ -123,24 +125,57 @@ Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. Ord
 
 ### 5.2 Criar perfil, Recebimento e Evento (página "Produtor")
 
-| Tela                                                | Rota                    | Celular    | Desktop    |
-| --------------------------------------------------- | ----------------------- | ---------- | ---------- |
-| Criar perfil (focado)                               | `/producer/start`       | `305:5771` | `303:4779` |
-| Recebimento · Termos                                | `/producer/receiving`   | `302:4201` | `301:2818` |
-| Recebimento · Seus dados                            | `/producer/receiving`   | `302:4286` | `301:3083` |
-| Recebimento · Documentos                            | `/producer/receiving`   | `302:4468` | `301:3386` |
-| Recebimento · Em análise                            | `/producer/receiving`   | `302:4594` | `301:3623` |
-| Recebimento · Pendência (RFI)                       | `/producer/receiving`   | `302:4704` | `301:3797` |
-| Recebimento · Recusado                              | `/producer/receiving`   | `302:4856` | `301:4010` |
-| Recebimento · Liberando                             | `/producer/receiving`   | `302:4981` | `301:4205` |
-| Recebimento · Pronto                                | `/producer/receiving`   | `302:5084` | `301:4372` |
-| Recebimento · Conta com erro                        | `/producer/receiving`   | `302:5193` | `301:4545` |
-| Evento · Novo                                       | `/producer/events/new`  | `305:5869` | `303:4935` |
-| Evento · Rascunho                                   | `/producer/events/[id]` | `305:6053` | `303:5237` |
-| Evento · Tipo de ingresso                           | sobreposição            | `305:6304` | `304:5854` |
-| Evento · Publicar bloqueado                         | `/producer/events/[id]` | `305:6381` | `304:5217` |
-| Evento · Publicado                                  | `/producer/events/[id]` | `305:6633` | `304:5507` |
-| Página do evento com a capa (página "Site público") | `/e/[slug]`             | a desenhar | `387:4114` |
+| Tela                                                | Rota                            | Celular     | Desktop     |
+| --------------------------------------------------- | ------------------------------- | ----------- | ----------- |
+| Criar perfil (focado)                               | `/producer/start`               | `305:5771`  | `303:4779`  |
+| Criar perfil · Nome vazio                           | `/producer/start`               | `519:9493`  | `498:3443`  |
+| Criar perfil · Falha                                | `/producer/start`               | `501:4639`  | `498:3500`  |
+| Recebimento · Configuração (raiz, etapa Termos)     | `/producer/receiving`           | `501:5529`  | —           |
+| Recebimento · Configuração · Seus dados (raiz)      | `/producer/receiving`           | `520:5646`  | —           |
+| Recebimento · Configuração · Documentos (raiz)      | `/producer/receiving`           | `520:5797`  | —           |
+| Recebimento · Nova tentativa · Seus dados (raiz)    | `/producer/receiving`           | `520:5949`  | —           |
+| Recebimento · Termos                                | `/producer/receiving/terms`     | `302:4201`  | `301:2818`  |
+| Termos · Falha ao abrir                             | `/producer/receiving/terms`     | `519:9557`  | `520:9000`  |
+| Termos · Sem aceite                                 | `/producer/receiving/terms`     | `519:9623`  | `520:9102`  |
+| Termos · Nova tentativa                             | `/producer/receiving/terms`     | `501:5493`  | `499:4710`  |
+| Recebimento · Seus dados                            | `/producer/receiving/data`      | `302:4286`  | `301:3083`  |
+| Seus dados · Vazio                                  | `/producer/receiving/data`      | `520:6092`  | `520:6321`  |
+| Seus dados · Erros                                  | `/producer/receiving/data`      | `520:6639`  | `520:6829`  |
+| Seus dados · Nova tentativa                         | `/producer/receiving/data`      | `520:7108`  | `520:7196`  |
+| Seus dados · Sem os dados anteriores                | `/producer/receiving/data`      | `520:7427`  | `520:7681`  |
+| Recebimento · Documentos (RG, enviando)             | `/producer/receiving/documents` | `302:4468`  | `301:3386`  |
+| Documentos · Passaporte                             | `/producer/receiving/documents` | `501:4827`  | `498:3764`  |
+| Documentos · Erro no arquivo                        | `/producer/receiving/documents` | `501:4711`  | `498:3558`  |
+| Documentos · Tipo de arquivo                        | `/producer/receiving/documents` | `520:9470`  | `520:9592`  |
+| Documentos · Falha no arquivo                       | `/producer/receiving/documents` | `520:9794`  | `520:9885`  |
+| Documentos · Falha no envio                         | `/producer/receiving/documents` | `501:4906`  | `498:3925`  |
+| Documentos · Envio em processamento                 | `/producer/receiving/documents` | `520:10060` | `520:10182` |
+| Documentos · Envio recusado                         | `/producer/receiving/documents` | `520:10388` | `520:10496` |
+| Recebimento · Em análise                            | `/producer/receiving`           | `302:4594`  | `301:3623`  |
+| Em análise · Conta com erro                         | `/producer/receiving`           | `520:8833`  | `520:9204`  |
+| Recebimento · Pendência (RFI)                       | `/producer/receiving`           | `302:4704`  | `301:3797`  |
+| Pendência · Carregando                              | `/producer/receiving`           | `520:10861` | `520:10688` |
+| Pendência · Falha ao carregar                       | `/producer/receiving`           | `520:11193` | `520:11010` |
+| Pendência · Campos                                  | `/producer/receiving`           | `501:5041`  | `499:4175`  |
+| Pendência · Formato                                 | `/producer/receiving`           | `520:8273`  | `520:8085`  |
+| Pendência · Falha ao enviar                         | `/producer/receiving`           | `520:8654`  | `520:8444`  |
+| Pendência · Respondida                              | `/producer/receiving`           | `501:5183`  | `499:4447`  |
+| Pendência · Prazo encerrado                         | `/producer/receiving`           | `520:11501` | `520:11360` |
+| Recebimento · Recusado                              | `/producer/receiving`           | `302:4856`  | `301:4010`  |
+| Recusado · Vários motivos                           | `/producer/receiving`           | `501:5276`  | `499:4574`  |
+| Recusado · Sem motivo                               | `/producer/receiving`           | `520:11765` | `520:11627` |
+| Recusado · Falha ao carregar o motivo               | `/producer/receiving`           | `520:12063` | `520:11888` |
+| Recebimento · Liberando                             | `/producer/receiving`           | `302:4981`  | `301:4205`  |
+| Liberando · Falha                                   | `/producer/receiving`           | `501:5323`  | `498:4144`  |
+| Aprovada · Conta a caminho                          | `/producer/receiving`           | `501:5385`  | `498:4248`  |
+| Recebimento · Pronto                                | `/producer/receiving`           | `302:5084`  | `301:4372`  |
+| Recebimento · Conta com erro                        | `/producer/receiving`           | `302:5193`  | `301:4545`  |
+| Evento · Novo                                       | `/producer/events/new`          | `305:5869`  | `303:4935`  |
+| Evento · Rascunho                                   | `/producer/events/[id]`         | `305:6053`  | `303:5237`  |
+| Evento · Tipo de ingresso                           | sobreposição                    | `305:6304`  | `304:5854`  |
+| Evento · Publicar bloqueado                         | `/producer/events/[id]`         | `305:6381`  | `304:5217`  |
+| Evento · Publicado                                  | `/producer/events/[id]`         | `305:6633`  | `304:5507`  |
+| Página do evento com a capa (página "Site público") | `/e/[slug]`                     | a desenhar  | `387:4114`  |
 
 ### 5.3 Componentes
 
@@ -200,43 +235,76 @@ producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta 
 
 ### Criar perfil e Recebimento (KYC Standard, pessoa física)
 
-- **Criar perfil:** tela focada (logo e "Voltar ao site"), com as etapas Perfil, Recebimento e
-  Evento no topo. `POST /api/producers` com `displayName`; em seguida, sem esperar o produtor, a
+- **Criar perfil:** tela focada (N5), com as etapas Perfil, Recebimento e Evento no cartão.
+  `POST /api/producers` com `displayName`; em seguida, sem esperar o produtor, a
   configuração Stellar: `POST /api/producers/onboarding/stellar/activate`; em `signing`, o navegador
   assina o `hashToSign` com `signRawHash` e envia a `.../stellar/activate/signature` (o fluxo da
   conta do comprador, D-28); em `409 activation_signature_stale`, prepara e assina de novo uma vez.
   Pronto o perfil, entra no sistema, no Recebimento. Quem já tem perfil e abre `/producer/start`
   (pelo "Vender ingressos" do site ou pela URL) vai para `/producer`.
+- **Rotas (R9, v1.7):** as mesmas no desktop e no celular. `/producer/receiving` mostra a etapa
+  atual (no desktop, com a lista ao lado; na raiz do celular, o cartão da etapa com "Continuar" e a
+  lista abaixo) ou o resultado; `/terms`, `/data` e `/documents` mostram a etapa (no desktop, com a
+  lista; no celular, página interna). Uma etapa ainda não liberada, ou depois do envio, volta para
+  `/producer/receiving`; recarregar em `/documents` sem os dados na memória volta para `/data`.
 - **Etapas:** Conta de recebimento, Termos da BlindPay, Seus dados, Documentos e Verificação, em
-  linha do tempo (Etapa). Desktop: a lista à esquerda e a etapa à direita; celular: "Etapa N de 4"
-  com progresso, e a lista abaixo nos resultados.
-- **Conta de recebimento:** "Preparando…" até `stellar.status` ficar ativo. Uma falha vira o toast
-  "Conta de recebimento" com "Tentar de novo", sem bloquear a verificação (D-23).
+  linha do tempo (Etapa). Desktop: a lista à esquerda e a etapa à direita; celular: nas páginas
+  internas, "Etapa N de 5" com o progresso em N/5; na raiz, a lista abaixo da etapa ou do resultado.
+- **Conta de recebimento:** "Preparando…" até `stellar.status` ficar ativo. Um erro passageiro, depois
+  do limite da retomada (R6), vira o toast "Conta de recebimento" com "Tentar de novo", sem bloquear a
+  verificação (D-23); `failed` vira a Conta com erro (R3).
 - **Termos:** `POST /api/producers/onboarding/tos` com `redirectUrl` = a origem do web +
-  `/producer/receiving` (a API devolve `{ url }` da BlindPay); volta com `tos_id` na URL, que fica no
-  `sessionStorage` até a submissão e sai da URL.
+  `/producer/receiving/data` (v1.7; a API devolve `{ url }` da BlindPay); volta com `tos_id` na URL,
+  que fica no `sessionStorage` até a submissão e sai da URL. Voltar sem `tos_id` é Termos · Sem aceite.
 - **Seus dados:** nome, sobrenome, CPF (`taxId`), nascimento, telefone e endereço no Brasil (CEP,
   estado, endereço, complemento opcional, cidade; `country: "BR"`). Ficam só na memória da página até
-  o envio; recarregar volta à etapa.
+  o envio; recarregar volta à etapa. Na nova tentativa, vêm preenchidos com o `draft` (R2).
 - **Documentos:** tipo (RG → `ID_CARD`, CNH → `DRIVERS`, Passaporte → `PASSPORT`), frente, verso (RG e
-  CNH) e selfie, cada arquivo enviado ao ser escolhido (`POST .../files`, PDF, JPG ou PNG até 10 MB);
-  no celular, a ação abre a câmera ou a galeria. "Enviar para verificação" chama `POST .../customer`
+  CNH) e selfie, cada arquivo enviado ao ser escolhido (`POST .../files`): PDF até 3 MB e fotos em
+  JPG ou PNG, reduzidas no navegador quando passam de 3 MB (R5); a selfie só aceita foto (R8). No
+  celular, a ação abre a câmera ou a galeria. "Enviar para verificação" chama `POST .../customer`
   (`type: "individual"`, `kycType: "standard"`).
 - **Resultados**, por `GET /api/producers/me` (no celular, a raiz da aba Recebimento):
 
-| Estado da API                                                             | Tela                  | O que acontece                                                                                                              |
-| ------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `compliance.status` `verifying`                                           | Em análise            | "Criar evento" leva ao rascunho                                                                                             |
-| `compliance.status` `compliance_request` ou `approved_rfi` com RFI aberto | Pendência             | Seções do RFI (`GET .../rfi`) com o texto da compliance como veio; resposta única (`POST .../rfi`)                          |
-| `compliance.status` `rejected`                                            | Recusado              | Motivo lido na hora (15A), como na R4; "Corrigir e enviar de novo" repassa pelos Termos e reabre Seus dados preenchido (R2) |
-| `stellar.status` `failed`                                                 | Conta com erro        | "Tentar de novo" prepara a conta de novo e pede a assinatura (R3)                                                           |
-| `onboardingStatus` `wallet_registration_pending`                          | Liberando recebimento | O app chama `.../stellar/activate` de novo para registrar a carteira `bw_...`                                               |
-| `onboardingStatus` `ready`                                                | Pronto                | "Criar evento"                                                                                                              |
+| Estado da API                                                             | Tela                       | O que acontece                                                                                                              |
+| ------------------------------------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `compliance.status` `verifying`                                           | Em análise                 | "Criar evento" leva ao rascunho                                                                                             |
+| `compliance.status` `compliance_request` ou `approved_rfi` com RFI aberto | Pendência                  | Seções do RFI (`GET .../rfi`) com o texto da compliance como veio; resposta única (`POST .../rfi`)                          |
+| `compliance.status` `rejected`                                            | Recusado                   | Motivo lido na hora (15A), como na R4; "Corrigir e enviar de novo" repassa pelos Termos e reabre Seus dados preenchido (R2) |
+| `stellar.status` `failed`                                                 | Conta com erro             | "Tentar de novo" prepara a conta de novo e pede a assinatura (R3); em análise, o aviso fica acima do resultado              |
+| verificação operacional e `stellar.status` ainda não `active`             | Aprovada · Conta a caminho | Texto de espera; a retomada (R6) conclui a conta                                                                            |
+| `onboardingStatus` `wallet_registration_pending`                          | Liberando recebimento      | O app chama `.../stellar/activate` de novo para registrar a carteira `bw_...`                                               |
+| `onboardingStatus` `ready`                                                | Pronto                     | "Criar evento"                                                                                                              |
 
 - **Campos do RFI:** cada seção mostra `title` e `description` sem alteração; campo com `items` vira
   lista; campo de arquivo (chave terminada em `_file` ou `_files`, ou `multiple: true`) vira Envio de
   arquivo; os demais, Campo de texto. `required` e `regex` validam antes do envio; o prazo vem de
-  `expiresAt`.
+  `expiresAt`. O `status` do RFI decide a tela: `pending`, Pendência; `submitted`, Respondida;
+  `expired`, Prazo encerrado; sem RFI (`null` ou `cancelled`), Em análise.
+- **Erros da API → tela (v1.7):**
+  - `POST /api/producers`: `400 invalid_producer_profile` vira o erro do campo ("Escreva o nome que
+    vai aparecer para quem compra."); `409 producer_already_exists` leva a `/producer`; falha de rede
+    e `5xx`, Criar perfil · Falha.
+  - `POST .../tos`: falha de rede, `503` e `422 terms_session_failed` viram Termos · Falha ao abrir.
+  - `POST .../files`: tipo e tamanho são conferidos antes do envio. PDF acima de 3 MB, `400
+invalid_onboarding_file` e `413` viram Erro no arquivo ("PDF maior que 3 MB. Escolha outro
+    arquivo."); tipo fora da lista, Tipo de arquivo ("A selfie precisa ser uma foto em JPG ou PNG.";
+    na frente e no verso, "O documento precisa ser PDF, JPG ou PNG."); `422 document_upload_failed`,
+    "A BlindPay não aceitou este arquivo. Escolha outro."; foto que o navegador não consegue reduzir,
+    "Não deu para usar esta foto. Escolha outra."; falha de rede e `503`, Falha no arquivo.
+  - `POST .../customer`: `409 customer_attempt_already_active` vira Envio em processamento; `422
+customer_creation_failed`, `422 customer_attempt_failed` e `400 invalid_onboarding_input`, Envio
+    recusado ("Revisar dados" volta a Seus dados); falha de rede e `503`, Falha no envio, e "Tentar
+    de novo" repete o mesmo envio, com a mesma chave.
+  - `GET .../customer`: falha vira Recusado · Falha ao carregar o motivo e, na nova tentativa, Seus
+    dados · Sem os dados anteriores; sem avisos, Recusado · Sem motivo.
+  - `GET .../rfi`: enquanto carrega, Pendência · Carregando; na falha, Pendência · Falha ao
+    carregar. `POST .../rfi`: `required`, `regex` e `400 invalid_rfi_response` viram o erro do campo
+    (Campos e Formato); `404 rfi_not_found` relê o RFI; falha de rede, `503` e `422
+rfi_submission_failed`, Falha ao enviar.
+  - `.../stellar/activate`: `502 stellar_activation_failed` vira a Conta com erro; `503`, a retomada
+    tenta de novo (R6); `409 activation_signature_stale` prepara e assina de novo uma vez. No registro
+    da carteira, `503` e `502 blindpay_wallet_registration_failed` viram Liberando · Falha.
 
 ### Evento
 
@@ -283,6 +351,8 @@ invalid_cover` vira o estado Erro da capa; `409 producer_not_ready` volta ao Pub
 | Conta       | A conta de recebimento é preparada ao criar o perfil, sem depender da verificação; o produtor assina | D-23, D-28         |
 | Verificação | Dados e documentos vão direto para a BlindPay; o Access não guarda cópia                             | SPEC-003 §13       |
 | Verificação | Recusa cria uma tentativa nova; não se edita cadastro recusado                                       | SPEC-003, BlindPay |
+| Arquivos    | Só documentos brasileiros; selfie em JPG ou PNG; até 3 MB, com as fotos reduzidas no navegador       | R5, R8, SPEC-003   |
+| Conta       | Uma ativação de conta por vez no navegador; a seguinte espera a anterior ser confirmada na rede      | R7                 |
 | RFI         | Texto da compliance sem alteração; resposta única; prazo de 27 dias                                  | BlindPay           |
 | Rascunho    | Pode ser criado antes da verificação aprovada                                                        | SPEC-004           |
 | Capa        | Só JPG, PNG ou WebP até 5 MB, conferidos no R2 antes de valer; a chave é do próprio evento           | D-30, E1           |
@@ -357,17 +427,19 @@ tokens novos (P8) entram no snapshot `packages/ui/tokens/figma-tokens.json` na 1
   confirmação válida, tipo e tamanho inválidos, chave de outro evento, troca e remoção, com o R2
   simulado); publicação sem capa, categoria ou cidade.
 - **Unitários (web):** item ativo da navegação; para onde o layout leva sem sessão e sem perfil;
-  estado do Painel a partir do produtor; tendência; etapa atual do Recebimento; campos do RFI; data e
-  hora de Brasília → ISO; preço em reais ↔ centavos; validação da capa no navegador; erros da API →
-  estado do campo.
+  estado do Painel a partir do produtor; tendência; etapa atual do Recebimento e a rota de cada
+  etapa; CPF, máscaras, nascimento → ISO e telefone +55; regras e redução de arquivos; campos e
+  estado do RFI; fila de ativação (R7); data e hora de Brasília → ISO; preço em reais ↔ centavos;
+  validação da capa no navegador; erros da API → tela e estado do campo (§6).
 - **Ponta a ponta (Playwright, API simulada):** navegação pela barra lateral (aberta e recolhida) e
   pelas abas; menu e folha da conta com "Sair" e com a ida ao site; sem perfil → criar
   perfil → conta de recebimento (assinatura simulada e erro); com perfil, `/producer/start` → Painel;
-  termos com `tos_id`; dados e
-  documentos (com erro de arquivo); em análise, pendência com resposta, recusado com nova tentativa
-  preenchida, liberando e pronto; Painel em todos os estados; Eventos; criar rascunho com cidade e
-  categoria, capa (envio, erro e troca), tipo abaixo do mínimo, publicar bloqueado, publicar e link do
-  publicado; a página do evento com a capa e sem ela.
+  termos com `tos_id` e sem aceite; dados e documentos (com erro de arquivo); envio em processamento,
+  recusado e com falha; em análise, pendência com resposta e prazo encerrado, recusado com nova
+  tentativa preenchida e sem motivo, conta a caminho, liberando (e a falha), pronto e conta com erro;
+  as mesmas rotas no desktop e no celular; Painel em todos os estados; Eventos; criar rascunho com
+  cidade e categoria, capa (envio, erro e troca), tipo abaixo do mínimo, publicar bloqueado, publicar
+  e link do publicado; a página do evento com a capa e sem ela.
 - **Conferência visual:** cada tela do §5 em 360 e 1440 (e o Painel no modo claro), registrada no PR.
 
 ## 11. Validação real
@@ -397,7 +469,8 @@ a ponta da SPEC-005.
 - [ ] Telas do §5 e componentes do §5.3 revisados pelo Matheus.
 - [x] 15A: endpoints e campos do §8, com testes (PR #29, 08/10/2026).
 - [x] 15B: esqueleto e Painel com conferência visual em 360/1440 e modo claro (PR #31, 09/10/2026).
-- [ ] SPEC-016 16A (moldura do site) e SPEC-014 9D (Meus ingressos) no ar, logo depois da 15B.
+- [x] SPEC-016 16A (moldura do site) e SPEC-014 9D (Meus ingressos) no ar, logo depois da 15B
+      (PR #33, 11/10/2026, e PR #34, 12/10/2026).
 - [ ] 15C: Criar perfil e Recebimento com conferência visual.
 - [ ] 15D: Evento com conferência visual.
 - [ ] Build, lint, typecheck, unitários, integração e ponta a ponta passam.

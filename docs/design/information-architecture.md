@@ -19,8 +19,9 @@ ela mora.
   celular. Os dois menus têm "Sair".
 - **O comprador aparece pelo e-mail.** O Access não guarda nome de comprador (SPEC-002). Quem também
   produz aparece pelo nome público do perfil.
-- **Fluxos focados ficam sem navegação.** Criar perfil tem só o logo e a saída. O checkout tem o
-  logo e a conta no desktop e, no celular, a barra de cada passo; a saída fica na página.
+- **Fluxos focados ficam sem navegação.** Criar perfil tem o logo e a saída no desktop e, no
+  celular, a barra superior com voltar e "Vender ingressos". O checkout tem o logo e a conta no
+  desktop e, no celular, a barra de cada passo; a saída fica na página.
 - **O início de cada camada responde "o que eu faço agora".** No site, o que está à venda; no
   sistema do produtor, as pendências, depois os números.
 
@@ -61,12 +62,14 @@ com o menu: Perfil do produtor, Meus ingressos, Ir para o site e Sair.
 
 **Painel · Eventos · Recebimento.** O avatar no topo abre a conta numa folha, com os mesmos itens
 do menu. Perfil do produtor e as etapas do Recebimento (termos, dados, documentos) abrem como
-páginas internas, com voltar e sem abas.
+páginas internas, com voltar e sem abas. As rotas das etapas são as mesmas no desktop, que mostra a
+lista de etapas ao lado de cada uma.
 
 ### Entrada
 
-"Começar a vender" (site) → Entrar, se preciso → Criar perfil (focado, sem navegação) → Painel. Quem
-já produz entra pelo "Painel do produtor" do cabeçalho ou do menu da conta.
+"Começar a vender" (site) → Entrar, se preciso → Criar perfil (focado, sem navegação) →
+Recebimento, onde começa a configuração. Quem já produz entra pelo "Painel do produtor" do
+cabeçalho ou do menu da conta.
 
 ## 4. Mapa
 
@@ -87,7 +90,10 @@ Sistema do produtor
 ├── /producer/events           Eventos                                  SPEC-015
 ├── /producer/events/new       Novo evento                              SPEC-015
 ├── /producer/events/[id]      Editor, tipos de ingresso, publicação    SPEC-015
-├── /producer/receiving        Recebimento                              SPEC-015
+├── /producer/receiving        Recebimento (etapa atual ou resultado)   SPEC-015
+│   ├── /terms                 Termos da BlindPay                       SPEC-015
+│   ├── /data                  Seus dados                               SPEC-015
+│   └── /documents             Documentos                               SPEC-015
 ├── /producer/profile          Perfil do produtor                       SPEC-015
 └── Check-in                   Leitor                                   SPEC-009
 ```
