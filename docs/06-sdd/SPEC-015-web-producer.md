@@ -309,7 +309,13 @@ producer_not_found`), vai para `/producer/start`. A barra lateral guarda aberta 
   lista; campo de arquivo (chave terminada em `_file` ou `_files`, ou `multiple: true`) vira Envio de
   arquivo; os demais, Campo de texto. `required` e `regex` validam antes do envio; o prazo vem de
   `expiresAt`. O `status` do RFI decide a tela: `pending`, Pendência; `submitted`, Respondida;
-  `expired`, Prazo encerrado; sem RFI (`null` ou `cancelled`), Em análise.
+  `expired`, Prazo encerrado; sem RFI (`null` ou `cancelled`), Em análise, ou o resultado
+  operacional no `approved_rfi`. Depois de responder, a Respondida fica na tela até a BlindPay mudar
+  o status (a leitura do pedido passa a responder `404`), relendo o produtor a cada 10 s. No
+  `approved_rfi`, as vendas continuam: o aviso diz "As vendas continuam enquanto isso." em vez de
+  "Sem resposta, a verificação é recusada.". Limitações conhecidas: campo de vários arquivos aceita
+  um (o produtor junta as páginas num PDF), e o link de modelo que a BlindPay pode anexar à seção
+  (`supporting_document`) não aparece.
 - **Erros da API → tela (v1.7):**
   - `POST /api/producers`: `400 invalid_producer_profile` vira o erro do campo ("Escreva o nome que
     vai aparecer para quem compra."); `409 producer_already_exists` leva a `/producer`; falha de rede
@@ -334,7 +340,8 @@ customer_creation_failed`, `422 customer_attempt_failed` e `400 invalid_onboardi
 rfi_submission_failed`, Falha ao enviar.
   - `.../stellar/activate`: `502 stellar_activation_failed` vira a Conta com erro; `503`, a retomada
     tenta de novo (R6); `409 activation_signature_stale` prepara e assina de novo uma vez. No registro
-    da carteira, `503` e `502 blindpay_wallet_registration_failed` viram Liberando · Falha.
+    da carteira, `502 blindpay_wallet_registration_failed` vira Liberando · Falha na hora, e `503`,
+    depois das tentativas da retomada (R6).
 
 ### Evento
 
