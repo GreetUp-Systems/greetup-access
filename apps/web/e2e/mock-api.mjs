@@ -735,6 +735,141 @@ const pending = (status, hasOpenRfi = false) => ({
 // Calls per session token, for the scenarios that change after the first answer.
 const calls = new Map();
 
+// --- Criar perfil and the Recebimento (SPEC-015 15C). What each session did in this run: the
+// profile created, the receiving account's activation, the verification sent and its keys.
+const onboarding = new Map();
+const activationHash = "e2".repeat(32);
+
+function onboardingOf(session) {
+  let state = onboarding.get(session);
+  if (state === undefined) {
+    state = {
+      displayName: null,
+      stellar: "not_started",
+      kyc: undefined,
+      createCalls: 0,
+      customerKeys: [],
+    };
+    onboarding.set(session, state);
+  }
+  return state;
+}
+
+// The producer created in this run by Criar perfil, at the start of the Recebimento.
+function createdProducer(state) {
+  return {
+    ...readyProducer,
+    displayName: state.displayName,
+    onboardingStatus: state.stellar === "active" ? "compliance_pending" : "stellar_pending",
+    compliance: { status: state.kyc ?? null, hasOpenRfi: false },
+    stellar: { status: state.stellar },
+  };
+}
+
+// The refused attempt's data, for the new one (SPEC-015 §8, R2).
+const rejectedAttempt = {
+  status: "rejected",
+  reasons: [{ code: "DOC_BLURRY", message: "The document image is blurry." }],
+  draft: {
+    firstName: "Ana",
+    lastName: "Souza",
+    dateOfBirth: "1990-03-15",
+    taxId: "12345678909",
+    phoneNumber: "+5511912345678",
+    addressLine1: "Rua Augusta, 1200",
+    addressLine2: "Apto 42",
+    city: "São Paulo",
+    stateProvinceRegion: "SP",
+    postalCode: "01310100",
+    country: "BR",
+    idDocCountry: "BR",
+    idDocType: "ID_CARD",
+  },
+};
+
+const isUuid = (value) => typeof value === "string" && uuidV4.test(value);
+
+// POST /api/producers: creates the profile of a session without one ("new-producer"); the
+// "...-failure" scenario fails the first time.
+function createProfile(scenario, body) {
+  const state = onboardingOf(scenario.session);
+  if (!scenario.newProducer) {
+    return [409, { code: "producer_already_exists", message: "" }];
+  }
+  state.createCalls += 1;
+  if (scenario.createFails && state.createCalls === 1) {
+    return unavailable;
+  }
+  const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : "";
+  if (displayName === "" || displayName.length > 120) {
+    return [400, { code: "invalid_producer_profile", message: "" }];
+  }
+  state.displayName = displayName;
+  return [201, createdProducer(state)];
+}
+
+// The receiving account: signed in the browser, then active. Existing producers are active.
+function activate(scenario, signature) {
+  const state = onboardingOf(scenario.session);
+  if (!scenario.newProducer || state.stellar === "active") {
+    state.stellar = "active";
+    return [200, { status: "active", transactionHash: activationHash }];
+  }
+  if (signature === undefined) {
+    state.stellar = "signing";
+    return [200, { status: "signing", hashToSign: activationHash }];
+  }
+  if (signature?.hash !== activationHash) {
+    return [409, { code: "activation_signature_stale", message: "" }];
+  }
+  state.stellar = "active";
+  return [200, { status: "active", transactionHash: activationHash }];
+}
+
+// POST .../files: one file to BlindPay. The test chooses the outcome by the file's name.
+function uploadFile(raw, key) {
+  if (!isUuid(key)) {
+    return [400, { code: "invalid_idempotency_key", message: "" }];
+  }
+  const name = /filename="([^"]*)"/.exec(raw)?.[1] ?? "";
+  if (name.includes("recusado")) {
+    return [422, { code: "document_upload_failed", message: "" }];
+  }
+  if (name.includes("falha")) {
+    return [503, { code: "compliance_provider_unavailable", message: "" }];
+  }
+  return [200, { fileUrl: `https://files.blindpay.e2e/${randomUUID()}` }];
+}
+
+// POST .../customer: "Enviar para verificação". The scenario chooses the outcome; "...-failure"
+// fails once and takes the repeat only with the same Idempotency-Key.
+function createCustomer(scenario, body, key) {
+  const state = onboardingOf(scenario.session);
+  if (!isUuid(key)) {
+    return [400, { code: "invalid_idempotency_key", message: "" }];
+  }
+  if (body?.type !== "individual" || body?.kycType !== "standard" || !body?.tosId) {
+    return [400, { code: "invalid_onboarding_input", message: "" }];
+  }
+  state.customerKeys.push(key);
+  if (scenario.submit === "busy") {
+    return [409, { code: "customer_attempt_already_active", message: "" }];
+  }
+  if (scenario.submit === "refused") {
+    return [422, { code: "customer_creation_failed", message: "" }];
+  }
+  if (scenario.submit === "failure") {
+    if (state.customerKeys.length === 1) {
+      return [503, { code: "compliance_provider_unavailable", message: "" }];
+    }
+    if (key !== state.customerKeys[0]) {
+      return [422, { code: "customer_attempt_failed", message: "" }];
+    }
+  }
+  state.kyc = "verifying";
+  return [201, { id: randomUUID(), customerId: "re_e2e", type: "individual", status: "verifying" }];
+}
+
 // Each scenario answers GET /producers/me and GET /events: [status, body]. A test that needs its
 // own counters adds "~<id>" to the scenario's name.
 const producerScenarios = {
@@ -755,6 +890,46 @@ const producerScenarios = {
     rfi: true,
   },
   setup: { me: () => producerWith(pending(null)), events: () => [200, drafts()] },
+  // The Recebimento's submission answered 409, 422, or 503 once (SPEC-015 §6).
+  "setup-busy": {
+    me: () => producerWith(pending(null)),
+    events: () => [200, drafts()],
+    submit: "busy",
+  },
+  "setup-refused": {
+    me: () => producerWith(pending(null)),
+    events: () => [200, drafts()],
+    submit: "refused",
+  },
+  "setup-failure": {
+    me: () => producerWith(pending(null)),
+    events: () => [200, drafts()],
+    submit: "failure",
+  },
+  // BlindPay's terms could not be opened the first time.
+  "setup-terms-failure": {
+    me: () => producerWith(pending(null)),
+    events: () => [200, drafts()],
+    tosFails: true,
+  },
+  // No profile until Criar perfil creates it; "-failure" fails the first creation.
+  "new-producer": {
+    me: (count, session) => {
+      const state = onboardingOf(session);
+      return state.displayName === null ? noProducer : [200, createdProducer(state)];
+    },
+    events: () => [200, []],
+    newProducer: true,
+  },
+  "new-producer-failure": {
+    me: (count, session) => {
+      const state = onboardingOf(session);
+      return state.displayName === null ? noProducer : [200, createdProducer(state)];
+    },
+    events: () => [200, []],
+    newProducer: true,
+    createFails: true,
+  },
   verifying: { me: () => producerWith(pending("verifying")), events: () => [200, drafts()] },
   rfi: {
     me: () => producerWith(pending("compliance_request", true)),
@@ -762,7 +937,17 @@ const producerScenarios = {
     sales: true,
     rfi: true,
   },
-  rejected: { me: () => producerWith(pending("rejected")), events: () => [200, drafts()] },
+  rejected: {
+    me: () => producerWith(pending("rejected")),
+    events: () => [200, drafts()],
+    attempt: rejectedAttempt,
+  },
+  // The refused attempt could not be read again: the new one starts empty.
+  "rejected-draft-failure": {
+    me: () => producerWith(pending("rejected")),
+    events: () => [200, drafts()],
+    attempt: "unavailable",
+  },
   releasing: {
     me: () =>
       producerWith({
@@ -790,18 +975,78 @@ function producerScenario(authorization) {
   return scenario === undefined ? undefined : { ...scenario, session };
 }
 
-function readBody(request) {
+function readRaw(request) {
   return new Promise((resolve) => {
     let raw = "";
+    request.setEncoding("latin1");
     request.on("data", (chunk) => (raw += chunk));
-    request.on("end", () => {
-      try {
-        resolve(raw === "" ? null : JSON.parse(raw));
-      } catch {
-        resolve(null);
-      }
-    });
+    request.on("end", () => resolve(raw));
   });
+}
+
+async function readBody(request) {
+  const raw = await readRaw(request);
+  try {
+    return raw === "" ? null : JSON.parse(Buffer.from(raw, "latin1").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+// The onboarding's routes (SPEC-003 §8) for a producer scenario; false when the URL is another.
+async function onboardingRoute(request, response, path) {
+  const routes = [
+    "/api/producers",
+    "/api/producers/onboarding/tos",
+    "/api/producers/onboarding/files",
+    "/api/producers/onboarding/customer",
+    "/api/producers/onboarding/stellar/activate",
+    "/api/producers/onboarding/stellar/activate/signature",
+  ];
+  if (!routes.includes(path) || (path === "/api/producers" && request.method !== "POST")) {
+    return false;
+  }
+  const scenario = producerScenario(request.headers.authorization);
+  if (scenario === undefined) {
+    send(response, 401, { code: "invalid_auth_token", message: "" });
+    return true;
+  }
+  const key = request.headers["idempotency-key"];
+  if (path === "/api/producers/onboarding/files") {
+    send(response, ...uploadFile(await readRaw(request), key));
+    return true;
+  }
+  const body = await readBody(request);
+  if (path === "/api/producers") {
+    send(response, ...createProfile(scenario, body));
+  } else if (path === "/api/producers/onboarding/tos") {
+    const state = onboardingOf(scenario.session);
+    state.tosCalls = (state.tosCalls ?? 0) + 1;
+    if (scenario.tosFails && state.tosCalls === 1) {
+      send(response, 503, { code: "compliance_provider_unavailable", message: "" });
+    } else {
+      // BlindPay's page, which the test answers; it comes back to `redirectUrl`.
+      const redirect = encodeURIComponent(String(body?.redirectUrl ?? ""));
+      send(response, 200, { url: `https://blindpay.e2e/terms?redirect=${redirect}` });
+    }
+  } else if (path === "/api/producers/onboarding/customer") {
+    if (request.method === "GET") {
+      if (scenario.attempt === undefined) {
+        send(response, 404, { code: "blindpay_customer_not_found", message: "" });
+      } else if (scenario.attempt === "unavailable") {
+        send(response, 503, { code: "compliance_provider_unavailable", message: "" });
+      } else {
+        send(response, 200, scenario.attempt);
+      }
+    } else {
+      send(response, ...createCustomer(scenario, body, key));
+    }
+  } else if (path === "/api/producers/onboarding/stellar/activate") {
+    send(response, ...activate(scenario, undefined));
+  } else {
+    send(response, ...activate(scenario, body ?? null));
+  }
+  return true;
 }
 
 function send(response, status, body) {
@@ -896,8 +1141,23 @@ createServer(async (request, response) => {
     const key = `${scenario.session} ${url}`;
     const count = (calls.get(key) ?? 0) + 1;
     calls.set(key, count);
-    const [status, body] = url === "/api/events" ? scenario.events(count) : scenario.me(count);
-    send(response, status, body);
+    const [status, body] =
+      url === "/api/events"
+        ? scenario.events(count, scenario.session)
+        : scenario.me(count, scenario.session);
+    // A verification sent in this run is in analysis.
+    const sent = onboarding.get(scenario.session)?.kyc;
+    send(
+      response,
+      status,
+      url === "/api/producers/me" && status === 200 && sent !== undefined
+        ? { ...body, compliance: { status: sent, hasOpenRfi: false } }
+        : body,
+    );
+    return;
+  }
+
+  if (await onboardingRoute(request, response, url.split("?")[0])) {
     return;
   }
 

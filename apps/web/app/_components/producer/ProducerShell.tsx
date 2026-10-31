@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 import { activeEventCount } from "../../_lib/producer/events";
-import { showsTabBar } from "../../_lib/producer/navigation";
+import { activeSection, showsTabBar } from "../../_lib/producer/navigation";
 import { useSession } from "../../_lib/session";
 import { Identification } from "../identification/Identification";
 import { AccountMenu, AccountSheet } from "./AccountMenu";
@@ -16,6 +16,7 @@ import { ProducerSidebar, ProducerTabBar } from "./ProducerNavigation";
 import { LoadFailed } from "../LoadFailed";
 import { AccountSkeleton, ProducerLoading } from "./ProducerStates";
 import { useProducerSystem } from "./useProducerSystem";
+import { useReceivingAccount } from "./useReceivingAccount";
 
 interface ProducerShellProps {
   /** The sidebar's state from its cookie, read on the server. */
@@ -58,7 +59,7 @@ function Frame({ defaultOpen, pathname, eventCount, account, children }: FramePr
  * and the events load, the page and the account are esqueletos; a failure offers to try again.
  */
 export function ProducerShell({ defaultOpen, children }: ProducerShellProps) {
-  const { state: session, getToken, logout } = useSession();
+  const { state: session, getToken, logout, activateProducerAccount } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   // Set on "Sair", so the signed-out session goes to the site instead of the identification.
@@ -66,6 +67,12 @@ export function ProducerShell({ defaultOpen, children }: ProducerShellProps) {
   const [accountOpen, setAccountOpen] = useState(false);
   const system = useProducerSystem(getToken, session.status === "authenticated" && !leaving);
   const status = system.state.status;
+  const receivingAccount = useReceivingAccount({
+    producer: system.state.status === "ready" && !leaving ? system.state.producer : null,
+    onReceiving: activeSection(pathname) === "receiving",
+    activate: activateProducerAccount,
+    reloadProducer: system.reloadProducer,
+  });
 
   useEffect(() => {
     if (status === "create_profile") {
@@ -99,8 +106,9 @@ export function ProducerShell({ defaultOpen, children }: ProducerShellProps) {
             reloadEvents,
             reloadProducer,
             openAccount,
+            account: receivingAccount,
           },
-    [ready, email, reloadEvents, reloadProducer, openAccount],
+    [ready, email, reloadEvents, reloadProducer, openAccount, receivingAccount],
   );
 
   const failed = status === "failed" && !leaving;

@@ -36,6 +36,7 @@ import {
   setupSteps,
 } from "../../_lib/producer/dashboard";
 import { nextEvent } from "../../_lib/producer/events";
+import { readAcceptedTerms } from "../../_lib/producer/terms";
 import { useSession } from "../../_lib/session";
 import { LoadFailed } from "../LoadFailed";
 import { MeanwhileCard, NextEventCard, RecentSalesCard, SetupCard } from "./DashboardCards";
@@ -273,7 +274,7 @@ export function DashboardScreen() {
           <SetupCard
             className="md:flex-1"
             steps={setupSteps(producer, {
-              termsAccepted: false,
+              termsAccepted: readAcceptedTerms(producer.id) !== null,
               rfiDeadline: deadline === null ? null : formatShortDayMonth(deadline),
             })}
           />

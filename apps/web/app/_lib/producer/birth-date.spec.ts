@@ -40,8 +40,10 @@ describe("parseBirthDate", () => {
     expect(parseBirthDate("01/01/2030", today)).toEqual({ ok: false });
   });
 
-  it("keeps years before 100 as they are, not as 19xx", () => {
-    expect(parseBirthDate("01/01/0099", today)).toEqual({ ok: true, date: "0099-01-01" });
+  it("takes a date from 1900 on and refuses an older one (SPEC-015 §6)", () => {
+    expect(parseBirthDate("01/01/1900", today)).toEqual({ ok: true, date: "1900-01-01" });
+    expect(parseBirthDate("31/12/1899", today)).toEqual({ ok: false });
+    expect(parseBirthDate("01/01/0099", today)).toEqual({ ok: false });
   });
 });
 

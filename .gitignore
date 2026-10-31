@@ -86,3 +86,6 @@ pnpm-debug.log*
 *.local
 .temp/
 tmp/
+
+# Temporary worktrees of Claude Code agents.
+.claude/worktrees/

@@ -1,5 +1,8 @@
-/** The buyer's account, activated at sign-in, and the producer's receiving account. */
-export type ActivationKind = "account" | "producer";
+/**
+ * The buyer's account, activated at sign-in, and the producer's receiving account: signed in the
+ * browser ("producer"), or resumed in the background without the wallet ("producer-resume", R6).
+ */
+export type ActivationKind = "account" | "producer" | "producer-resume";
 
 export interface ActivationQueue<T> {
   /**

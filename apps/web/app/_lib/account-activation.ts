@@ -74,6 +74,21 @@ async function prepareAndSign(
 }
 
 /**
+ * A resume without the wallet reached a transaction that waits for its signature (SPEC-015 R6):
+ * the run ends there, unsigned, and the Recebimento asks for the signature.
+ */
+export class SignatureRequiredError extends Error {
+  constructor() {
+    super("The Stellar activation waits for the wallet's signature.");
+    this.name = "SignatureRequiredError";
+  }
+}
+
+/** The signer of a resume that never asks the wallet: it ends the run at the signature. */
+export const signatureRequired: SignStellarHash = () =>
+  Promise.reject(new SignatureRequiredError());
+
+/**
  * The network did not confirm the activation: it was still submitted after the last read, or the
  * submitted transaction failed and the API prepared a new one, which waits for a signature.
  */

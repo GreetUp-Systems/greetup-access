@@ -14,9 +14,13 @@ function daysInMonth(year: number, month: number): number {
   return date.getUTCDate();
 }
 
+/** The first year a birth date may have (SPEC-015 §6); the age itself is BlindPay's to judge. */
+export const FIRST_BIRTH_YEAR = 1900;
+
 /**
- * The birth date typed as DD/MM/AAAA (SPEC-015 R8) as YYYY-MM-DD: a date that exists, before
- * `today` (the browser's day). Anything else, an incomplete year included, is not a date.
+ * The birth date typed as DD/MM/AAAA (SPEC-015 R8) as YYYY-MM-DD: a date that exists, from 1900
+ * and before `today` (the browser's day). Anything else, an incomplete year included, is not a
+ * date. There is no age rule in the Access: eligibility is BlindPay's verification.
  */
 export function parseBirthDate(value: string, today: Date = new Date()): BirthDateResult {
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
@@ -26,6 +30,9 @@ export function parseBirthDate(value: string, today: Date = new Date()): BirthDa
   const day = Number(match[1]);
   const month = Number(match[2]);
   const year = Number(match[3]);
+  if (year < FIRST_BIRTH_YEAR) {
+    return { ok: false };
+  }
   if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) {
     return { ok: false };
   }
