@@ -716,10 +716,50 @@ const recentSales = () => [
     confirmedAt: minutesAgo(60),
   },
 ];
+// BlindPay's request for information of the Figma screens (Pendência · Pergunta 1 to 3 de 3):
+// a list and a file, a text, and a text with a format.
+const rfiSections = [
+  {
+    title: "Proof of address",
+    description:
+      "The proof of address attached doesn't match the address provided. Please upload a new one.",
+    fields: [
+      {
+        key: "proof_of_address_doc_type",
+        label: "Proof of address type",
+        required: true,
+        items: [
+          { label: "Utility bill", value: "UTILITY_BILL" },
+          { label: "Bank statement", value: "BANK_STATEMENT" },
+          { label: "Rental agreement", value: "RENTAL_AGREEMENT" },
+        ],
+      },
+      {
+        key: "proof_of_address_doc_file",
+        label: "Proof of address file",
+        required: true,
+        regex: "^https://[^\\s]+$",
+      },
+    ],
+  },
+  {
+    title: "Source of funds",
+    description: "Please describe where the money you will receive from ticket sales comes from.",
+    fields: [
+      { key: "source_of_funds_description", label: "Source of funds description", required: true },
+    ],
+  },
+  {
+    title: "Website",
+    description:
+      "Please share the link to the page where you sell or promote your events. It must start with https://",
+    fields: [{ key: "website", label: "Website", required: true, regex: "^https://" }],
+  },
+];
 const openRfi = {
   id: "rfi_e2e",
   status: "pending",
-  request: [],
+  request: rfiSections,
   expiresAt: "2026-11-03T15:00:00.000Z",
   createdAt: "2026-10-07T15:00:00.000Z",
 };
@@ -766,10 +806,15 @@ function createdProducer(state) {
   };
 }
 
-// The refused attempt's data, for the new one (SPEC-015 §8, R2).
+// The refused attempt's data, for the new one (SPEC-015 §8, R2), with the reason of the Figma
+// screen (Recebimento · Recusado).
+const blurryReason = {
+  code: "DOC_BLURRY",
+  message: "The document image is blurry. Please upload a clearer photo of the front of the ID.",
+};
 const rejectedAttempt = {
   status: "rejected",
-  reasons: [{ code: "DOC_BLURRY", message: "The document image is blurry." }],
+  reasons: [blurryReason],
   draft: {
     firstName: "Ana",
     lastName: "Souza",
@@ -786,6 +831,16 @@ const rejectedAttempt = {
     idDocType: "ID_CARD",
   },
 };
+
+// Recusado · Vários motivos and Sem motivo (501:5276, 520:11765).
+const severalReasonsAttempt = {
+  ...rejectedAttempt,
+  reasons: [
+    blurryReason,
+    { code: "FACE_MISMATCH", message: "The selfie does not match the photo on the document." },
+  ],
+};
+const noReasonAttempt = { ...rejectedAttempt, reasons: [] };
 
 const isUuid = (value) => typeof value === "string" && uuidV4.test(value);
 
@@ -808,9 +863,43 @@ function createProfile(scenario, body) {
   return [201, createdProducer(state)];
 }
 
+const signing = [200, { status: "signing", hashToSign: activationHash }];
+const accountActive = [200, { status: "active", transactionHash: activationHash }];
+const staleSignature = [409, { code: "activation_signature_stale", message: "" }];
+
+// The receiving account of an existing producer whose scenario follows a plan (SPEC-015 R3, R6):
+// "failed" waits for "Tentar de novo" to prepare and sign it again; "flaky" answers 503 three times
+// before it can be prepared; "submitted" stays confirming on the network; "wallet" fails the
+// registration of BlindPay's wallet once.
+function plannedActivation(plan, state, signature) {
+  if (plan === "submitted") {
+    return [200, { status: "submitted", transactionHash: activationHash }];
+  }
+  if (plan === "wallet") {
+    state.walletCalls = (state.walletCalls ?? 0) + 1;
+    if (state.walletCalls === 1) {
+      return [502, { code: "blindpay_wallet_registration_failed", message: "" }];
+    }
+    state.walletRegistered = true;
+    return accountActive;
+  }
+  if (signature === undefined) {
+    state.planCalls = (state.planCalls ?? 0) + 1;
+    return plan === "flaky" && state.planCalls <= 3 ? unavailable : signing;
+  }
+  if (signature?.hash !== activationHash) {
+    return staleSignature;
+  }
+  state.accountReady = true;
+  return accountActive;
+}
+
 // The receiving account: signed in the browser, then active. Existing producers are active.
 function activate(scenario, signature) {
   const state = onboardingOf(scenario.session);
+  if (scenario.account !== undefined && !state.accountReady) {
+    return plannedActivation(scenario.account, state, signature);
+  }
   if (!scenario.newProducer || state.stellar === "active") {
     state.stellar = "active";
     return [200, { status: "active", transactionHash: activationHash }];
@@ -956,6 +1045,123 @@ const producerScenarios = {
       }),
     events: () => [200, drafts()],
   },
+  // --- The results of the Recebimento (SPEC-015 15C, §6).
+  // Refused with two reasons, with none, and with the reasons failing to load once.
+  "rejected-reasons": {
+    me: () => producerWith(pending("rejected")),
+    events: () => [200, drafts()],
+    attempt: severalReasonsAttempt,
+  },
+  "rejected-no-reason": {
+    me: () => producerWith(pending("rejected")),
+    events: () => [200, drafts()],
+    attempt: noReasonAttempt,
+  },
+  "rejected-reason-failure-once": {
+    me: () => producerWith(pending("rejected")),
+    events: () => [200, drafts()],
+    attempt: "unavailable-once",
+  },
+  // The configuration with the receiving account failed (Conta com erro, R3), and in analysis;
+  // both until "Tentar de novo" signs it again.
+  "setup-account-failed": {
+    me: (count, session) => {
+      const ready = onboardingOf(session).accountReady === true;
+      return producerWith({
+        ...pending(null),
+        onboardingStatus: ready ? "compliance_pending" : "stellar_pending",
+        stellar: { status: ready ? "active" : "failed" },
+      });
+    },
+    events: () => [200, drafts()],
+    account: "failed",
+  },
+  "verifying-account-failed": {
+    me: (count, session) => {
+      const ready = onboardingOf(session).accountReady === true;
+      return producerWith({
+        ...pending("verifying"),
+        onboardingStatus: ready ? "compliance_pending" : "stellar_pending",
+        stellar: { status: ready ? "active" : "failed" },
+      });
+    },
+    events: () => [200, drafts()],
+    account: "failed",
+  },
+  // In analysis, the account's preparation fails three times in a row (R6), then works.
+  "account-stopped": {
+    me: (count, session) => {
+      const ready = onboardingOf(session).accountReady === true;
+      return producerWith({
+        ...pending("verifying"),
+        onboardingStatus: ready ? "compliance_pending" : "stellar_pending",
+        stellar: { status: ready ? "active" : "pending" },
+      });
+    },
+    events: () => [200, drafts()],
+    account: "flaky",
+  },
+  // Approved, the receiving account still confirming on the network.
+  "account-on-way": {
+    me: () =>
+      producerWith({
+        onboardingStatus: "stellar_pending",
+        compliance: { status: "approved", hasOpenRfi: false },
+        stellar: { status: "submitted" },
+      }),
+    events: () => [200, drafts()],
+    account: "submitted",
+  },
+  // Approved, BlindPay's wallet refused once (Liberando · Falha), then ready.
+  "releasing-failure": {
+    me: (count, session) =>
+      onboardingOf(session).walletRegistered
+        ? [200, readyProducer]
+        : producerWith({
+            onboardingStatus: "wallet_registration_pending",
+            compliance: { status: "approved", hasOpenRfi: false },
+          }),
+    events: () => [200, drafts()],
+    account: "wallet",
+  },
+  // The request for information: failing to load once; answered and past its deadline; the
+  // answer failing once, refused for a field once, or arriving after the request closed.
+  "rfi-load-failure": {
+    me: () => producerWith(pending("compliance_request", true)),
+    events: () => [200, drafts()],
+    rfi: true,
+    rfiLoad: "failure-once",
+  },
+  "rfi-submitted": {
+    me: () => producerWith(pending("compliance_request", true)),
+    events: () => [200, drafts()],
+    rfi: true,
+    rfiStatus: "submitted",
+  },
+  "rfi-expired": {
+    me: () => producerWith(pending("compliance_request", true)),
+    events: () => [200, drafts()],
+    rfi: true,
+    rfiStatus: "expired",
+  },
+  "rfi-submit-failure": {
+    me: () => producerWith(pending("compliance_request", true)),
+    events: () => [200, drafts()],
+    rfi: true,
+    rfiSubmit: "failure",
+  },
+  "rfi-field-error": {
+    me: () => producerWith(pending("compliance_request", true)),
+    events: () => [200, drafts()],
+    rfi: true,
+    rfiSubmit: "field-error",
+  },
+  "rfi-gone": {
+    me: () => producerWith(pending("compliance_request", true)),
+    events: () => [200, drafts()],
+    rfi: true,
+    rfiSubmit: "gone",
+  },
   "no-producer": { me: () => noProducer, events: () => noProducer },
   failure: { me: () => unavailable, events: () => unavailable },
   // The first load fails; "Tentar de novo" works.
@@ -991,6 +1197,92 @@ async function readBody(request) {
   } catch {
     return null;
   }
+}
+
+// GET .../rfi: the open request, as BlindPay keeps it. Answered, BlindPay no longer finds it (the
+// API answers null); closed for an answer that came late, it is past its deadline.
+function readRfi(scenario) {
+  const state = onboardingOf(scenario.session);
+  state.rfiReads = (state.rfiReads ?? 0) + 1;
+  if (scenario.rfiLoad === "failure-once" && state.rfiReads === 1) {
+    return unavailable;
+  }
+  if (scenario.rfi !== true || state.rfiAnswered) {
+    return [200, null];
+  }
+  if (state.rfiGone) {
+    return [200, { ...openRfi, status: "expired" }];
+  }
+  return [200, { ...openRfi, status: scenario.rfiStatus ?? "pending" }];
+}
+
+// The API's checks of an answer (SPEC-003 §8): only the request's keys, the required ones, a
+// value of the list, the formats. The key at fault, "" when it is the body, null when it is fine.
+function rfiProblem(body) {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return "";
+  }
+  const fields = rfiSections.flatMap((section) => section.fields);
+  if (Object.keys(body).some((key) => !fields.some((field) => field.key === key))) {
+    return "";
+  }
+  for (const field of fields) {
+    const value = body[field.key];
+    if (value === undefined) {
+      if (field.required) {
+        return field.key;
+      }
+      continue;
+    }
+    if (
+      typeof value !== "string" ||
+      value === "" ||
+      (field.items !== undefined && !field.items.some((item) => item.value === value)) ||
+      (field.regex !== undefined && !new RegExp(field.regex).test(value))
+    ) {
+      return field.key;
+    }
+  }
+  return null;
+}
+
+// POST .../rfi: the single answer. The scenario chooses the outcome: "failure" fails once and takes
+// the repeat only with the same Idempotency-Key; "field-error" refuses a field once; "gone" finds
+// the request closed.
+function answerRfi(scenario, body, key) {
+  const state = onboardingOf(scenario.session);
+  if (!isUuid(key)) {
+    return [400, { code: "invalid_idempotency_key", message: "" }];
+  }
+  const open = scenario.rfi === true && (scenario.rfiStatus ?? "pending") === "pending";
+  if (!open || state.rfiAnswered || state.rfiGone || scenario.rfiSubmit === "gone") {
+    state.rfiGone = scenario.rfiSubmit === "gone" || state.rfiGone;
+    return [404, { code: "rfi_not_found", message: "" }];
+  }
+  const problem = rfiProblem(body);
+  if (problem !== null) {
+    return [
+      400,
+      { code: "invalid_rfi_response", message: "", ...(problem === "" ? {} : { field: problem }) },
+    ];
+  }
+  state.rfiKeys = [...(state.rfiKeys ?? []), key];
+  if (scenario.rfiSubmit === "failure") {
+    if (state.rfiKeys.length === 1) {
+      return unavailable;
+    }
+    if (key !== state.rfiKeys[0]) {
+      return [422, { code: "rfi_submission_failed", message: "" }];
+    }
+  }
+  if (scenario.rfiSubmit === "field-error" && state.rfiKeys.length === 1) {
+    return [
+      400,
+      { code: "invalid_rfi_response", message: "", field: "source_of_funds_description" },
+    ];
+  }
+  state.rfiAnswered = true;
+  return [201, null];
 }
 
 // The onboarding's routes (SPEC-003 §8) for a producer scenario; false when the URL is another.
@@ -1035,6 +1327,14 @@ async function onboardingRoute(request, response, path) {
         send(response, 404, { code: "blindpay_customer_not_found", message: "" });
       } else if (scenario.attempt === "unavailable") {
         send(response, 503, { code: "compliance_provider_unavailable", message: "" });
+      } else if (scenario.attempt === "unavailable-once") {
+        const state = onboardingOf(scenario.session);
+        state.attemptReads = (state.attemptReads ?? 0) + 1;
+        if (state.attemptReads === 1) {
+          send(response, 503, { code: "compliance_provider_unavailable", message: "" });
+        } else {
+          send(response, 200, rejectedAttempt);
+        }
       } else {
         send(response, 200, scenario.attempt);
       }
@@ -1095,20 +1395,14 @@ createServer(async (request, response) => {
   }
 
   const [path, query = ""] = url.split("?");
-  if (
-    path === "/api/producers/me/sales" ||
-    path === "/api/producers/me/sales/recent" ||
-    path === "/api/producers/onboarding/rfi"
-  ) {
+  if (path === "/api/producers/me/sales" || path === "/api/producers/me/sales/recent") {
     const scenario = producerScenario(request.headers.authorization);
     if (scenario === undefined) {
       send(response, 401, { code: "invalid_auth_token", message: "" });
       return;
     }
     const params = new URLSearchParams(query);
-    if (path === "/api/producers/onboarding/rfi") {
-      send(response, 200, scenario.rfi === true ? openRfi : null);
-    } else if (path === "/api/producers/me/sales/recent") {
+    if (path === "/api/producers/me/sales/recent") {
       const limit = Number(params.get("limit") ?? 5);
       send(response, 200, scenario.sales === true ? recentSales().slice(0, limit) : []);
     } else {
@@ -1154,6 +1448,19 @@ createServer(async (request, response) => {
         ? { ...body, compliance: { status: sent, hasOpenRfi: false } }
         : body,
     );
+    return;
+  }
+
+  if (url === "/api/producers/onboarding/rfi") {
+    const scenario = producerScenario(request.headers.authorization);
+    if (scenario === undefined) {
+      send(response, 401, { code: "invalid_auth_token", message: "" });
+    } else if (request.method === "POST") {
+      const body = await readBody(request);
+      send(response, ...answerRfi(scenario, body, request.headers["idempotency-key"]));
+    } else {
+      send(response, ...readRfi(scenario));
+    }
     return;
   }
 
