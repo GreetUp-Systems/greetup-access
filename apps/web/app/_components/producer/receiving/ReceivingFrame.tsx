@@ -8,7 +8,7 @@ import { cn } from "@access/ui/lib/utils";
 import { type ReactNode, useId } from "react";
 
 import {
-  type ReceivingStep,
+  type ProgressStep,
   type ReceivingStepItem,
   STEP_COUNT,
   stepPosition,
@@ -25,7 +25,7 @@ export function ReceivingHeader({ className }: { className?: string }) {
 }
 
 /** Phone: "Etapa N de 5", the step's name and the progress (Progresso of 501:5529). */
-export function StepProgress({ step, className }: { step: ReceivingStep; className?: string }) {
+export function StepProgress({ step, className }: { step: ProgressStep; className?: string }) {
   const { number, name } = stepPosition[step];
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -74,7 +74,7 @@ export function StepsCard({
 }
 
 interface StepPageProps {
-  step: ReceivingStep;
+  step: ProgressStep;
   /** The Etapas list beside the step, on the desktop. */
   items: readonly ReceivingStepItem[];
   /** A notice of the page (a failure, the terms not accepted), above the step. */
@@ -87,9 +87,9 @@ interface StepPageProps {
 
 /**
  * A step of the Recebimento (Termos 301:2818 and 302:4201; Seus dados 550:15088 and 550:13465;
- * Documentos 547:10491 and 547:10342). Phone: an inner page with the Barra superior and its back,
- * the notice, "Etapa N de 5" and the card, without the tabs. Desktop: the page's header, the notice,
- * and the Etapas list beside the card.
+ * Documentos 547:10491 and 547:10342; the request for information 548:11301 and 543:9892). Phone:
+ * an inner page with the Barra superior and its back, the notice, "Etapa N de 5" and the card,
+ * without the tabs. Desktop: the page's header, the notice, and the Etapas list beside the card.
  */
 export function StepPage({ step, items, notice, onBack, children }: StepPageProps) {
   return (
@@ -113,7 +113,43 @@ export function StepPage({ step, items, notice, onBack, children }: StepPageProp
   );
 }
 
+/**
+ * The card's actions: the action (Botão/Inverso L, the width of the card on the phone), "Voltar"
+ * before it on the desktop (Botão/Fantasma L; the phone goes back above) and the line under them.
+ */
+export function StepCardActions({
+  action,
+  onBack,
+  note,
+}: {
+  action: ReactNode;
+  onBack?: (() => void) | undefined;
+  note?: string | undefined;
+}) {
+  return (
+    <div className="flex flex-col gap-3 md:items-start">
+      <div className="flex gap-3">
+        {onBack === undefined ? null : (
+          <Button variant="ghost" size="l" className="hidden md:inline-flex" onClick={onBack}>
+            Voltar
+          </Button>
+        )}
+        {action}
+      </div>
+      {note === undefined ? null : (
+        <p className="text-center type-body-s text-text-tertiary md:text-left">{note}</p>
+      )}
+    </div>
+  );
+}
+
+/** The card's frame: bg/surface, space/5 (space/8 on the desktop), radius/xl. */
+export const stepCardClassName =
+  "flex flex-col gap-5 rounded-xl border border-border-subtle bg-bg-surface p-5 md:gap-6 md:p-8";
+
 interface StepCardProps {
+  /** A result's Status (M) above the title (Em análise 301:3623 and the others of §5.2). */
+  status?: ReactNode;
   /** "Seus dados · 1 de 3", in Label/S above the title. */
   eyebrow?: string;
   title: string;
@@ -123,8 +159,8 @@ interface StepCardProps {
   /** A notice inside the card, under the title (the previous attempt's data). */
   notice?: ReactNode;
   children?: ReactNode;
-  /** The card's action: Botão/Inverso L, the width of the card on the phone. */
-  action: ReactNode;
+  /** The card's action, when it has one (a result waiting has none). */
+  action?: ReactNode;
   /** Desktop: "Voltar", the Botão/Fantasma L before the action; the phone goes back above. */
   onBack?: () => void;
   /** The line under the action, in Body/S. */
@@ -133,8 +169,9 @@ interface StepCardProps {
   onSubmit?: () => void;
 }
 
-/** Figma: Etapa, the card of a step: the header, the content and the action. */
+/** Figma: Etapa, the card of a step or of a result: the header, the content and the action. */
 export function StepCard({
+  status,
   eyebrow,
   title,
   description,
@@ -149,7 +186,14 @@ export function StepCard({
   const titleId = useId();
   const body = (
     <>
-      <div className="flex flex-col gap-2">
+      {/* A result's header (Status, title, text) opens to space/3 on the desktop. */}
+      <div
+        className={cn(
+          "flex flex-col gap-2",
+          status !== undefined && eyebrow === undefined && "md:gap-3",
+        )}
+      >
+        {status}
         {eyebrow === undefined ? null : (
           <p className="type-label-s text-text-tertiary">{eyebrow}</p>
         )}
@@ -169,23 +213,12 @@ export function StepCard({
       </div>
       {notice}
       {children}
-      <div className="flex flex-col gap-3 md:items-start">
-        <div className="flex gap-3">
-          {onBack === undefined ? null : (
-            <Button variant="ghost" size="l" className="hidden md:inline-flex" onClick={onBack}>
-              Voltar
-            </Button>
-          )}
-          {action}
-        </div>
-        {note === undefined ? null : (
-          <p className="text-center type-body-s text-text-tertiary md:text-left">{note}</p>
-        )}
-      </div>
+      {action === undefined ? null : (
+        <StepCardActions action={action} onBack={onBack} note={note} />
+      )}
     </>
   );
-  const className =
-    "flex flex-col gap-5 rounded-xl border border-border-subtle bg-bg-surface p-5 md:gap-6 md:p-8";
+  const className = stepCardClassName;
   if (onSubmit !== undefined) {
     return (
       <form

@@ -26,7 +26,7 @@ const retryDescription =
  * and come back to Seus dados with the acceptance (SPEC-015 §6).
  */
 export function TermsScreen({ atRoot = false }: { atRoot?: boolean }) {
-  const { producer } = useProducer();
+  const { producer, account } = useProducer();
   const { getToken } = useSession();
   const flow = useReceiving();
   const route = useStepRoute("terms", atRoot);
@@ -88,6 +88,7 @@ export function TermsScreen({ atRoot = false }: { atRoot?: boolean }) {
         shown: "terms",
         detail: "Agora",
         retry: flow.stage.retry,
+        accountStopped: account.stopped,
       })}
       notice={
         <>

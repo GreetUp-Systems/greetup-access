@@ -2,13 +2,12 @@
 
 import { Alert, AlertDescription, AlertTitle } from "@access/ui/components/alert";
 import { Button } from "@access/ui/components/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@access/ui/components/field";
-import { Input } from "@access/ui/components/input";
+import { Field, FieldError, FieldLabel } from "@access/ui/components/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@access/ui/components/input-group";
 import { NativeSelect, NativeSelectOption } from "@access/ui/components/native-select";
 import { LoaderCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { brazilianUfs, lookupCep } from "../../../_lib/producer/cep";
 import { digitsOnly, maskCep, maskCpf, maskDate, maskPhone } from "../../../_lib/producer/masks";
@@ -27,41 +26,10 @@ import { useProducer } from "../ProducerContext";
 import { StepCard, StepPage } from "./ReceivingFrame";
 import { useReceiving } from "./ReceivingProvider";
 import { ReceivingAccountNotice } from "./ReceivingResult";
+import { TextField } from "./TextField";
 import { useStepRoute } from "./useStepRoute";
 
 const PASSOS = 3;
-
-interface TextFieldProps extends Omit<ComponentProps<typeof Input>, "id" | "size"> {
-  id: string;
-  label: string;
-  /** The message under the field when something is wrong; replaces the help. */
-  error?: string | null;
-  help?: ReactNode;
-  className?: string;
-}
-
-/** Figma: Campo de texto M (44:232) with its label and the help or the error under it. */
-function TextField({ id, label, error, help, className, ...input }: TextFieldProps) {
-  const describedBy =
-    error !== null && error !== undefined ? `${id}-error` : help ? `${id}-help` : undefined;
-  return (
-    <Field className={className}>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        size="m"
-        aria-invalid={error !== null && error !== undefined ? true : undefined}
-        aria-describedby={describedBy}
-        {...input}
-      />
-      {error !== null && error !== undefined ? (
-        <FieldError id={`${id}-error`}>{error}</FieldError>
-      ) : help ? (
-        <FieldDescription id={`${id}-help`}>{help}</FieldDescription>
-      ) : null}
-    </Field>
-  );
-}
 
 type PersonalErrors = Partial<Record<keyof PersonalFields, FieldProblem>>;
 
@@ -446,7 +414,7 @@ function AddressPasso({ onContinue, onBack }: { onContinue: () => void; onBack: 
  * submission and taken out of the address; without it, back to the terms (Sem aceite).
  */
 export function DataScreen({ atRoot = false }: { atRoot?: boolean }) {
-  const { producer } = useProducer();
+  const { producer, account } = useProducer();
   const flow = useReceiving();
   const router = useRouter();
   const params = useSearchParams();
@@ -490,6 +458,7 @@ export function DataScreen({ atRoot = false }: { atRoot?: boolean }) {
         shown: "data",
         detail: `${passo} de ${PASSOS}`,
         retry: flow.stage.retry,
+        accountStopped: account.stopped,
       })}
       notice={atRoot ? <ReceivingAccountNotice /> : null}
       onBack={back}

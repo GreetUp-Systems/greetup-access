@@ -261,7 +261,7 @@ function SubmissionNotice() {
  * the selfie, and check and send. Each file goes to BlindPay as soon as it is chosen.
  */
 export function DocumentsScreen({ atRoot = false }: { atRoot?: boolean }) {
-  const { producer } = useProducer();
+  const { producer, account } = useProducer();
   const flow = useReceiving();
   const route = useStepRoute("documents", atRoot);
 
@@ -303,6 +303,7 @@ export function DocumentsScreen({ atRoot = false }: { atRoot?: boolean }) {
         shown: "documents",
         detail: `${passo} de ${total}`,
         retry: flow.stage.retry,
+        accountStopped: account.stopped,
       })}
       notice={
         <>

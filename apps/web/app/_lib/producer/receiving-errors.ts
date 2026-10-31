@@ -96,3 +96,26 @@ export function submissionProblem(error: unknown): SubmissionProblem {
   }
   return "failed";
 }
+
+/**
+ * `POST .../rfi`: 400 `invalid_rfi_response` naming a field is that field's error (Formato);
+ * 404 `rfi_not_found`, a request no longer open, is read again; the network, 503, 422
+ * `rfi_submission_failed` and the rest are Falha ao enviar, to try again with the same key.
+ */
+export type RfiSubmissionProblem =
+  { kind: "field"; field: string } | { kind: "gone" } | { kind: "failed" };
+
+export function rfiSubmissionProblem(error: unknown): RfiSubmissionProblem {
+  if (isApiError(error, 400, "invalid_rfi_response") && error instanceof ApiError) {
+    const body = error.body;
+    const field =
+      typeof body === "object" && body !== null && "field" in body ? body.field : undefined;
+    if (typeof field === "string" && field !== "") {
+      return { kind: "field", field };
+    }
+  }
+  if (isApiError(error, 404, "rfi_not_found")) {
+    return { kind: "gone" };
+  }
+  return { kind: "failed" };
+}

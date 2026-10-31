@@ -13,9 +13,10 @@ import { PageHeader } from "../PageHeader";
 import { useProducer } from "../ProducerContext";
 import { DataScreen } from "./DataScreen";
 import { DocumentsScreen } from "./DocumentsScreen";
-import { ReceivingHeader, StepProgress, StepsCard } from "./ReceivingFrame";
+import { StepProgress, StepsCard } from "./ReceivingFrame";
 import { useReceiving } from "./ReceivingProvider";
-import { ReceivingAccountNotice, ReceivingResult } from "./ReceivingResult";
+import { ReceivingAccountNotice, ReceivingResult, useReceivingResult } from "./ReceivingResult";
+import { RfiScreen } from "./RfiScreen";
 import { TermsScreen } from "./TermsScreen";
 
 /** The current step's card at the phone's root (501:5529, 520:5646, 520:5797, 520:5949). */
@@ -35,34 +36,27 @@ const summaries: Record<ReceivingStep, { title: string; description: string; ret
   },
 };
 
-/** The phone's top of the tab: its title and the avatar that opens the account. */
-function RootHeader() {
-  return (
-    <>
-      <div className="md:hidden">
-        <PageHeader title="Recebimento" description="Para onde vai o dinheiro das vendas" />
-      </div>
-      <ReceivingHeader />
-    </>
-  );
-}
-
 /**
  * `/producer/receiving` (SPEC-015 §6, R9). While configuring: on the phone the tab's root, with the
  * current step's card, "Continuar" and the Etapas list (Recebimento · Configuração, 501:5529); on
  * the desktop the Etapas list and the current step itself, at its first passo. Otherwise the result
- * of the verification, which part 3 builds.
+ * of the verification; with a request for information open, the desktop shows its first question.
  */
 export function ReceivingRootScreen() {
-  const { producer } = useProducer();
+  const { producer, account } = useProducer();
   const flow = useReceiving();
+  const result = useReceivingResult();
 
   if (!flow.stage.configuring) {
     return (
-      <div className="flex flex-col gap-5 md:gap-6">
-        <RootHeader />
+      <>
         <ReceivingResult />
-      </div>
+        {result === "rfi" ? (
+          <div className="hidden md:contents">
+            <RfiScreen atRoot />
+          </div>
+        ) : null}
+      </>
     );
   }
 
@@ -101,6 +95,7 @@ export function ReceivingRootScreen() {
             shown: current,
             detail: "Agora",
             retry: flow.stage.retry,
+            accountStopped: account.stopped,
           })}
         />
       </div>

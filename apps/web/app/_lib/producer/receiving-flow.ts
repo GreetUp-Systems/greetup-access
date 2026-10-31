@@ -1,6 +1,6 @@
 import type { IdDocumentType } from "../api/onboarding";
 import type { KycStatus, ProducerProfile } from "../api/producer";
-import type { SetupStepState } from "./dashboard";
+import { accountStep, type SetupStepState } from "./dashboard";
 import type { DocumentSlot } from "./receiving-data";
 
 // The configuration of the Recebimento (SPEC-015 §6, R9, R10): which step and passo the producer is
@@ -152,11 +152,15 @@ export function resolveRoute(
 /** The steps are five, the receiving account and the verification included (R9). */
 export const STEP_COUNT = 5;
 
+/** A page of the Recebimento with a step's progress: a step filled, or the verification's request. */
+export type ProgressStep = ReceivingStep | "verification";
+
 /** "Etapa N de 5" and the short name beside it, on the phone. */
-export const stepPosition: Record<ReceivingStep, { number: number; name: string }> = {
+export const stepPosition: Record<ProgressStep, { number: number; name: string }> = {
   terms: { number: 2, name: "Termos" },
   data: { number: 3, name: "Seus dados" },
   documents: { number: 4, name: "Documentos" },
+  verification: { number: 5, name: "Verificação" },
 };
 
 export interface ReceivingStepItem {
@@ -168,32 +172,21 @@ export interface ReceivingStepItem {
 
 /**
  * The Etapas list of the configuration (Figma 501:5529, 301:2818, 550:15088, 547:10491): the
- * receiving account follows the network; the step on the screen is the current one, with `detail`
- * ("Agora", or the passo on the desktop, "1 de 3"); the steps before it are done. A new attempt says
- * what comes back and what is sent again.
+ * receiving account follows the network (and its resume, `accountStopped`, R6); the step on the
+ * screen is the current one, with `detail` ("Agora", or the passo on the desktop, "1 de 3"); the
+ * steps before it are done. A new attempt says what comes back and what is sent again.
  */
 export function receivingSteps(
   producer: ProducerProfile,
   progress: ReceivingProgress,
-  { shown, detail, retry }: { shown: ReceivingStep; detail: string; retry: boolean },
+  {
+    shown,
+    detail,
+    retry,
+    accountStopped = false,
+  }: { shown: ReceivingStep; detail: string; retry: boolean; accountStopped?: boolean },
 ): ReceivingStepItem[] {
-  const stellar = producer.stellar.status;
-  const account: ReceivingStepItem =
-    stellar === "active"
-      ? { key: "account", title: "Conta de recebimento", state: "done", detail: "Pronta" }
-      : stellar === "failed"
-        ? {
-            key: "account",
-            title: "Conta de recebimento",
-            state: "error",
-            detail: "Não deu para preparar",
-          }
-        : {
-            key: "account",
-            title: "Conta de recebimento",
-            state: "in_progress",
-            detail: "Preparando…",
-          };
+  const account: ReceivingStepItem = accountStep(producer, accountStopped);
   const terms: ReceivingStepItem =
     shown === "terms"
       ? { key: "terms", title: "Termos da BlindPay", state: "current", detail }
