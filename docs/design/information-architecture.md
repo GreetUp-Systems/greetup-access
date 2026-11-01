@@ -61,9 +61,10 @@ com o menu: Perfil do produtor, Meus ingressos, Ir para o site e Sair.
 ### Celular: Barra de abas
 
 **Painel · Eventos · Recebimento.** O avatar no topo abre a conta numa folha, com os mesmos itens
-do menu. Perfil do produtor e as etapas do Recebimento (termos, dados, documentos) abrem como
-páginas internas, com voltar e sem abas. As rotas das etapas são as mesmas no desktop, que mostra a
-lista de etapas ao lado de cada uma.
+do menu. Perfil do produtor, as etapas do Recebimento (termos, dados, documentos) e o evento (os
+passos de criar, a página do evento e a edição de cada seção) abrem como páginas internas, com
+voltar e sem abas. As rotas são as mesmas no desktop, que mostra a lista de etapas ao lado de cada
+passo e a publicação ao lado da página do evento.
 
 ### Entrada
 
@@ -88,8 +89,9 @@ Sistema do produtor
 ├── /producer                  Painel                                   SPEC-015
 ├── /producer/start            Criar perfil (focado)                    SPEC-015
 ├── /producer/events           Eventos                                  SPEC-015
-├── /producer/events/new       Novo evento                              SPEC-015
-├── /producer/events/[id]      Editor, tipos de ingresso, publicação    SPEC-015
+├── /producer/events/new       Novo evento: o rascunho (3 passos)       SPEC-015
+├── /producer/events/[id]      Página do evento: resumo e publicação    SPEC-015
+│   └── /details               Detalhes do evento (4 passos)            SPEC-015
 ├── /producer/receiving        Recebimento (etapa atual ou resultado)   SPEC-015
 │   ├── /terms                 Termos da BlindPay                       SPEC-015
 │   ├── /data                  Seus dados (3 passos)                    SPEC-015

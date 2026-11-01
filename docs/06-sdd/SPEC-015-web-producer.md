@@ -2,14 +2,16 @@
 
 > **Status:** aprovada em 07/10/2026
 >
-> **Versão:** 1.8 (formulários do Recebimento em passos curtos, sem rolar, e o CEP preenchendo o
+> **Versão:** 1.9 (Evento em passos curtos, sem rolar: o rascunho em 3 passos, os detalhes em 4 e a
+> página do evento com o resumo por seção e a publicação, E4–E7; a capa no cartaz do celular); 1.8
+> (formulários do Recebimento em passos curtos, sem rolar, e o CEP preenchendo o
 > endereço, R10); 1.7 (fecho da 15C: confirmação pelo webhook, textos do Figma, as mesmas rotas no
 > desktop, fila de ativação por confirmação, arquivos até 3 MB, os 82 quadros e o mapa de erros);
 > 1.6 (decisões da 15C, R1–R9); 1.5 (15C: Criar perfil leva ao Painel quem já tem perfil; 15D: a
 > capa no cartaz da página do evento, vinda da SPEC-016 S21; 1.4: estados do sistema, Eventos e
 > Perfil aprovados no Figma)
 >
-> **Atualizada em:** 30/10/2026
+> **Atualizada em:** 01/11/2026
 >
 > **Depende de:** SPEC-003 (onboarding do produtor), SPEC-004 (eventos), SPEC-005 (compras),
 > SPEC-014 (base do web, identificação, assinatura no navegador), SPEC-016 16A (moldura do site, antes
@@ -85,6 +87,15 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 | R9  | O Recebimento no celular tem a raiz da aba (as etapas e o resultado) e páginas internas para Termos, Seus dados e Documentos (`/producer/receiving/terms`, `/data`, `/documents`), com voltar e sem abas; a trilha "Perfil e conta" do desktop sai, porque Recebimento é item da navegação. As mesmas rotas valem no desktop, que mostra a lista e a etapa em cada uma (v1.7).                                                                                                                                        |
 | R10 | Formulário cabe na tela sem rolar, em passos curtos (padrão de usabilidade do guia de design, 30/10/2026): Seus dados em 3 passos (quem é você, telefone, endereço), Documentos uma tela por item (escolher, frente, verso, selfie, conferir e enviar) e o pedido de informações uma pergunta por tela, que no celular abre como página interna (`/producer/receiving/rfi`). O CEP preenche rua, cidade e estado pelo ViaCEP, consultado do navegador: só o CEP sai.                                                  |
 
+### Decisões da 15D (01/11/2026)
+
+| #   | Decisão                                                                                                                                                                                                                                                                                                                                                |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| E4  | Evento em passos curtos, sem rolar (o padrão da R10): o rascunho nasce em 3 passos (nome e categoria, data e horário, capacidade) e os detalhes seguem em 4 (local, capa, tipos de ingresso, descrição e reembolso), cada um gravado no "Continuar" e podendo ficar para depois. Substitui o editor de página única.                                   |
+| E5  | A página do evento é o resumo por seção, com "Editar" em cada uma, e a publicação: no desktop, o cartão "Publicação" ao lado; no celular, "Publicar evento" na barra de baixo abre a confirmação numa folha. O publicado segue no mesmo resumo, editável dentro da SPEC-004 §5, com "À venda" e "Vendas".                                              |
+| E6  | O requisito da verificação diz o estado do produtor e, quando há o que fazer, leva ao Recebimento (§6).                                                                                                                                                                                                                                                |
+| E7  | Na página pública do evento no celular, a capa entra num cartão 16:9 com cantos arredondados abaixo da barra superior, como o cartaz do desktop; sem capa, a arte da marca. A capa se troca, mas não se remove pela interface; o resumo mostra a miniatura e "Enviada", porque a API não guarda o nome do arquivo. Apagar e cancelar seguem fora (P6). |
+
 ## 4. Entregas
 
 | Parte | Conteúdo                                                                                                                                                                                          |
@@ -92,9 +103,10 @@ ser validada (§11). O site público (vitrine, busca, Para produtores, Conta) é
 | 15A   | Backend: tentativa atual na BlindPay, preço mínimo na visão do evento, vendidos e vendas por evento, resumo de vendas e vendas recentes; capa (R2), categoria e cidade no evento; base de cidades |
 | 15B   | Esqueleto: layout do sistema, barra lateral, Barra de abas, conta (menu e folha), Painel (todos os estados), Eventos, Perfil do produtor, logo no tema                                            |
 | 15C   | Criar perfil (focado) e Recebimento: conta de recebimento, termos, dados, documentos e resultados da verificação                                                                                  |
-| 15D   | Evento: novo, editor (capa, categoria e cidade), tipos de ingresso, publicar e publicado; a capa no cartaz da página do evento (SPEC-016 S21)                                                     |
+| 15D   | Evento: criar em passos (rascunho e detalhes), página do evento com edição por seção, tipos de ingresso, publicar e publicado; a capa no cartaz da página do evento (SPEC-016 S21)                |
 
-Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. Ordem: 15A → 15B → SPEC-016
+Cada parte é um PR próprio, com a conferência visual 360/1440 registrada; a 15D vai em dois, o evento
+no sistema do produtor e a capa no cartaz da página pública. Ordem: 15A → 15B → SPEC-016
 16A (moldura do site) → SPEC-014 9D (Meus ingressos, já na moldura) → 15C → 15D → validação real
 (§11). O resto da SPEC-016 vem depois da validação.
 
@@ -186,12 +198,25 @@ Cada parte é um PR próprio, com a conferência visual 360/1440 registrada. Ord
 | Aprovada · Conta a caminho                           | `/producer/receiving`                   | `501:5385`  | `498:4248`  |
 | Recebimento · Pronto                                 | `/producer/receiving`                   | `302:5084`  | `301:4372`  |
 | Recebimento · Conta com erro                         | `/producer/receiving`                   | `302:5193`  | `301:4545`  |
-| Evento · Novo                                        | `/producer/events/new`                  | `305:5869`  | `303:4935`  |
-| Evento · Rascunho                                    | `/producer/events/[id]`                 | `305:6053`  | `303:5237`  |
-| Evento · Tipo de ingresso                            | sobreposição                            | `305:6304`  | `304:5854`  |
-| Evento · Publicar bloqueado                          | `/producer/events/[id]`                 | `305:6381`  | `304:5217`  |
-| Evento · Publicado                                   | `/producer/events/[id]`                 | `305:6633`  | `304:5507`  |
-| Página do evento com a capa (página "Site público")  | `/e/[slug]`                             | a desenhar  | `387:4114`  |
+| Evento · Novo · 1 Nome e categoria                   | `/producer/events/new`                  | `586:10877` | `586:11098` |
+| Evento · Novo · 2 Data e horário                     | `/producer/events/new?passo=2`          | `587:11157` | `587:11387` |
+| Novo · 2 Data e horário · Início no passado          | `/producer/events/new?passo=2`          | `595:14202` | `595:14275` |
+| Evento · Novo · 3 Capacidade                         | `/producer/events/new?passo=3`          | `587:11300` | `587:11593` |
+| Evento · Detalhes · 1 Local                          | `/producer/events/[id]/details`         | `588:11433` | `588:11718` |
+| Detalhes · 1 Local · Buscando a cidade               | `/producer/events/[id]/details`         | `588:11602` | `588:11959` |
+| Evento · Detalhes · 2 Capa                           | `/producer/events/[id]/details?passo=2` | `590:11793` | `590:12190` |
+| Detalhes · 2 Capa · Erro no arquivo                  | `/producer/events/[id]/details?passo=2` | `590:11903` | `590:12385` |
+| Evento · Detalhes · 3 Tipos de ingresso              | `/producer/events/[id]/details?passo=3` | `590:11998` | `590:12568` |
+| Evento · Detalhes · 4 Descrição e reembolso          | `/producer/events/[id]/details?passo=4` | `590:12104` | `590:12782` |
+| Evento · Tipo de ingresso                            | sobreposição                            | `594:12889` | `594:13318` |
+| Tipo de ingresso · Preço abaixo do mínimo            | sobreposição                            | `594:13040` | `594:13557` |
+| Tipo de ingresso · Quantidade acima da capacidade    | sobreposição                            | `594:13181` | `594:13796` |
+| Evento · Rascunho (resumo e publicação)              | `/producer/events/[id]`                 | `591:12345` | `591:12579` |
+| Evento · Editar uma seção (Data e horário)           | `/producer/events/[id]?editar=data`     | `593:12739` | `593:12840` |
+| Evento · Publicar (confirmação)                      | sobreposição                            | `595:13523` | —           |
+| Evento · Publicar bloqueado                          | `/producer/events/[id]`                 | `595:13689` | `595:13914` |
+| Evento · Publicado                                   | `/producer/events/[id]`                 | `592:12539` | `592:12678` |
+| Página do evento com a capa (Compra e Site público)  | `/e/[slug]`                             | `600:3351`  | `387:4114`  |
 
 ### 5.3 Componentes
 
@@ -345,37 +370,102 @@ rfi_submission_failed`, Falha ao enviar.
 
 ### Evento
 
-- **Novo evento:** nome, categoria, descrição, início e término opcional (data e hora de Brasília,
-  enviadas em ISO 8601 com o offset de `America/Sao_Paulo`), local, cidade, endereço, capacidade e
-  política de reembolso. "Criar rascunho" chama `POST /api/events` e abre o editor. O cartão "Antes
-  de publicar" lista os requisitos.
+- **Rotas e passos (E4):** `/producer/events/new` cria o rascunho em 3 passos (`?passo=2` e
+  `?passo=3`): nome e categoria; data e horário; capacidade. `/producer/events/[id]/details`
+  completa os detalhes em 4 (`?passo=2` a `?passo=4`): local; capa; tipos de ingresso; descrição e
+  reembolso. `/producer/events/[id]` é a página do evento, e `?editar=<seção>` abre a edição de uma
+  seção (`nome`, `data`, `capacidade`, `local`, `capa`, `ingressos` ou `descricao`). Cada passo e
+  cada edição é uma entrada no histórico, como no Recebimento: o voltar do navegador e do celular
+  volta um passo sem perder o que foi preenchido. No celular, página interna com voltar e "Etapa N
+  de 3" com o progresso; no desktop, a lista Etapas (Rascunho, Detalhes e Publicação) ao lado. Um
+  passo ainda não liberado volta ao primeiro pendente.
+- **Criar o rascunho:** os 3 passos ficam na memória da página. "Criar rascunho" chama
+  `POST /api/events`, com início e término em data e hora de Brasília enviados em ISO 8601 com o
+  offset de `America/Sao_Paulo`, e abre o primeiro passo dos detalhes com o toast "Rascunho criado.
+  O resto pode ficar para depois.". Criação e detalhes são um fluxo só na memória: voltar dos
+  detalhes à criação mostra o que foi salvo, e o último passo da criação passa a dizer "Continuar" e
+  grava as mudanças (`PATCH`), sem criar outro rascunho. Recarregar na criação volta ao primeiro
+  passo, vazio, como no Recebimento; nos detalhes, os valores vêm de `GET /api/events/:id`.
+- **Detalhes:** cada passo grava no "Continuar" (`PATCH /api/events/:id`, só o que mudou) e pode
+  ficar vazio. Local: local, cidade e endereço ("Rua e número."). Capa. Tipos de ingresso: a lista,
+  "Adicionar tipo de ingresso" e "N de M lugares nos tipos". Descrição (até 5.000 caracteres) e
+  política de reembolso (até 2.000). O último "Continuar" abre a página do evento.
 - **Cidade:** campo de busca com sugestões de `GET /api/cities?query=` (a partir de 2 letras, sem
-  acento, 10 resultados, "Nome, UF"); guarda o código do IBGE.
-- **Capa:** seção no topo do editor (Envio de capa). Escolhida a imagem, o navegador confere tipo e
-  tamanho, pede a URL (`POST .../cover/upload-url`), envia direto ao R2 com progresso e confirma
-  (`PUT .../cover`); trocar repete o fluxo; remover, só no rascunho, chama `DELETE .../cover` (o
-  evento publicado troca a capa, mas não fica sem ela). Erro de tipo, tamanho ou envio vira o estado
-  Erro, com "Escolher outro arquivo".
-- **Editor:** caminho "Eventos › nome", status e as ações no cabeçalho ("Salvar alterações" e
-  "Publicar evento"; no celular, na Barra de ações). Seções em cartões: Capa, Sobre o evento (nome,
-  categoria, descrição), Data e local (início, término, local, cidade, endereço), Ingressos e
-  Reembolso; tipos de ingresso em tabela (tipo, preço, quantidade e menu); "Adicionar tipo de
-  ingresso" e o menu do tipo abrem a janela do tipo (nome, descrição opcional, preço em reais,
-  quantidade), com `POST` ou `PATCH .../ticket-types`. O preço mostra o mínimo
-  (`ticketMinPriceCents`) e a frase da taxa (P5).
-- **Publicar:** o cartão "Publicação" lista os requisitos (verificação aprovada, capa, ao menos um
-  tipo, data no futuro, tipos dentro da capacidade, categoria e cidade). Cumpridos, "Publicar evento"
-  chama `POST /api/events/:id/publish`; senão, o botão fica desabilitado com o motivo.
-- **Publicado:** "Ver página" no cabeçalho; cartões "À venda" (link `<origem do app>/e/<slug>` e
-  "Copiar link") e "Vendas" (vendidos de capacidade e receita).
-- **Página do evento (SPEC-016 S21):** o cartaz de `/e/[slug]` mostra a capa (`coverUrl`, cortada
-  no centro), no desktop e no celular, com a arte da marca quando não há capa. O quadro do celular
-  com a capa entra no Figma antes do código.
-- **Erros da API → tela:** `422 ticket_price_below_minimum` (com `minimumCents`), `422
-ticket_quantity_exceeds_capacity`, `422 event_starts_in_past`, `422 event_not_publishable` (com o
-  requisito que falta) e `400 invalid_event` / `invalid_ticket_type` viram o erro do campo; `422
-invalid_cover` vira o estado Erro da capa; `409 producer_not_ready` volta ao Publicar bloqueado;
-  falha de rede e `503 cover_storage_unavailable`, toast de erro com "Tentar de novo".
+  acento, 10 resultados, "Nome, UF"); guarda o código do IBGE e se troca, mas não se apaga (§8).
+- **Capa:** escolhida a imagem, o navegador confere tipo e tamanho (JPG, PNG ou WebP até 5 MB), pede
+  a URL (`POST .../cover/upload-url`), envia direto ao R2 com progresso e confirma
+  (`PUT .../cover`) na hora, sem esperar o "Continuar"; "Trocar" repete o fluxo. Erro de tipo,
+  tamanho ou envio vira Erro no arquivo, com "Escolher outro arquivo". A interface não remove a capa
+  (E7).
+- **Tipos de ingresso:** "Adicionar tipo de ingresso" e o tipo (no celular, a linha; no desktop, o
+  "⋯" com Editar) abrem a janela do tipo, em folha no celular: nome, descrição opcional, preço em
+  reais e quantidade, gravados com `POST` ou `PATCH .../ticket-types`. O preço mostra o mínimo
+  (`ticketMinPriceCents`) e a frase da taxa (P5); a quantidade mostra o que cabe ("Até N pela
+  capacidade.": a capacidade menos os outros tipos), também no rascunho.
+- **Página do evento (E5):** o status no cabeçalho e o resumo por seção, cada uma com "Editar": nome
+  e categoria; data e horário; capacidade; local; capa (miniatura e "Enviada"); tipos de ingresso
+  ("N tipos · N de M lugares"); descrição e reembolso. Seção vazia diz o que falta, e a exigida para
+  publicar acrescenta "obrigatória para publicar" (capa: "Falta enviar · obrigatória para
+  publicar").
+- **Editar uma seção:** os campos do passo correspondente, sob "Editar". No celular, página interna
+  com voltar e "Salvar"; no desktop, no lugar do resumo, com "Cancelar" e "Salvar", e a publicação
+  ao lado. "Salvar" grava (`PATCH`) e volta ao resumo; "Cancelar" e o voltar descartam. Capa e Tipos
+  de ingresso gravam na hora (o envio e a janela do tipo), e o botão é "Concluir". No publicado, as
+  regras da SPEC-004 §5 valem: início sempre no futuro, capacidade não abaixo da soma dos tipos e
+  quantidade não abaixo do vendido.
+- **Publicação:** os requisitos são verificação aprovada, capa do evento, categoria e cidade, pelo
+  menos um tipo de ingresso, data no futuro e tipos dentro da capacidade ("N de M lugares").
+  Cumpridos, o cabeçalho diz "Pronto para publicar" e "Todos os requisitos estão cumpridos."; senão,
+  "Faltam N itens para publicar" (ou "Falta 1 item") com os itens, e o botão fica desabilitado com o
+  motivo ("Falta a verificação ser aprovada e a capa do evento."). O item que se resolve no próprio
+  evento leva à seção (capa: "Enviar capa" → `?editar=capa`). Desktop: o cartão "Publicação" ao
+  lado do resumo, com "Publicar evento"; celular: "Publicar evento" na barra de baixo abre a folha
+  de confirmação com os requisitos. Os dois avisam "Publicado, o evento não volta a ser rascunho e
+  os tipos de ingresso não podem mais ser apagados.". "Publicar evento" chama
+  `POST /api/events/:id/publish`.
+- **Requisito da verificação (E6),** pelo produtor (`GET /api/producers/me`), na ordem da tabela:
+
+| Estado                                                        | Linha                             | Detalhe                                           | Ação                                 |
+| ------------------------------------------------------------- | --------------------------------- | ------------------------------------------------- | ------------------------------------ |
+| `onboardingStatus` `ready`                                    | Verificação aprovada              | —                                                 | —                                    |
+| `stellar.status` `failed`                                     | Conta de recebimento com erro     | Prepare a conta de novo no Recebimento.           | "Resolver" → `/producer/receiving`   |
+| `compliance.status` `compliance_request`                      | Pedido de informações da BlindPay | Responda para a verificação seguir.               | "Responder" → `/producer/receiving`  |
+| `compliance.status` `rejected`                                | Verificação recusada              | Corrija os dados e envie de novo.                 | "Corrigir" → `/producer/receiving`   |
+| `compliance.status` `verifying`                               | Verificação em análise            | Publicar fica liberado quando a BlindPay aprovar. | —                                    |
+| verificação aprovada, conta a caminho ou carteira registrando | Liberando o recebimento           | Publicar fica liberado em instantes.              | —                                    |
+| sem envio (`compliance.status` nulo)                          | Verificação pendente              | Termine a configuração do recebimento.            | "Configurar" → `/producer/receiving` |
+
+- **Motivo do botão desabilitado:** a verificação entra como "a verificação ser aprovada"; Liberando,
+  como "o recebimento ser liberado"; Conta com erro, como "a conta de recebimento ficar pronta". Os
+  outros itens: "a capa do evento", "a categoria e a cidade" (ou só a que falta), "um tipo de
+  ingresso", "uma data no futuro" e "os tipos caberem na capacidade".
+- **Publicado:** status "Publicado" e a mesma página, editável; "Ver página" (no desktop, no
+  cabeçalho; no celular, na barra de baixo, com "Copiar link"); cartões "À venda" (link
+  `<origem do app>/e/<slug>` e "Copiar link", com "Link copiado") e "Vendas" (vendidos de capacidade
+  e receita, com `soldTickets` e `salesCents` de `GET /api/events`).
+- **Validação, ao sair do campo e no "Continuar":** nome ("Escreva o nome do evento.") e categoria
+  ("Escolha uma categoria.") obrigatórios; data DD/MM/AAAA e horário HH:MM com máscara ("Data
+  inválida. Use DD/MM/AAAA." e "Horário inválido. Use HH:MM."); início obrigatório e no futuro ("Já
+  passou. Use uma data futura."); término opcional, com data e horário juntos e depois do início ("O
+  término precisa ser depois do início."); capacidade inteira a partir de 1 ("Informe quantas
+  pessoas o evento comporta."), e no publicado não abaixo da soma dos tipos ("Os tipos já somam N
+  lugares. Use N ou mais."); tipo com nome ("Escreva o nome do tipo."), preço a partir do mínimo ("O
+  mínimo é R$ 60,00.", com o valor da API) e quantidade de 1 até o que cabe ("Passa da capacidade:
+  use até N.").
+- **Erros da API → tela:** `422 ticket_price_below_minimum` (com `minimumCents`),
+  `422 ticket_quantity_exceeds_capacity`, `422 event_starts_in_past`, `422 event_ends_before_start`,
+  `409 ticket_quantity_below_committed` ("Não pode ficar abaixo do que já foi vendido ou
+  reservado.") e `400 invalid_event` / `invalid_ticket_type` viram o erro do campo;
+  `422 invalid_cover` vira Erro no arquivo da capa; `422 event_not_publishable` e
+  `422 event_without_ticket_types` releem o evento e mostram o que falta; `409 producer_not_ready`
+  relê o produtor e volta ao Publicar bloqueado; falha de rede, `5xx` e
+  `503 cover_storage_unavailable`, toast de erro com "Tentar de novo".
+- **Página pública do evento (SPEC-016 S21, E7):** o cartaz de `/e/[slug]` mostra a capa (`coverUrl`,
+  cortada no centro): no desktop, o cartaz de 740 × 440 (`387:4114`); no celular, um cartão 16:9
+  com `radius/xl` abaixo da barra superior (`600:3351`). Sem capa, a arte da marca, como hoje.
+- **Limitação conhecida:** os `POST` de evento e de tipo de ingresso não têm chave de idempotência;
+  repetir um envio que ficou sem resposta pode criar um rascunho ou um tipo em dobro, que a interface
+  não apaga (P6).
 
 ## 7. Regras (critérios de aceite)
 
@@ -468,7 +558,9 @@ tokens novos (P8) entram no snapshot `packages/ui/tokens/figma-tokens.json` na 1
   etapa e de cada passo; CPF, máscaras, nascimento → ISO e telefone +55; CEP → endereço (achado,
   não achado e falha); regras e redução de arquivos; campos e estado do RFI e a divisão em
   perguntas; fila de ativação (R7); data e hora de Brasília → ISO; preço em reais ↔ centavos;
-  validação da capa no navegador; erros da API → tela e estado do campo (§6).
+  validação da capa no navegador; o que cabe na capacidade; requisitos de publicação, a linha da
+  verificação por estado (E6) e o motivo; o resumo de cada seção; erros da API → tela e estado do
+  campo (§6).
 - **Ponta a ponta (Playwright, API simulada):** navegação pela barra lateral (aberta e recolhida) e
   pelas abas; menu e folha da conta com "Sair" e com a ida ao site; sem perfil → criar
   perfil → conta de recebimento (assinatura simulada e erro); com perfil, `/producer/start` → Painel;
@@ -477,9 +569,11 @@ tokens novos (P8) entram no snapshot `packages/ui/tokens/figma-tokens.json` na 1
   nenhum formulário rola em 360 × 780 e 1440 × 900; envio em processamento,
   recusado e com falha; em análise, pendência com resposta e prazo encerrado, recusado com nova
   tentativa preenchida e sem motivo, conta a caminho, liberando (e a falha), pronto e conta com erro;
-  as mesmas rotas no desktop e no celular; Painel em todos os estados; Eventos; criar rascunho com
-  cidade e categoria, capa (envio, erro e troca), tipo abaixo do mínimo, publicar bloqueado, publicar
-  e link do publicado; a página do evento com a capa e sem ela.
+  as mesmas rotas no desktop e no celular; Painel em todos os estados; Eventos; criar o rascunho em
+  3 passos (com o início no passado) e os detalhes em 4 (cidade, capa com envio, erro e troca, tipo
+  abaixo do mínimo e acima da capacidade); voltar dos detalhes à criação sem outro rascunho; editar
+  uma seção; publicar bloqueado por estado da verificação; publicar, com a confirmação no celular, e
+  o link do publicado; a página pública do evento com a capa e sem ela.
 - **Conferência visual:** cada tela do §5 em 360 e 1440 (e o Painel no modo claro), registrada no PR.
 
 ## 11. Validação real
@@ -511,7 +605,8 @@ a ponta da SPEC-005.
 - [x] 15B: esqueleto e Painel com conferência visual em 360/1440 e modo claro (PR #31, 09/10/2026).
 - [x] SPEC-016 16A (moldura do site) e SPEC-014 9D (Meus ingressos) no ar, logo depois da 15B
       (PR #33, 11/10/2026, e PR #34, 12/10/2026).
-- [ ] 15C: Criar perfil e Recebimento com conferência visual.
+- [x] 15C: Criar perfil e Recebimento com conferência visual (PRs #39, #40 e #41, de 30/10 a
+      01/11/2026).
 - [ ] 15D: Evento com conferência visual.
 - [ ] Build, lint, typecheck, unitários, integração e ponta a ponta passam.
 - [ ] Validação real executada (§11).

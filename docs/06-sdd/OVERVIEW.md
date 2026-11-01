@@ -46,8 +46,8 @@ O desenvolvimento avança com **uma SPEC ativa por vez**:
 4. a próxima SPEC permanece bloqueada até build, lint, typecheck e testes da etapa ativa passarem;
 5. decisões futuras não são antecipadas no schema, nas abstrações nem nas variáveis de ambiente.
 
-**SPEC ativa:** [`SPEC-015 — App web · Produtor`](./SPEC-015-web-producer.md), parte 15C, a próxima
-da sequência do app web: SPEC-015 15A e 15B, SPEC-016 16A e SPEC-014 9D prontas → 15C → 15D →
+**SPEC ativa:** [`SPEC-015 — App web · Produtor`](./SPEC-015-web-producer.md), parte 15D, a próxima
+da sequência do app web: SPEC-015 15A, 15B e 15C, SPEC-016 16A e SPEC-014 9D prontas → 15D →
 validação real → 16B a 16D. Os smokes que dependem da assinatura do usuário (3C da
 SPEC-003 e ponta a ponta da SPEC-005) são validados pelo app web. Production usa o mesmo modelo de
 signer (D-24) e fica liberada só na etapa explícita de habilitação de Pubnet/USDC.
@@ -138,7 +138,7 @@ snapshot assinado, sincronização, conflito) e recebimento em USDC na Stellar v
 | SPEC-012 dashboard       | Reduzir: polling em vez de WebSocket                                                                                                                                                                                                                                                                                                                                                   |
 | SPEC-013 pipeline        | Reduzir: sem OpenTelemetry, Grafana ou deploy multi-sig                                                                                                                                                                                                                                                                                                                                |
 | SPEC-014 web purchase    | **9A a 9D implementadas** (9D em 12/10/2026, PR #34, M1–M13); falta a validação real na Testnet, depois da 15C e da 15D — [nova versão](./SPEC-014-web-purchase.md)                                                                                                                                                                                                                    |
-| SPEC-015 web producer    | **Em implementação (v1.7):** sistema do produtor; 15A (backend) pronta em 08/10/2026 e 15B (esqueleto e Painel) em 09/10/2026; 15C em curso (o backend vem da SPEC-003 v1.8); a seguir 15D → validação real — [SPEC](./SPEC-015-web-producer.md)                                                                                                                                       |
+| SPEC-015 web producer    | **Em implementação (v1.9):** sistema do produtor; 15A (backend) pronta em 08/10/2026, 15B (esqueleto e Painel) em 09/10/2026 e 15C (Criar perfil e Recebimento) em 01/11/2026, PRs #39 a #41; 15D (evento em passos) em curso; a seguir a validação real — [SPEC](./SPEC-015-web-producer.md)                                                                                          |
 | SPEC-016 web public site | **Em implementação (v1.1):** site público; 16A (moldura, Conta e a página do evento com o cabeçalho do site) pronta em 11/10/2026 (PR #33); 16B a 16D depois da validação da SPEC-015 — [SPEC](./SPEC-016-web-public-site.md)                                                                                                                                                          |
 
 As SPECs serão reescritas **no momento de implementar cada bloco**, não antes. Identidade e Q-03
