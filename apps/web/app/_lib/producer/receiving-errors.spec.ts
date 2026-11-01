@@ -4,6 +4,7 @@ import {
   fileProblemFromUpload,
   fileProblemMessage,
   profileProblem,
+  rfiSubmissionProblem,
   submissionProblem,
 } from "./receiving-errors";
 
@@ -71,5 +72,34 @@ describe("submissionProblem (POST .../customer)", () => {
     expect(submissionProblem(api(503, "compliance_provider_unavailable"))).toBe("failed");
     expect(submissionProblem(api(0, "network_error"))).toBe("failed");
     expect(submissionProblem(api(409, "something_else"))).toBe("failed");
+  });
+});
+
+describe("rfiSubmissionProblem (POST .../rfi)", () => {
+  const invalid = (body: unknown): ApiError => new ApiError(400, "invalid_rfi_response", "", body);
+
+  it("turns a field the API refused into that field's error", () => {
+    expect(
+      rfiSubmissionProblem(invalid({ code: "invalid_rfi_response", field: "website" })),
+    ).toEqual({ kind: "field", field: "website" });
+  });
+
+  it("reads again a request no longer open", () => {
+    expect(rfiSubmissionProblem(api(404, "rfi_not_found"))).toEqual({ kind: "gone" });
+  });
+
+  it("offers to try again on anything else, a 400 without a field included", () => {
+    for (const error of [
+      invalid({ code: "invalid_rfi_response" }),
+      invalid({ code: "invalid_rfi_response", field: "" }),
+      invalid(null),
+      api(422, "rfi_submission_failed"),
+      api(503, "compliance_provider_unavailable"),
+      api(0, "network_error"),
+      api(404, "blindpay_customer_not_found"),
+      new Error("unexpected"),
+    ]) {
+      expect(rfiSubmissionProblem(error)).toEqual({ kind: "failed" });
+    }
   });
 });

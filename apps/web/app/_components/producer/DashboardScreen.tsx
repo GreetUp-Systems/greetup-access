@@ -200,7 +200,7 @@ function PeriodMenu({
  * evento (299:3865), Vendas pausadas (297:2973) and Pedido de informações (297:3517). SPEC-015 §6.
  */
 export function DashboardScreen() {
-  const { producer, events, reloadEvents } = useProducer();
+  const { producer, events, reloadEvents, account } = useProducer();
   const [period, setPeriod] = useState<SalesPeriod>("30d");
   const [, setMinute] = useState(0);
 
@@ -276,6 +276,7 @@ export function DashboardScreen() {
             steps={setupSteps(producer, {
               termsAccepted: readAcceptedTerms(producer.id) !== null,
               rfiDeadline: deadline === null ? null : formatShortDayMonth(deadline),
+              accountStopped: account.stopped,
             })}
           />
           <MeanwhileCard className="md:w-dashboard-aside md:shrink-0" />

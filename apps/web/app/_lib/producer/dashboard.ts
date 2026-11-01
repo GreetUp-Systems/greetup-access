@@ -78,34 +78,42 @@ export interface SetupStep {
 }
 
 /**
- * The setup of the Painel (Configuração pendente, 298:3589), the Recebimento steps as the API
- * knows them: the terms count as accepted once the BlindPay customer exists, or when the flow kept
- * the acceptance; data and documents only exist once sent. `rfiDeadline` is "3 nov".
+ * The receiving account's step: ready, being prepared, or not prepared, when it failed or its
+ * resume in the background gave up (`stopped`, SPEC-015 R3 and R6), as the notice above says.
+ */
+export function accountStep(producer: ProducerProfile, stopped = false): SetupStep {
+  const stellar = producer.stellar.status;
+  const step = (state: SetupStepState, detail: string): SetupStep => ({
+    key: "account",
+    title: "Conta de recebimento",
+    state,
+    detail,
+  });
+  if (stellar === "active") {
+    return step("done", "Pronta");
+  }
+  return stellar === "failed" || stopped
+    ? step("error", "Não deu para preparar")
+    : step("in_progress", "Preparando…");
+}
+
+/**
+ * The setup of the Painel (Configuração pendente, 298:3589 and 298:4040), the Recebimento steps
+ * as the API knows them: the terms count as accepted once the BlindPay customer exists, or when
+ * the flow kept the acceptance; data and documents only exist once sent. `rfiDeadline` is "3 nov";
+ * `accountStopped`, the resume of the receiving account that gave up (R6).
  */
 export function setupSteps(
   producer: ProducerProfile,
-  { termsAccepted, rfiDeadline }: { termsAccepted: boolean; rfiDeadline: string | null },
+  {
+    termsAccepted,
+    rfiDeadline,
+    accountStopped = false,
+  }: { termsAccepted: boolean; rfiDeadline: string | null; accountStopped?: boolean },
 ): SetupStep[] {
   const kyc = producer.compliance.status;
   const sent = kyc !== null;
-  const stellar = producer.stellar.status;
-
-  const account: SetupStep =
-    stellar === "active"
-      ? { key: "account", title: "Conta de recebimento", state: "done", detail: "Pronta" }
-      : stellar === "failed"
-        ? {
-            key: "account",
-            title: "Conta de recebimento",
-            state: "error",
-            detail: "Não deu para preparar",
-          }
-        : {
-            key: "account",
-            title: "Conta de recebimento",
-            state: "in_progress",
-            detail: "Preparando…",
-          };
+  const account = accountStep(producer, accountStopped);
   const termsDone = sent || termsAccepted;
   const terms: SetupStep = termsDone
     ? { key: "terms", title: "Termos da BlindPay", state: "done", detail: "Aceitos" }
@@ -129,7 +137,8 @@ export function setupSteps(
   return [account, terms, data, documents, verificationStep(producer, rfiDeadline)];
 }
 
-function verificationStep(producer: ProducerProfile, rfiDeadline: string | null): SetupStep {
+/** The Verificação step, as the Recebimento's Etapas show it (§5.2). */
+export function verificationStep(producer: ProducerProfile, rfiDeadline: string | null): SetupStep {
   const step = (state: SetupStepState, detail: string): SetupStep => ({
     key: "verification",
     title: "Verificação",
@@ -148,12 +157,15 @@ function verificationStep(producer: ProducerProfile, rfiDeadline: string | null)
   }
   switch (status) {
     case null:
-      return step("pending", "Costuma levar poucos minutos");
+      return step("pending", "Depois do envio");
     case "verifying":
       return step("in_progress", "Em análise");
     case "rejected":
       return step("error", "Recusada");
     default:
-      return step("in_progress", "Liberando o recebimento…");
+      // Approved: BlindPay's wallet is being registered, or the account is still on its way.
+      return producer.onboardingStatus === "wallet_registration_pending"
+        ? step("in_progress", "Liberando o recebimento…")
+        : step("done", "Aprovada");
   }
 }

@@ -91,7 +91,7 @@ describe("setupSteps", () => {
       "current:Agora",
       "pending:Nome, CPF e endereço",
       "pending:Documento com foto e selfie",
-      "pending:Costuma levar poucos minutos",
+      "pending:Depois do envio",
     ]);
   });
 
@@ -101,7 +101,7 @@ describe("setupSteps", () => {
       "done:Aceitos",
       "current:Nome, CPF e endereço",
       "pending:Documento com foto e selfie",
-      "pending:Costuma levar poucos minutos",
+      "pending:Depois do envio",
     ]);
   });
 
@@ -125,6 +125,37 @@ describe("setupSteps", () => {
         { onboardingStatus: "wallet_registration_pending" },
       )[4],
     ).toBe("in_progress:Liberando o recebimento…");
+  });
+
+  it("reads the verification as the Recebimento's Etapas do once it is approved", () => {
+    const approved = (fields: Partial<ProducerProfile>) =>
+      states(
+        setupSteps(
+          producer({ compliance: { status: "approved", hasOpenRfi: false }, ...fields }),
+          none,
+        ),
+      );
+    // Aprovada · Conta a caminho (498:4248): approved, the account still on its way.
+    expect(
+      approved({ onboardingStatus: "stellar_pending", stellar: { status: "submitted" } }),
+    ).toEqual([
+      "in_progress:Preparando…",
+      "done:Aceitos",
+      "done:Preenchidos",
+      "done:Enviados",
+      "done:Aprovada",
+    ]);
+    expect(approved({ onboardingStatus: "ready" })[4]).toBe("done:Aprovada");
+  });
+
+  it("marks the account whose resume gave up, but not one already ready", () => {
+    const stopped = { ...none, accountStopped: true };
+    expect(setupSteps(producer({ stellar: { status: "pending" } }), stopped)[0]?.state).toBe(
+      "error",
+    );
+    expect(setupSteps(producer({ stellar: { status: "active" } }), stopped)[0]?.detail).toBe(
+      "Pronta",
+    );
   });
 
   it("marks the account that could not be prepared", () => {

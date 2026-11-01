@@ -11,6 +11,7 @@ import {
   receivingSteps,
   resolveRoute,
   stepHref,
+  stepPosition,
 } from "./receiving-flow";
 
 const producer = (overrides: Partial<ProducerProfile> = {}): ProducerProfile => ({
@@ -309,6 +310,22 @@ describe("receivingSteps", () => {
       state: "error",
       detail: "Não deu para preparar",
     });
+  });
+});
+
+describe("the account's step and the verification's progress", () => {
+  it("shows the account whose resume gave up as an error, as its notice says (R6)", () => {
+    const [account] = receivingSteps(producer({ stellar: { status: "pending" } }), progress(), {
+      shown: "terms",
+      detail: "Agora",
+      retry: false,
+      accountStopped: true,
+    });
+    expect(account?.detail).toBe("Não deu para preparar");
+  });
+
+  it("puts the request for information at the fifth step", () => {
+    expect(stepPosition.verification).toEqual({ number: 5, name: "Verificação" });
   });
 });
 

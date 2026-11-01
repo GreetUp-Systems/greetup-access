@@ -19,6 +19,8 @@ export interface ReceivingAccount {
   stopped: boolean;
   /** The error it stopped at, to tell the Conta com erro from the Liberando · Falha. */
   error: unknown;
+  /** A run is going on: "Tentar de novo" shows it while the account is prepared again. */
+  running: boolean;
   /**
    * "Tentar de novo": prepares the account again and asks for the signature, a `failed` one
    * included, then goes back to resuming it (SPEC-015 R3, R6).
@@ -103,7 +105,7 @@ export function useReceivingAccount({
 
   const { stoppedBy } = state;
   return useMemo(
-    () => ({ stopped: stoppedBy !== null, error: stoppedBy?.error ?? null, retry }),
-    [stoppedBy, retry],
+    () => ({ stopped: stoppedBy !== null, error: stoppedBy?.error ?? null, running, retry }),
+    [stoppedBy, running, retry],
   );
 }

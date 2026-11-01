@@ -363,6 +363,9 @@ test("the Painel shows the setup until the producer can sell", async ({ page }) 
 
   await expect(visible(page, "Termine a configuração para vender")).toBeVisible();
   await expect(visible(page, "1 de 5")).toBeVisible();
+  // The steps as Configuração pendente (298:3589, 298:4040) has them.
+  await expect(visible(page, "Agora")).toBeVisible();
+  await expect(visible(page, "Depois do envio")).toBeVisible();
   await expect(page.getByRole("link", { name: "Continuar" })).toHaveAttribute(
     "href",
     "/producer/receiving",
