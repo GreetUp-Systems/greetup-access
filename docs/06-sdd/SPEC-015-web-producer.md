@@ -377,8 +377,9 @@ rfi_submission_failed`, Falha ao enviar.
   seção (`nome`, `data`, `capacidade`, `local`, `capa`, `ingressos` ou `descricao`). Cada passo e
   cada edição é uma entrada no histórico, como no Recebimento: o voltar do navegador e do celular
   volta um passo sem perder o que foi preenchido. No celular, página interna com voltar e "Etapa N
-  de 3" com o progresso; no desktop, a lista Etapas (Rascunho, Detalhes e Publicação) ao lado. Um
-  passo ainda não liberado volta ao primeiro pendente.
+  de 3" com o progresso; no desktop, a lista Etapas (Rascunho, Detalhes e Publicação) ao lado. Na
+  criação, um passo ainda não liberado volta ao primeiro pendente; nos detalhes, o rascunho já existe
+  e todo passo é opcional, então qualquer passo abre direto, também ao recarregar.
 - **Criar o rascunho:** os 3 passos ficam na memória da página. "Criar rascunho" chama
   `POST /api/events`, com início e término em data e hora de Brasília enviados em ISO 8601 com o
   offset de `America/Sao_Paulo`, e abre o primeiro passo dos detalhes com o toast "Rascunho criado.
