@@ -14,7 +14,8 @@ export function configureApplication(
   if (options.corsOrigins !== undefined && options.corsOrigins.length > 0) {
     app.enableCors({
       origin: options.corsOrigins,
-      methods: ["GET", "POST", "PATCH", "DELETE"],
+      // PUT confirms the event's cover (SPEC-015 §8).
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
       allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key"],
       credentials: false,
       maxAge: 600,
