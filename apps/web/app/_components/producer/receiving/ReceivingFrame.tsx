@@ -40,12 +40,20 @@ export function StepProgress({ step, className }: { step: ProgressStep; classNam
   );
 }
 
-/** Figma: Etapas, the configuration's list of steps (Etapa, 294:71) in its card. */
+/** A step of an Etapas list: the Recebimento's, or the event's stages. */
+export interface StepsCardItem {
+  key: string;
+  title: string;
+  state: ReceivingStepItem["state"];
+  detail: string;
+}
+
+/** Figma: Etapas, a list of steps (Etapa, 294:71) in its card: the Recebimento's, the event's. */
 export function StepsCard({
   items,
   className,
 }: {
-  items: readonly ReceivingStepItem[];
+  items: readonly StepsCardItem[];
   className?: string;
 }) {
   return (
@@ -116,14 +124,17 @@ export function StepPage({ step, items, notice, onBack, children }: StepPageProp
 /**
  * The card's actions: the action (Botão/Inverso L, the width of the card on the phone), "Voltar"
  * before it on the desktop (Botão/Fantasma L; the phone goes back above) and the line under them.
+ * An edition says "Cancelar" in the place of "Voltar" (Evento · Editar uma seção, 593:12840).
  */
 export function StepCardActions({
   action,
   onBack,
+  backLabel = "Voltar",
   note,
 }: {
   action: ReactNode;
   onBack?: (() => void) | undefined;
+  backLabel?: string;
   note?: string | undefined;
 }) {
   return (
@@ -131,7 +142,7 @@ export function StepCardActions({
       <div className="flex gap-3">
         {onBack === undefined ? null : (
           <Button variant="ghost" size="l" className="hidden md:inline-flex" onClick={onBack}>
-            Voltar
+            {backLabel}
           </Button>
         )}
         {action}
