@@ -74,7 +74,8 @@ function Details({ event }: { event: EventDetail }) {
   const router = useRouter();
   const params = useSearchParams();
   const asked = parsePasso(params.get("passo"));
-  const route = resolvePasso(asked, flow.detailsConfirmed(event.id), DETAILS_PASSOS);
+  // The draft exists and every detail is optional, so any passo opens, also on a reload (§6).
+  const route = resolvePasso(asked, DETAILS_PASSOS, DETAILS_PASSOS);
   const redirect = route.kind === "redirect" ? detailsHref(event.id, route.passo) : null;
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState<null | (() => void)>(null);
@@ -104,7 +105,6 @@ function Details({ event }: { event: EventDetail }) {
     );
   };
   const next = (): void => {
-    flow.confirmDetails(event.id, passo);
     flow.dismissCreated();
     flow.go(passo < DETAILS_PASSOS ? detailsHref(event.id, passo + 1) : eventHref(event.id));
   };

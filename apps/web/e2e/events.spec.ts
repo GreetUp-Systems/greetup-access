@@ -291,11 +291,17 @@ test.describe("Detalhes do evento", () => {
     await expect(visible(page, "Enviada")).toBeVisible();
   });
 
-  test("a passo of the details not yet open leads to the first one", async ({ page }) => {
+  test("any passo of the details opens straight, also on a reload", async ({ page }) => {
     await signIn(page, own("events"));
-    await page.goto(`/producer/events/${exampleDraft}/details?passo=4`);
-    await expect(page).toHaveURL(new RegExp(`/${exampleDraft}/details$`));
-    await expect(visible(page, "Detalhes · 1 de 4")).toBeVisible();
+    await page.goto(`/producer/events/${exampleDraft}/details?passo=3`);
+    await expect(page).toHaveURL(new RegExp(`/${exampleDraft}/details\\?passo=3$`));
+    await expect(visible(page, "Detalhes · 3 de 4")).toBeVisible();
+    await page.reload();
+    await expect(visible(page, "Detalhes · 3 de 4")).toBeVisible();
+
+    // Past the last passo, the last one.
+    await page.goto(`/producer/events/${exampleDraft}/details?passo=9`);
+    await expect(page).toHaveURL(new RegExp(`/${exampleDraft}/details\\?passo=4$`));
   });
 });
 

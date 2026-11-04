@@ -105,9 +105,6 @@ interface EventFlowValue {
   ) => Promise<{ ok: true } | { ok: false; problem: TicketTypeSaveProblem }>;
   publish: (eventId: string) => Promise<"published" | PublishProblem>;
 
-  /** The last passo of the details the producer went on from, by event. */
-  detailsConfirmed: (eventId: string) => number;
-  confirmDetails: (eventId: string, passo: number) => void;
   /** The details typed and not saved yet, by event (Local, Descrição e reembolso). */
   location: (eventId: string) => LocationForm | undefined;
   setLocation: (eventId: string, form: LocationForm) => void;
@@ -170,7 +167,6 @@ export function EventFlowProvider({ children }: { children: ReactNode }) {
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [justCreated, setJustCreated] = useState<string | null>(null);
   const [entries, setEntries] = useState<Record<string, EventEntry>>({});
-  const [confirmed, setConfirmed] = useState<Record<string, number>>({});
   const [locations, setLocations] = useState<Record<string, LocationForm>>({});
   const [textForms, setTextForms] = useState<Record<string, TextsForm>>({});
   const [covers, setCovers] = useState<Record<string, CoverUploadState>>({});
@@ -362,10 +358,6 @@ export function EventFlowProvider({ children }: { children: ReactNode }) {
     [loadEvent, reloadEvents, reloadProducer, setEvent],
   );
 
-  const confirmDetails = useCallback((eventId: string, passo: number) => {
-    setConfirmed((current) => ({ ...current, [eventId]: Math.max(current[eventId] ?? 0, passo) }));
-  }, []);
-
   const setLocation = useCallback((eventId: string, form: LocationForm) => {
     setLocations((current) => ({ ...current, [eventId]: form }));
   }, []);
@@ -482,8 +474,6 @@ export function EventFlowProvider({ children }: { children: ReactNode }) {
       saveEvent,
       saveTicketType,
       publish,
-      detailsConfirmed: (eventId) => confirmed[eventId] ?? 0,
-      confirmDetails,
       location: (eventId) => locations[eventId],
       setLocation,
       texts: (eventId) => textForms[eventId],
@@ -509,8 +499,6 @@ export function EventFlowProvider({ children }: { children: ReactNode }) {
       saveEvent,
       saveTicketType,
       publish,
-      confirmed,
-      confirmDetails,
       locations,
       setLocation,
       textForms,
