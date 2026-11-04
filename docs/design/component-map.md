@@ -388,6 +388,78 @@ Validado em 08/10/2026: catálogo em 1440, nos modos escuro e claro, comparado n
 Tendência, Aba de seção, Progresso, Menu da conta (Painel), Item de menu, Barra lateral
 (aberta e recolhida), Item de navegação, Conta na barra lateral, Barra de abas (3 abas) e Etapa.
 
+### Área de texto · `textarea.tsx` (shadcn/ui Textarea)
+
+| Figma                 | Nó       | Código                                                     |
+| --------------------- | -------- | ---------------------------------------------------------- |
+| Área de texto         | `253:93` | `<Field>` com `<FieldLabel>`, `<Textarea>` e ajuda ou erro |
+| Estado = Erro         |          | `aria-invalid` no `Textarea` + `<FieldError>`              |
+| Estado = Desabilitado |          | `disabled` no `Field` e no `Textarea`                      |
+
+O Campo de texto em várias linhas (a descrição e a política de reembolso do evento, a descrição de um
+tipo de ingresso): três linhas de Body/M com `space/3` por `space/4` em volta, 84 de altura, sem
+redimensionar. A borda é interna, como o traço do Figma (`inset-ring`), para manter os 84.
+
+### Categoria · `category.tsx` (composição)
+
+| Figma                         | Nó        | Código                                                         |
+| ----------------------------- | --------- | -------------------------------------------------------------- |
+| Categoria                     | `314:170` | `<Category selected>` com `<CategoryIcon>` e `<CategoryLabel>` |
+| Estado = Padrão · Selecionada |           | `selected`                                                     |
+
+O ícone Lucide de 24 num círculo de 64 (`space/16`) e o rótulo em Body/S; Selecionada leva
+`bg/accent-subtle`, `border/accent` e `icon/accent`. Com `asChild`, o filho é a categoria: no
+formulário do evento, o `<label>` de uma opção de rádio escondida, que desenha o foco no círculo
+(`group-has-focus-visible`); na vitrine, o link. Ícones das nove categorias em
+`apps/web/app/_components/producer/event/EventFields.tsx` (SPEC-015 E2, §5.3).
+
+### Envio de capa · `cover-field.tsx` (composição com o Button e o Progresso)
+
+| Figma                                      | Nó                                     | Código                                               |
+| ------------------------------------------ | -------------------------------------- | ---------------------------------------------------- |
+| Envio de capa                              | `378:90`                               | `<CoverField state previewUrl progress errorDetail>` |
+| Estado = Vazio · Enviando · Enviada · Erro | `378:20`, `378:42`, `378:48`, `378:72` | `state="empty" \| "uploading" \| "sent" \| "error"`  |
+
+A capa 16:9 do evento, enviada ao R2. Vazio: tracejado `border/strong` sobre `bg/subtle`, "Arraste a
+capa ou escolha um arquivo" (no celular, "Escolha a imagem da capa", sem o selo do ícone: `590:11793`)
+e "Escolher arquivo". Enviando: o progresso num cartão sobre o véu. Enviada: a capa cortada no centro
+com "Trocar capa"; o botão de remover do componente não entra, porque a interface não remove a capa
+(SPEC-015 E7). Erro: `bg/danger-subtle` com `border/danger`, o que fazer e "Escolher outro arquivo".
+O `<input type="file">` fica escondido; no desktop o arquivo também pode ser solto sobre o campo, e o
+estado é anunciado quando muda.
+
+### Trilha · `breadcrumb.tsx` (shadcn/ui Breadcrumb)
+
+`<Breadcrumb>`, `<BreadcrumbList>`, `<BreadcrumbItem>`, `<BreadcrumbLink asChild>`,
+`<BreadcrumbSeparator>` e `<BreadcrumbPage>`: a Trilha acima do título das páginas do evento
+(`586:11098`, `591:12579`), Body/S em `text/tertiary`, o `chevron-right` de 12 e a página em
+`text/secondary`. Só no desktop: o celular volta pela Barra superior.
+
+### Sugestões e Opção · `option.tsx`
+
+| Figma     | Nó          | Código                       |
+| --------- | ----------- | ---------------------------- |
+| Sugestões | `588:12166` | `<OptionList>` (`listbox`)   |
+| Opção (M) | `354:83`    | `<Option active>` (`option`) |
+
+A lista sob um campo de busca (a cidade do evento): `bg/surface`, `border/subtle`, Elevation/2,
+`radius/lg` e `space/1`; a opção ativa em `bg/subtle`, 36 de altura. O campo é o combobox
+(`apps/web/app/_components/producer/event/CityField.tsx`): guarda o foco, aponta a opção ativa por
+`aria-activedescendant` e anda com as setas; Enter escolhe e Esc volta à cidade escolhida.
+
+### Barra de ações · `action-bar.tsx` (composição)
+
+`<ActionBar>` (`354:15101`): a barra de vidro das ações no celular, com os botões M dividindo a
+largura (uma ação: a principal, Inverso; duas: a secundária à esquerda). Fixa no pé da página do
+evento (Publicar evento; Ver página e Copiar link) e no fim das folhas do evento. As folhas do
+evento (Tipo de ingresso `594:12889`, Publicar `595:13523`) usam o `Drawer` sobre `bg/surface`, com o
+Cabeçalho da folha (`354:15055`): título em Heading/H4 e o fechar de 44.
+
+### Janela ou folha · `hooks/use-media-query.ts`
+
+`useMediaQuery(DESKTOP_QUERY)`: o diálogo responsivo do shadcn/ui. A janela do tipo de ingresso é o
+`Dialog` no desktop (`594:13318`) e o `Drawer` no celular (`594:12889`), com o mesmo formulário.
+
 ## Ícones
 
 Página "Ícones" (`27:2`): 47 ícones, dos quais 43 são Lucide com o mesmo nome (`Ícone/ticket` →
@@ -413,6 +485,10 @@ Página "App" (`267:2`): o sistema do produtor, com o Painel e seus estados, Eve
 produtor, a conta (menu e folha), a barra recolhida e os estados de carregamento, erro e vazio, em
 360 e 1440 (o Painel também no modo claro). Os IDs de cada quadro estão na
 [SPEC-015](../06-sdd/SPEC-015-web-producer.md) §5.1.
+
+Página "Produtor": Criar perfil, o Recebimento e o Evento (o rascunho em 3 passos, os detalhes em 4,
+a página do evento com a edição por seção, o tipo de ingresso e a publicação), em 360 e 1440. Os IDs
+de cada quadro estão na [SPEC-015](../06-sdd/SPEC-015-web-producer.md) §5.2.
 
 Página "Compra" (`138:321`): página do evento, escolher ingresso, identificação (e-mail e código),
 revisar pedido, Pix, pagamento confirmado e ingresso pronto, cada uma em 360 e 1440, mais os estados
