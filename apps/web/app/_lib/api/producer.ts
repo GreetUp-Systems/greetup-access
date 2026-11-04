@@ -19,15 +19,38 @@ export interface ProducerProfile {
 
 export type EventStatus = "draft" | "published" | "cancelled";
 
-export interface ProducerEvent {
+/** The fixed list of categories (SPEC-015 E2), in the API's lower case. */
+export const eventCategories = [
+  "shows",
+  "parties",
+  "theater",
+  "standup",
+  "sports",
+  "festivals",
+  "kids",
+  "courses",
+  "food",
+] as const;
+export type EventCategory = (typeof eventCategories)[number];
+
+/** A municipality of the IBGE base (SPEC-015 E3): `code` is the IBGE code. */
+export interface City {
+  code: number;
+  name: string;
+  uf: string;
+}
+
+/** The private view of an event, without its ticket types (apps/api EventSummaryView). */
+export interface EventSummary {
   id: string;
   slug: string;
   name: string;
   description: string | null;
-  category: string | null;
+  category: EventCategory | null;
+  /** The cover on R2 (SPEC-015 E1); null without one. */
   coverUrl: string | null;
   venueName: string | null;
-  city: { code: number; name: string; uf: string } | null;
+  city: City | null;
   address: string | null;
   startsAt: string;
   endsAt: string | null;
@@ -38,6 +61,10 @@ export interface ProducerEvent {
   cancelledAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** An event of `GET /api/events`, with its sales (SPEC-015 §8). */
+export interface ProducerEvent extends EventSummary {
   /** Tickets of purchases with the payment confirmed or issued. */
   soldTickets: number;
   /** Their subtotals, without the service fee paid by the buyer. */

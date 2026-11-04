@@ -47,6 +47,22 @@ export function maskDate(value: string): string {
   ]);
 }
 
+/** HH:MM, the time of an event in Brasília (SPEC-015 §6). */
+export function maskTime(value: string): string {
+  return format(digitsOnly(value).slice(0, 4), [
+    [2, ""],
+    [2, ":"],
+  ]);
+}
+
+/**
+ * A count of people or tickets: digits only, without leading zeros, so the field is empty or a
+ * whole number from 1 (SPEC-015 §6). Nine digits at most, inside the API's integers.
+ */
+export function maskWholeNumber(value: string): string {
+  return digitsOnly(value).replace(/^0+/, "").slice(0, 9);
+}
+
 /**
  * The national number of a Brazilian phone, DDD and number, at most 11 digits. The country code
  * the browser's autofill brings ("+55 11 91234-5678") is dropped: with it, the number has 12 or

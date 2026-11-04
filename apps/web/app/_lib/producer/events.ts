@@ -36,7 +36,7 @@ export function eventTab(event: ProducerEvent, now: Date): EventTab {
  * "Cancelado", in the same tab.
  */
 export function eventStatus(
-  event: ProducerEvent,
+  event: Pick<ProducerEvent, "status" | "startsAt" | "endsAt">,
   now: Date,
 ): "draft" | "published" | "ended" | "cancelled" {
   if (event.status === "published" && isOver(event, now)) {

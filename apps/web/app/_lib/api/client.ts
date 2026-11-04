@@ -17,7 +17,7 @@ export class ApiError extends Error {
 }
 
 export interface ApiRequestOptions {
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "PATCH" | "PUT";
   /** The Privy access token; omitted on public endpoints. */
   token?: string | null;
   /** Sent as JSON; a FormData goes as multipart, with the boundary the browser writes. */
