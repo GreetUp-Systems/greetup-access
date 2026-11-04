@@ -1169,6 +1169,36 @@ const producerScenarios = {
     me: (count) => (count === 1 ? unavailable : [200, readyProducer]),
     events: () => [200, producerEvents()],
   },
+  // --- The event (SPEC-015 15D): the session's own events, the example ones included (see
+  // eventFixtures), with the producer in each state of the verification's requirement (E6).
+  events: { me: () => [200, readyProducer], ownEvents: true },
+  "events-verifying": { me: () => producerWith(pending("verifying")), ownEvents: true },
+  "events-rfi": { me: () => producerWith(pending("compliance_request", true)), ownEvents: true },
+  "events-rejected": { me: () => producerWith(pending("rejected")), ownEvents: true },
+  "events-releasing": {
+    me: () =>
+      producerWith({
+        onboardingStatus: "wallet_registration_pending",
+        compliance: { status: "approved", hasOpenRfi: false },
+      }),
+    ownEvents: true,
+  },
+  "events-setup": { me: () => producerWith(pending(null)), ownEvents: true },
+  "events-account-failed": {
+    me: () =>
+      producerWith({
+        ...pending("verifying"),
+        onboardingStatus: "stellar_pending",
+        stellar: { status: "failed" },
+      }),
+    ownEvents: true,
+  },
+  // Ready on the first read; the publication then finds the producer no longer ready (409).
+  "events-not-ready": {
+    me: (count) => (count === 1 ? [200, readyProducer] : producerWith(pending("verifying"))),
+    ownEvents: true,
+    publishNotReady: true,
+  },
 };
 
 function producerScenario(authorization) {
@@ -1349,6 +1379,576 @@ async function onboardingRoute(request, response, path) {
   return true;
 }
 
+// --- The producer's events (SPEC-004 §8, SPEC-015 §6 and §8): each session keeps its own events,
+// the ones it created and the examples it opened (copied on first use, so tests side by side never
+// share a state). The rules are the API's (apps/api/src/events/events.service.ts).
+const minPriceCents = 6000;
+const eventCategoriesList = [
+  "shows",
+  "parties",
+  "theater",
+  "standup",
+  "sports",
+  "festivals",
+  "kids",
+  "courses",
+  "food",
+];
+
+// The IBGE base, as GET /api/cities searches it: by the start of the name or of a word.
+const cityBase = [
+  { code: 3106200, name: "Belo Horizonte", uf: "MG" },
+  { code: 3509502, name: "Campinas", uf: "SP" },
+  { code: 2202208, name: "Campinas do Piauí", uf: "PI" },
+  { code: 4303905, name: "Campinas do Sul", uf: "RS" },
+  { code: 4106902, name: "Curitiba", uf: "PR" },
+  { code: 2611606, name: "Recife", uf: "PE" },
+  { code: 3304557, name: "Rio de Janeiro", uf: "RJ" },
+  { code: 2927408, name: "Salvador", uf: "BA" },
+  { code: 3549904, name: "São José dos Campos", uf: "SP" },
+  { code: 3550308, name: "São Paulo", uf: "SP" },
+];
+
+const searchName = (value) =>
+  value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim().replace(/\s+/g, " ");
+
+function searchCities(query) {
+  const term = searchName(query ?? "");
+  if (term.length < 2) {
+    return [400, { code: "invalid_city_query", message: "", fields: ["query"] }];
+  }
+  const found = cityBase.filter((city) =>
+    searchName(city.name)
+      .split(" ")
+      .some((_, index, words) => words.slice(index).join(" ").startsWith(term)),
+  );
+  return [200, found.slice(0, 10)];
+}
+
+const slugify = (name) =>
+  searchName(name)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "evento";
+
+// The example events of the Figma screens, at fixed ids (Evento · Rascunho 591:12579, Publicar
+// bloqueado 595:13914, Publicado 592:12678): a complete draft, the same draft without its cover,
+// and the published one with its sales.
+const fixtureIds = {
+  draft: "e5000000-0000-4000-8000-000000000001",
+  noCover: "e5000000-0000-4000-8000-000000000002",
+  published: "e5000000-0000-4000-8000-000000000003",
+};
+
+function exampleEvent(id, fields) {
+  const startsAt = ahead("2026-10-13T00:00:00.000Z");
+  const createdAt = new Date(Date.now() - 20 * day).toISOString();
+  return {
+    id,
+    slug: "festival-de-inverno",
+    name: "Festival de Inverno",
+    description: base.description,
+    category: "festivals",
+    coverUrl: coverUrl("inverno"),
+    coverKey: null,
+    venueName: "Casa Fluida",
+    city: cities.saoPaulo,
+    address: "Rua Augusta, 1200",
+    startsAt,
+    endsAt: new Date(Date.parse(startsAt) + 5 * 60 * 60 * 1000).toISOString(),
+    capacity: 300,
+    refundPolicy: base.refundPolicy,
+    status: "draft",
+    publishedAt: null,
+    cancelledAt: null,
+    createdAt,
+    updatedAt: createdAt,
+    soldTickets: 0,
+    salesCents: 0,
+    ticketTypes: [
+      {
+        id: randomUUID(),
+        name: "Pista",
+        description: "Acesso à pista e ao bar.",
+        priceCents: 12000,
+        quantity: 120,
+        committed: 0,
+      },
+      {
+        id: randomUUID(),
+        name: "Camarote",
+        description: "Área reservada com vista para o palco.",
+        priceCents: 24000,
+        quantity: 30,
+        committed: 0,
+      },
+    ],
+    ...fields,
+  };
+}
+
+function eventFixture(id) {
+  if (id === fixtureIds.draft) {
+    return exampleEvent(id, {});
+  }
+  if (id === fixtureIds.noCover) {
+    return exampleEvent(id, { coverUrl: null });
+  }
+  if (id === fixtureIds.published) {
+    const published = exampleEvent(id, {
+      status: "published",
+      publishedAt: new Date(Date.now() - 10 * day).toISOString(),
+      soldTickets: 120,
+      salesCents: 2_640_000,
+    });
+    published.ticketTypes[0].committed = 100;
+    return published;
+  }
+  return undefined;
+}
+
+const eventStores = new Map();
+
+function eventStore(session) {
+  let store = eventStores.get(session);
+  if (store === undefined) {
+    store = new Map();
+    eventStores.set(session, store);
+  }
+  return store;
+}
+
+/** The session's event, the examples copied into it on first use. */
+function findEvent(session, id) {
+  const store = eventStore(session);
+  if (!store.has(id)) {
+    const fixture = eventFixture(id);
+    if (fixture !== undefined) {
+      store.set(id, fixture);
+    }
+  }
+  return store.get(id);
+}
+
+function summaryView(record) {
+  const view = { ...record };
+  delete view.ticketTypes;
+  delete view.coverKey;
+  delete view.soldTickets;
+  delete view.salesCents;
+  return view;
+}
+
+const typeView = ({ id, name, description, priceCents, quantity }) => ({
+  id,
+  name,
+  description,
+  priceCents,
+  quantity,
+});
+
+const eventView = (record) => ({
+  ...summaryView(record),
+  ticketTypes: record.ticketTypes.map(typeView),
+  ticketMinPriceCents: minPriceCents,
+});
+
+/** GET /api/events of a scenario with its own events: the examples and the ones it created. */
+function ownEventList(session) {
+  for (const id of Object.values(fixtureIds)) {
+    findEvent(session, id);
+  }
+  return [...eventStore(session).values()]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((record) => ({
+      ...summaryView(record),
+      soldTickets: record.soldTickets,
+      salesCents: record.salesCents,
+    }));
+}
+
+const invalid = (code, fields) => [400, { code, message: "", fields }];
+const unprocessable = (code, extra = {}) => [422, { code, message: "", ...extra }];
+const isText = (value, max) =>
+  typeof value === "string" && value.trim().length >= 1 && value.trim().length <= max;
+const isCount = (value) => Number.isInteger(value) && value >= 1 && value <= 2_147_483_647;
+const isInstant = (value) =>
+  typeof value === "string" &&
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(value);
+const seatsOf = (record) => record.ticketTypes.reduce((total, type) => total + type.quantity, 0);
+
+const eventTexts = {
+  name: 120,
+  description: 5000,
+  venueName: 120,
+  address: 200,
+  refundPolicy: 2000,
+};
+
+/** The body's fields the API refuses (zod), or null when it is fine. */
+function eventFieldsProblem(body, creating) {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return [""];
+  }
+  const allowed = [
+    ...Object.keys(eventTexts),
+    "category",
+    "cityCode",
+    "startsAt",
+    "endsAt",
+    "capacity",
+  ];
+  const fields = Object.keys(body).filter((key) => !allowed.includes(key));
+  for (const [key, max] of Object.entries(eventTexts)) {
+    const value = body[key];
+    const clearable = !creating && key !== "name" && value === null;
+    if (value !== undefined && !clearable && !isText(value, max)) {
+      fields.push(key);
+    }
+  }
+  if (body.category !== undefined && !eventCategoriesList.includes(body.category)) {
+    fields.push("category");
+  }
+  if (body.cityCode !== undefined && !Number.isInteger(body.cityCode)) {
+    fields.push("cityCode");
+  }
+  if (body.startsAt !== undefined && !isInstant(body.startsAt)) {
+    fields.push("startsAt");
+  }
+  if (
+    body.endsAt !== undefined &&
+    !(body.endsAt === null && !creating) &&
+    !isInstant(body.endsAt)
+  ) {
+    fields.push("endsAt");
+  }
+  if (body.capacity !== undefined && !isCount(body.capacity)) {
+    fields.push("capacity");
+  }
+  if (creating) {
+    for (const key of ["name", "startsAt", "capacity"]) {
+      if (body[key] === undefined) {
+        fields.push(key);
+      }
+    }
+  } else if (Object.keys(body).length === 0) {
+    fields.push("");
+  }
+  return fields.length === 0 ? null : [...new Set(fields)];
+}
+
+const trimmed = (value) => (typeof value === "string" ? value.trim() : value);
+
+function createEvent(session, body) {
+  const fields = eventFieldsProblem(body, true);
+  if (fields !== null) {
+    return invalid("invalid_event", fields);
+  }
+  if (Date.parse(body.startsAt) <= Date.now()) {
+    return unprocessable("event_starts_in_past");
+  }
+  if (body.endsAt !== undefined && Date.parse(body.endsAt) <= Date.parse(body.startsAt)) {
+    return unprocessable("event_ends_before_start");
+  }
+  const city = body.cityCode === undefined ? null : cityBase.find((c) => c.code === body.cityCode);
+  if (city === undefined) {
+    return invalid("invalid_event", ["cityCode"]);
+  }
+  const now = new Date().toISOString();
+  const record = {
+    id: randomUUID(),
+    slug: slugify(body.name),
+    name: body.name.trim(),
+    description: trimmed(body.description) ?? null,
+    category: body.category ?? null,
+    coverUrl: null,
+    coverKey: null,
+    venueName: trimmed(body.venueName) ?? null,
+    city,
+    address: trimmed(body.address) ?? null,
+    startsAt: new Date(body.startsAt).toISOString(),
+    endsAt: body.endsAt === undefined ? null : new Date(body.endsAt).toISOString(),
+    capacity: body.capacity,
+    refundPolicy: trimmed(body.refundPolicy) ?? null,
+    status: "draft",
+    publishedAt: null,
+    cancelledAt: null,
+    createdAt: now,
+    updatedAt: now,
+    soldTickets: 0,
+    salesCents: 0,
+    ticketTypes: [],
+  };
+  eventStore(session).set(record.id, record);
+  return [201, eventView(record)];
+}
+
+function updateEvent(record, body) {
+  const fields = eventFieldsProblem(body, false);
+  if (fields !== null) {
+    return invalid("invalid_event", fields);
+  }
+  if (body.startsAt !== undefined && Date.parse(body.startsAt) <= Date.now()) {
+    return unprocessable("event_starts_in_past");
+  }
+  const city =
+    body.cityCode === undefined ? record.city : cityBase.find((c) => c.code === body.cityCode);
+  if (city === undefined) {
+    return invalid("invalid_event", ["cityCode"]);
+  }
+  if (record.status === "cancelled") {
+    return [409, { code: "event_cancelled", message: "" }];
+  }
+  const startsAt = body.startsAt === undefined ? record.startsAt : body.startsAt;
+  const endsAt = body.endsAt === undefined ? record.endsAt : body.endsAt;
+  if (endsAt !== null && Date.parse(endsAt) <= Date.parse(startsAt)) {
+    return unprocessable("event_ends_before_start");
+  }
+  const capacity = body.capacity ?? record.capacity;
+  if (record.status === "published" && seatsOf(record) > capacity) {
+    return unprocessable("ticket_quantity_exceeds_capacity");
+  }
+  for (const key of Object.keys(eventTexts)) {
+    if (body[key] !== undefined) {
+      record[key] = trimmed(body[key]);
+    }
+  }
+  if (body.name !== undefined && record.status === "draft") {
+    record.slug = slugify(body.name);
+  }
+  if (body.category !== undefined) {
+    record.category = body.category;
+  }
+  record.city = city;
+  record.startsAt = new Date(startsAt).toISOString();
+  record.endsAt = endsAt === null ? null : new Date(endsAt).toISOString();
+  record.capacity = capacity;
+  record.updatedAt = new Date().toISOString();
+  return [200, eventView(record)];
+}
+
+function publishEvent(scenario, record) {
+  if (record.status === "published") {
+    return [200, eventView(record)];
+  }
+  if (record.status === "cancelled") {
+    return [409, { code: "event_cancelled", message: "" }];
+  }
+  const [, producer] = scenario.me(1, scenario.session);
+  if (scenario.publishNotReady || producer?.onboardingStatus !== "ready") {
+    return [409, { code: "producer_not_ready", message: "" }];
+  }
+  const missing = [
+    record.coverUrl === null ? "cover" : null,
+    record.category === null ? "category" : null,
+    record.city === null ? "city" : null,
+  ].filter((item) => item !== null);
+  if (missing.length > 0) {
+    return unprocessable("event_not_publishable", { missing });
+  }
+  if (record.ticketTypes.length === 0) {
+    return unprocessable("event_without_ticket_types");
+  }
+  if (Date.parse(record.startsAt) <= Date.now()) {
+    return unprocessable("event_starts_in_past");
+  }
+  if (seatsOf(record) > record.capacity) {
+    return unprocessable("ticket_quantity_exceeds_capacity");
+  }
+  record.status = "published";
+  record.publishedAt = new Date().toISOString();
+  return [200, eventView(record)];
+}
+
+function ticketTypeProblem(body, creating) {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return [""];
+  }
+  const fields = Object.keys(body).filter(
+    (key) => !["name", "description", "priceCents", "quantity"].includes(key),
+  );
+  if (body.name !== undefined && !isText(body.name, 80)) {
+    fields.push("name");
+  }
+  if (
+    body.description !== undefined &&
+    !(body.description === null && !creating) &&
+    !isText(body.description, 500)
+  ) {
+    fields.push("description");
+  }
+  for (const key of ["priceCents", "quantity"]) {
+    if (body[key] !== undefined && !isCount(body[key])) {
+      fields.push(key);
+    }
+  }
+  if (creating) {
+    for (const key of ["name", "priceCents", "quantity"]) {
+      if (body[key] === undefined) {
+        fields.push(key);
+      }
+    }
+  } else if (Object.keys(body).length === 0) {
+    fields.push("");
+  }
+  return fields.length === 0 ? null : [...new Set(fields)];
+}
+
+function saveTicketType(record, typeId, body) {
+  const creating = typeId === undefined;
+  const fields = ticketTypeProblem(body, creating);
+  if (fields !== null) {
+    return invalid("invalid_ticket_type", fields);
+  }
+  const current = creating ? undefined : record.ticketTypes.find((type) => type.id === typeId);
+  if (!creating && current === undefined) {
+    return [404, { code: "ticket_type_not_found", message: "" }];
+  }
+  if (record.status === "cancelled") {
+    return [409, { code: "event_cancelled", message: "" }];
+  }
+  if (body.priceCents !== undefined && body.priceCents < minPriceCents) {
+    return unprocessable("ticket_price_below_minimum", { minimumCents: minPriceCents });
+  }
+  if (body.quantity !== undefined) {
+    if (current !== undefined && body.quantity < current.committed) {
+      return [409, { code: "ticket_quantity_below_committed", message: "" }];
+    }
+    const others = seatsOf(record) - (current?.quantity ?? 0);
+    if (record.status === "published" && others + body.quantity > record.capacity) {
+      return unprocessable("ticket_quantity_exceeds_capacity");
+    }
+  }
+  if (creating) {
+    const type = {
+      id: randomUUID(),
+      name: body.name.trim(),
+      description: trimmed(body.description) ?? null,
+      priceCents: body.priceCents,
+      quantity: body.quantity,
+      committed: 0,
+    };
+    record.ticketTypes.push(type);
+    return [201, typeView(type)];
+  }
+  for (const key of ["name", "description", "priceCents", "quantity"]) {
+    if (body[key] !== undefined) {
+      current[key] = trimmed(body[key]);
+    }
+  }
+  return [200, typeView(current)];
+}
+
+// The bucket of the covers (R2): the presigned PUT lands here, and the public URL serves it back.
+const r2Objects = new Map();
+const coverTypes = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+const r2Url = (key) => `http://localhost:${port}/__r2/${key}`;
+
+function coverUpload(record, body) {
+  const extension = coverTypes[body?.contentType];
+  if (extension === undefined) {
+    return invalid("invalid_cover_request", ["contentType"]);
+  }
+  const key = `events/${record.id}/${randomUUID()}.${extension}`;
+  return [
+    200,
+    { uploadUrl: r2Url(key), key, expiresAt: new Date(Date.now() + 10 * 60_000).toISOString() },
+  ];
+}
+
+/** PUT .../cover: the key of this event, an object in the bucket of the signed type, up to 5 MB. */
+function setCover(record, body) {
+  const key = typeof body?.key === "string" ? body.key : "";
+  const match = new RegExp(`^events/${record.id}/[0-9a-f-]{36}\\.(jpg|png|webp)$`).exec(key);
+  const stored = r2Objects.get(key);
+  if (
+    match === null ||
+    stored === undefined ||
+    coverTypes[stored.contentType] !== match[1] ||
+    stored.body.length === 0 ||
+    stored.body.length > 5 * 1024 * 1024
+  ) {
+    return unprocessable("invalid_cover");
+  }
+  record.coverKey = key;
+  record.coverUrl = r2Url(key);
+  return [200, eventView(record)];
+}
+
+/** The event's routes; false when the URL is another. */
+async function eventRoute(request, response, path, query) {
+  if (path.startsWith("/__r2/")) {
+    const key = path.slice("/__r2/".length);
+    if (request.method === "PUT") {
+      const raw = await readRaw(request);
+      r2Objects.set(key, {
+        contentType: String(request.headers["content-type"] ?? ""),
+        body: Buffer.from(raw, "latin1"),
+      });
+      response.writeHead(200).end();
+    } else {
+      const stored = r2Objects.get(key);
+      if (stored === undefined) {
+        response.writeHead(404).end();
+      } else {
+        response.writeHead(200, { "Content-Type": stored.contentType });
+        response.end(stored.body);
+      }
+    }
+    return true;
+  }
+  const isCities = path === "/api/cities";
+  const isCreate = path === "/api/events" && request.method === "POST";
+  const match =
+    /^\/api\/events\/([^/]+)(\/publish|\/ticket-types(?:\/([^/]+))?|\/cover(?:\/upload-url)?)?$/.exec(
+      path,
+    );
+  if (!isCities && !isCreate && match === null) {
+    return false;
+  }
+  const scenario = producerScenario(request.headers.authorization);
+  if (scenario === undefined) {
+    send(response, 401, { code: "invalid_auth_token", message: "" });
+    return true;
+  }
+  if (isCities) {
+    send(response, ...searchCities(new URLSearchParams(query).get("query")));
+    return true;
+  }
+  const body = request.method === "GET" ? null : await readBody(request);
+  if (isCreate) {
+    send(response, ...createEvent(scenario.session, body));
+    return true;
+  }
+  // The API checks the ids are UUID v4 before reading them (ParseUUIDPipe): Nest's 400, no code.
+  if (!uuidV4.test(match[1]) || (match[3] !== undefined && !uuidV4.test(match[3]))) {
+    send(response, 400, { message: "Validation failed (uuid v4 is expected)", statusCode: 400 });
+    return true;
+  }
+  const record = findEvent(scenario.session, match[1]);
+  if (record === undefined) {
+    send(response, 404, { code: "event_not_found", message: "" });
+    return true;
+  }
+  const action = match[2] ?? "";
+  if (action === "" && request.method === "GET") {
+    send(response, 200, eventView(record));
+  } else if (action === "" && request.method === "PATCH") {
+    send(response, ...updateEvent(record, body));
+  } else if (action === "/publish") {
+    send(response, ...publishEvent(scenario, record));
+  } else if (action.startsWith("/ticket-types")) {
+    send(response, ...saveTicketType(record, match[3], body));
+  } else if (action === "/cover/upload-url") {
+    send(response, ...coverUpload(record, body));
+  } else if (action === "/cover" && request.method === "PUT") {
+    send(response, ...setCover(record, body));
+  } else {
+    send(response, 404, { code: "not_found", message: "" });
+  }
+  return true;
+}
+
 function send(response, status, body) {
   response.writeHead(status, { "Content-Type": "application/json" });
   response.end(JSON.stringify(body));
@@ -1360,6 +1960,8 @@ createServer(async (request, response) => {
     "Access-Control-Allow-Headers",
     "Authorization, Content-Type, Idempotency-Key",
   );
+  // The methods of the API's contract (SPEC-004 §8, SPEC-015 §8), and R2's presigned PUT.
+  response.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE");
   if (request.method === "OPTIONS") {
     response.writeHead(204).end();
     return;
@@ -1426,6 +2028,10 @@ createServer(async (request, response) => {
     return;
   }
 
+  if (await eventRoute(request, response, path, query)) {
+    return;
+  }
+
   if (url === "/api/producers/me" || url === "/api/events") {
     const scenario = producerScenario(request.headers.authorization);
     if (scenario === undefined) {
@@ -1437,7 +2043,9 @@ createServer(async (request, response) => {
     calls.set(key, count);
     const [status, body] =
       url === "/api/events"
-        ? scenario.events(count, scenario.session)
+        ? scenario.ownEvents
+          ? [200, ownEventList(scenario.session)]
+          : scenario.events(count, scenario.session)
         : scenario.me(count, scenario.session);
     // A verification sent in this run is in analysis.
     const sent = onboarding.get(scenario.session)?.kyc;

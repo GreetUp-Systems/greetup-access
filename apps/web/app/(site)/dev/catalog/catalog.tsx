@@ -1,8 +1,22 @@
 "use client";
 
+import { ActionBar } from "@access/ui/components/action-bar";
 import { Alert, AlertDescription, AlertTitle } from "@access/ui/components/alert";
+import coverArt from "@access/ui/assets/cover-desktop.svg";
 import { Avatar, AvatarFallback } from "@access/ui/components/avatar";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@access/ui/components/breadcrumb";
 import { Button, type ButtonProps } from "@access/ui/components/button";
+import { Category, CategoryIcon, CategoryLabel } from "@access/ui/components/category";
+import { CoverField, type CoverFieldState } from "@access/ui/components/cover-field";
+import { Option, OptionList } from "@access/ui/components/option";
+import { Textarea } from "@access/ui/components/textarea";
 import {
   Carousel,
   CarouselContent,
@@ -73,6 +87,7 @@ import {
   LayoutGrid,
   LogOut,
   Menu,
+  Music,
   Share2,
   Ticket,
   User,
@@ -110,6 +125,7 @@ const frame = {
   // (547:11064).
   fileField: { width: 480 },
   fileFieldPhone: { width: 286 },
+  coverField: { width: 640 },
   // Cartão de evento (154:601): the phone (328), a desktop grid card (384), an Anteriores card (282)
   // and the Destaque largo (1200, the page's content).
   card: { width: 328 },
@@ -147,6 +163,8 @@ const itemStates = ["default", "hover", "focus", "selected", "disabled"] as cons
 
 // Figma: Envio de arquivo (253:371), Vazio · Enviando · Enviado · Erro, with the component's texts.
 const fileFieldStates: FileFieldState[] = ["empty", "uploading", "sent", "error"];
+
+const coverFieldStates: CoverFieldState[] = ["empty", "uploading", "sent", "error"];
 
 // Figma: Status (46:85), in the order of its page: ticket, payment, event and producer states.
 const statuses: StatusState[] = [
@@ -450,6 +468,98 @@ export function Catalog({
               />
             ))}
           </div>
+        </div>
+      </Section>
+
+      <Section id="textarea" title="Área de texto">
+        <div className="flex flex-wrap items-start gap-10">
+          {(["default", "filled", "error", "disabled"] as const).map((state) => (
+            <Field key={state} style={frame.field} disabled={state === "disabled"}>
+              <FieldLabel htmlFor={`textarea-${state}`}>Descrição</FieldLabel>
+              <Textarea
+                id={`textarea-${state}`}
+                placeholder="Conte como vai ser o evento"
+                defaultValue={
+                  state === "default"
+                    ? undefined
+                    : "Uma noite de música ao vivo e DJs na Casa Fluida, com cozinha de inverno."
+                }
+                aria-invalid={state === "error" || undefined}
+                disabled={state === "disabled"}
+              />
+              {state === "error" ? (
+                <FieldError>Escreva até 5.000 caracteres.</FieldError>
+              ) : (
+                <FieldDescription>Até 5.000 caracteres.</FieldDescription>
+              )}
+            </Field>
+          ))}
+        </div>
+      </Section>
+
+      <Section id="cover-field" title="Envio de capa">
+        <div className="flex flex-wrap items-start gap-10">
+          {coverFieldStates.map((state) => (
+            <CoverField
+              key={state}
+              style={frame.coverField}
+              state={state}
+              progress={20}
+              previewUrl={coverArt.src}
+              errorDetail="O arquivo tem 8,4 MB. Envie JPG, PNG ou WebP até 5 MB."
+              accept="image/jpeg,image/png,image/webp"
+              onFileSelect={noop}
+            />
+          ))}
+        </div>
+      </Section>
+
+      <Section id="category" title="Categoria">
+        <div className="flex gap-4">
+          {([false, true] as const).map((selected) => (
+            <Category key={String(selected)} selected={selected} className="w-24">
+              <CategoryIcon>
+                <Music />
+              </CategoryIcon>
+              <CategoryLabel>Shows</CategoryLabel>
+            </Category>
+          ))}
+        </div>
+      </Section>
+
+      <Section id="breadcrumb" title="Trilha">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="#breadcrumb">Eventos</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Festival de Inverno</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </Section>
+
+      <Section id="options" title="Sugestões · Opção">
+        <OptionList aria-label="Cidades" style={frame.fileFieldPhone}>
+          {["Campinas, SP", "Campinas do Piauí, PI", "Campinas do Sul, RS"].map((city, index) => (
+            <Option key={city} active={index === 0}>
+              {city}
+            </Option>
+          ))}
+        </OptionList>
+      </Section>
+
+      <Section id="action-bar" title="Barra de ações">
+        <div className="grid gap-6" style={frame.toast}>
+          <ActionBar>
+            <Button variant="inverse">Publicar evento</Button>
+          </ActionBar>
+          <ActionBar>
+            <Button variant="secondary">Ver página</Button>
+            <Button variant="inverse">Copiar link</Button>
+          </ActionBar>
         </div>
       </Section>
 

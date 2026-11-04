@@ -70,6 +70,18 @@ describe("CORS for the web app", () => {
     expect(preflight.headers["access-control-allow-credentials"]).toBeUndefined();
   });
 
+  it("lets the web app confirm the event's cover with PUT", async () => {
+    const preflight = await request(app.getHttpServer())
+      .options("/api/events/00000000-0000-4000-8000-000000000000/cover")
+      .set("Origin", "http://localhost:3000")
+      .set("Access-Control-Request-Method", "PUT")
+      .set("Access-Control-Request-Headers", "authorization,content-type")
+      .expect(204);
+
+    expect(preflight.headers["access-control-allow-origin"]).toBe("http://localhost:3000");
+    expect(preflight.headers["access-control-allow-methods"]).toMatch(/\bPUT\b/);
+  });
+
   it("does not allow another origin", async () => {
     const response = await request(app.getHttpServer())
       .get("/api/health/live")

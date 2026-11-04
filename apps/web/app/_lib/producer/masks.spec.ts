@@ -1,4 +1,13 @@
-import { digitsOnly, maskCep, maskCpf, maskDate, maskPhone, nationalPhoneDigits } from "./masks";
+import {
+  digitsOnly,
+  maskCep,
+  maskCpf,
+  maskDate,
+  maskPhone,
+  maskTime,
+  maskWholeNumber,
+  nationalPhoneDigits,
+} from "./masks";
 
 /** The field after each digit is typed, one by one. */
 const typing = (mask: (value: string) => string, digits: string): string[] =>
@@ -113,5 +122,26 @@ describe("maskPhone", () => {
   it("stops at 11 digits", () => {
     expect(maskPhone("119123456789")).toBe("(11) 91234-5678");
     expect(nationalPhoneDigits("(11) 91234-56789")).toBe("11912345678");
+  });
+});
+
+describe("maskTime", () => {
+  it("formats HH:MM as it is typed and when pasted", () => {
+    expect(typing(maskTime, "2130")).toEqual(["2", "21", "21:3", "21:30"]);
+    expect(maskTime("21:30")).toBe("21:30");
+    expect(maskTime("21h30")).toBe("21:30");
+    expect(maskTime("213045")).toBe("21:30");
+    expect(maskTime("")).toBe("");
+  });
+});
+
+describe("maskWholeNumber", () => {
+  it("keeps a whole number from 1, without leading zeros or separators", () => {
+    expect(maskWholeNumber("300")).toBe("300");
+    expect(maskWholeNumber("1.200")).toBe("1200");
+    expect(maskWholeNumber("0")).toBe("");
+    expect(maskWholeNumber("007")).toBe("7");
+    expect(maskWholeNumber("-5")).toBe("5");
+    expect(maskWholeNumber("12345678901")).toBe("123456789");
   });
 });
